@@ -1,15 +1,15 @@
 install:
-	poetry install --no-root
+	poetry install
 	poetry run pre-commit install
 
 dev:
-	poetry run flet run
+	poetry run flet run washer/main.py
 
 dev-ios:
-	poetry run flet run --ios
+	poetry run flet run washer/main.py --ios
 
 dev-android:
-	poetry run flet run --android
+	poetry run flet run washer/main.py --android
 
 lint:
 	poetry run ruff check
