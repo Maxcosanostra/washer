@@ -7,6 +7,15 @@ class ProfilePage:
         self.file_picker = self.create_file_picker()
         page.overlay.append(self.file_picker)
 
+        access_token = self.page.client_storage.get('access_token')
+        # refresh_token = self.page.client_storage.get('refresh_token')
+
+        if access_token:
+            print(f'Токен для профиля: {access_token}')
+        else:
+            print('Токен не найден, перенаправление на страницу входа.')
+            self.open_sign_in()
+
         self.avatar_container = self.create_avatar_container()
         self.name_field = self.create_name_field()
         self.surname_field = self.create_surname_field()

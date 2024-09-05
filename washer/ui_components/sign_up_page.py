@@ -153,6 +153,14 @@ class SignUpPage:
             print(
                 f"Токены: {tokens['access_token']}, {tokens['refresh_token']}"
             )
+
+            self.page.client_storage.set(
+                'access_token', tokens['access_token']
+            )
+            self.page.client_storage.set(
+                'refresh_token', tokens['refresh_token']
+            )
+
             self.open_profile_page()
         else:
             print(f'Ошибка регистрации: {response.text}')
