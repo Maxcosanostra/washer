@@ -153,12 +153,17 @@ class SignUpPage:
             print(
                 f"Токены: {tokens['access_token']}, {tokens['refresh_token']}"
             )
-            self.open_sign_in_page()
+            self.open_profile_page()
         else:
             print(f'Ошибка регистрации: {response.text}')
             self.page.add(
                 ft.Text(f'Ошибка: {response.text}', color=ft.colors.RED)
             )
+
+    def open_profile_page(self):
+        from washer.ui_components.profile_page import ProfilePage
+
+        ProfilePage(self.page)
 
     def open_sign_in_page(self, e=None):
         from washer.ui_components.sign_in_page import SignInPage
