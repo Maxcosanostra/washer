@@ -1,15 +1,15 @@
 import flet as ft
 
-from washer.ui_components.pages import SignInPage
+from washer.ui_components.sign_up_page import SignUpPage
 
 
 def main(page: ft.Page):
-    page.title = 'Sign In'
+    page.title = 'User Registration'
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.adaptive = True
 
-    SignInPage(page)
+    SignUpPage(page)
 
 
 ft.app(target=main)
