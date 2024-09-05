@@ -107,9 +107,23 @@ class SignInPage:
         username = self.username_field.value
         password = self.password_field.value
 
+        if not username or not password:
+            self.page.add(ft.Text('Заполните все поля!', color=ft.colors.RED))
+            return
+
         tokens = self.api.login(username, password)
-        print(tokens)
-        self.open_profile_page()
+
+        if 'access_token' in tokens:
+            self.page.client_storage.set(
+                'app.auth.access_token', tokens['access_token']
+            )
+            self.page.client_storage.set(
+                'app.auth.refresh_token', tokens['refresh_token']
+            )
+            print(tokens)
+            self.open_profile_page()
+        else:
+            self.page.add(ft.Text('Ошибка авторизации!', color=ft.colors.RED))
 
     def open_profile_page(self):
         from washer.ui_components.profile_page import ProfilePage
