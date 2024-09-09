@@ -11,12 +11,16 @@ class ProfilePage:
         self.brands_dict = {}
         self.full_brands_list = []
         self.selected_brand = None
+        self.selected_model_id = None
+        self.models_dict = {}
+        self.generations_dict = {}
         self.brand_button_text = 'Выберите марку автомобиля'
 
         self.search_dialog = self.create_search_dialog()
         self.brand_button = self.create_brand_button()
 
         self.model_dropdown = self.create_model_dropdown()
+        self.generation_dropdown = self.create_generation_dropdown()
         self.save_button = self.create_save_button()
 
         self.file_picker = self.create_file_picker()
@@ -104,8 +108,8 @@ class ProfilePage:
         )
 
     def open_search_dialog(self, e):
-        self.page.dialog = self.search_dialog
         self.search_dialog.open = True
+        self.page.dialog = self.search_dialog
         self.page.update()
 
     def close_search_dialog(self, e):
@@ -144,8 +148,8 @@ class ProfilePage:
         }
 
         clean_url = self.api_url.rstrip('/')
-
         url = f'{clean_url}/cars/models?brand_id={brand_id}&limit=100'
+
         print(f'Запрашиваемый URL: {url}')
 
         response = httpx.get(url, headers=headers)
@@ -155,6 +159,9 @@ class ProfilePage:
             if not models:
                 print(f'Модели для марки {selected_brand} не найдены.')
             else:
+                self.models_dict = {
+                    model['name']: model['id'] for model in models
+                }
                 self.model_dropdown.options = [
                     ft.dropdown.Option(model['name']) for model in models
                 ]
@@ -164,6 +171,12 @@ class ProfilePage:
                 self.brand_button.content.controls[
                     0
                 ].value = self.brand_button_text
+
+                self.model_dropdown.value = None
+                self.generation_dropdown.options = []
+                self.generation_dropdown.visible = False
+                self.selected_generation = None
+
                 self.page.update()
         else:
             print(
@@ -173,12 +186,92 @@ class ProfilePage:
 
         self.close_search_dialog(None)
 
+    def on_model_select(self, e):
+        selected_model = e.control.value
+        self.selected_model_id = self.models_dict.get(selected_model)
+
+        print(
+            f'Выбранная модель: {selected_model}, '
+            f'ID модели: {self.selected_model_id}'
+        )
+
+        if not self.selected_model_id:
+            print('ID модели не найден.')
+            return
+
+        access_token = self.page.client_storage.get('app.auth.access_token')
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json',
+        }
+
+        clean_url = self.api_url.rstrip('/')
+        url = (
+            f'{clean_url}/cars/generations?'
+            f'model_id={self.selected_model_id}&limit=100'
+        )
+
+        print(f'Запрашиваемый URL для поколений: {url}')
+
+        response = httpx.get(url, headers=headers)
+
+        if response.status_code == 200:
+            generations = response.json().get('data', [])
+
+            if not generations:
+                print('Поколения для выбранной модели не найдены.')
+                self.generation_dropdown.visible = False
+                return
+
+            if len(generations) == 1:
+                self.selected_generation = generations[0]['name']
+                print(
+                    f'Автоматически выбрано поколение: '
+                    f'{self.selected_generation} '
+                    f'({generations[0]["year_range"]})'
+                )
+                self.generation_dropdown.visible = False
+            else:
+                self.generations_dict = {
+                    f'{gen["name"]} ({gen["year_range"]})': gen['id']
+                    for gen in generations
+                }
+                self.generation_dropdown.options = [
+                    ft.dropdown.Option(f'{gen["name"]} ({gen["year_range"]})')
+                    for gen in generations
+                ]
+                self.generation_dropdown.visible = True
+
+                print(f'Доступные поколения для модели {selected_model}:')
+                for gen in generations:
+                    print(
+                        f'Поколение: {gen['name']}'
+                        f' ({gen['year_range']}), ID: {gen['id']}'
+                    )
+
+            self.page.update()
+        else:
+            print(
+                f'Ошибка при загрузке поколений: '
+                f'{response.status_code} - {response.text}'
+            )
+
     def create_model_dropdown(self):
         return ft.Dropdown(
-            label='Выберите модель автомобиля',
+            label='Выберите модель',
             width=300,
             border_radius=ft.border_radius.all(25),
             options=[],
+            on_change=self.on_model_select,
+        )
+
+    def create_generation_dropdown(self):
+        return ft.Dropdown(
+            label='Выберите поколение',
+            width=300,
+            border_radius=ft.border_radius.all(25),
+            options=[],
+            visible=False,
         )
 
     def create_brand_button(self):
@@ -227,6 +320,7 @@ class ProfilePage:
                     self.avatar_container,
                     self.brand_button,
                     self.model_dropdown,
+                    self.generation_dropdown,
                     self.save_button,
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -241,9 +335,17 @@ class ProfilePage:
     def save_car_selection(self, e):
         selected_brand = self.selected_brand
         selected_model = self.model_dropdown.value
+        selected_generation = (
+            self.generation_dropdown.value
+            if self.generation_dropdown.visible
+            else self.selected_generation
+        )
 
         if selected_brand and selected_model:
-            print(f'Сохранён автомобиль: {selected_brand} - {selected_model}')
+            print(
+                f'Сохранён автомобиль: {selected_brand}'
+                f' - {selected_model} - {selected_generation}'
+            )
         else:
             print('Выберите марку и модель автомобиля')
 
