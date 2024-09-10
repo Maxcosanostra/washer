@@ -12,8 +12,9 @@ class ProfilePage:
         self.full_brands_list = []
         self.selected_brand = None
         self.selected_model_id = None
-        self.models_dict = {}
-        self.generations_dict = {}
+        self.selected_generation = None
+        self.selected_generation_id = None
+        self.body_types_dict = {}
         self.brand_button_text = 'Выберите марку автомобиля'
 
         self.search_dialog = self.create_search_dialog()
@@ -21,6 +22,7 @@ class ProfilePage:
 
         self.model_dropdown = self.create_model_dropdown()
         self.generation_dropdown = self.create_generation_dropdown()
+        self.body_type_dropdown = self.create_body_type_dropdown()
         self.save_button = self.create_save_button()
 
         self.file_picker = self.create_file_picker()
@@ -225,12 +227,16 @@ class ProfilePage:
 
             if len(generations) == 1:
                 self.selected_generation = generations[0]['name']
+                self.selected_generation_id = generations[0]['id']
                 print(
                     f'Автоматически выбрано поколение: '
                     f'{self.selected_generation} '
                     f'({generations[0]["year_range"]})'
                 )
                 self.generation_dropdown.visible = False
+
+                self.get_body_type(self.selected_generation_id)
+
             else:
                 self.generations_dict = {
                     f'{gen["name"]} ({gen["year_range"]})': gen['id']
@@ -241,20 +247,143 @@ class ProfilePage:
                     for gen in generations
                 ]
                 self.generation_dropdown.visible = True
+                self.generation_dropdown.on_change = self.on_generation_select
 
                 print(f'Доступные поколения для модели {selected_model}:')
                 for gen in generations:
                     print(
-                        f'Поколение: {gen['name']}'
-                        f' ({gen['year_range']}), ID: {gen['id']}'
+                        f'Поколение: {gen["name"]}'
+                        f' ({gen["year_range"]}), ID: {gen["id"]}'
                     )
 
             self.page.update()
+
         else:
             print(
                 f'Ошибка при загрузке поколений: '
                 f'{response.status_code} - {response.text}'
             )
+
+    def on_generation_select(self, e):
+        """Обработчик выбора поколения"""
+        selected_generation = e.control.value
+        self.selected_generation_id = self.generations_dict.get(
+            selected_generation
+        )
+
+        print(
+            f'Выбранное поколение: {selected_generation}, '
+            f'ID поколения: {self.selected_generation_id}'
+        )
+
+        if not self.selected_generation_id:
+            print('ID поколения не найден.')
+            return
+
+        self.body_type_dropdown.options = []
+        self.body_type_dropdown.value = None
+        self.body_type_dropdown.visible = False
+        self.page.update()
+        print('Скрыт и сброшен dropdown с типом кузова')
+
+        self.get_body_type(self.selected_generation_id)
+
+    def get_body_type(self, generation_id):
+        """Запрос на получение типа кузова на основе поколения"""
+        access_token = self.page.client_storage.get('app.auth.access_token')
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json',
+        }
+
+        clean_url = self.api_url.rstrip('/')
+        url = (
+            f'{clean_url}/cars/configurations?'
+            f'generation_id={generation_id}&limit=100'
+        )
+
+        print(f'Запрашиваемый URL для конфигураций: {url}')
+
+        response = httpx.get(url, headers=headers)
+
+        if response.status_code == 200:
+            configurations = response.json().get('data', [])
+            if configurations:
+                unique_body_types = {
+                    config['body_type_id'] for config in configurations
+                }
+
+                if len(unique_body_types) > 1:
+                    print(f'Доступные body_type_id: {unique_body_types}')
+
+                    self.body_types_dict = self.fetch_body_type_names(
+                        unique_body_types
+                    )
+
+                    self.body_type_dropdown.options = [
+                        ft.dropdown.Option(self.body_types_dict[bt])
+                        for bt in unique_body_types
+                    ]
+                    self.body_type_dropdown.value = None
+                    self.body_type_dropdown.visible = True
+                    self.page.update()
+
+                    print(
+                        f'Выберите тип кузова: {
+                        [self.body_types_dict[bt] for bt in unique_body_types]
+                        }'
+                    )
+                else:
+                    body_type_id = configurations[0]['body_type_id']
+                    body_type_name = self.get_body_type_name(body_type_id)
+                    print(f'Автоматически выбран тип кузова: {body_type_name}')
+            else:
+                print('Конфигурации не найдены.')
+        else:
+            print(
+                f'Ошибка при загрузке конфигураций: '
+                f'{response.status_code} - {response.text}'
+            )
+
+    def fetch_body_type_names(self, body_type_ids):
+        """Получение названий типов кузова по id"""
+        access_token = self.page.client_storage.get('app.auth.access_token')
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json',
+        }
+
+        clean_url = self.api_url.rstrip('/')
+        body_type_names = {}
+
+        for bt_id in body_type_ids:
+            url = f'{clean_url}/cars/body_types?limit=100'
+            response = httpx.get(url, headers=headers)
+            if response.status_code == 200:
+                body_types = response.json().get('data', [])
+                for bt in body_types:
+                    if bt['id'] == bt_id:
+                        body_type_names[bt_id] = bt['name']
+            else:
+                print(
+                    f'Ошибка при загрузке типов кузова: '
+                    f'{response.status_code} - {response.text}'
+                )
+
+        return body_type_names
+
+    def get_body_type_name(self, body_type_id):
+        """Запрос на получение названия кузова на основе body_type_id"""
+        body_type_name = self.fetch_body_type_names([body_type_id]).get(
+            body_type_id, None
+        )
+
+        if body_type_name:
+            print(f'Тип кузова: {body_type_name}')
+        else:
+            print('Тип кузова не найден.')
+
+        return body_type_name
 
     def create_model_dropdown(self):
         return ft.Dropdown(
@@ -268,6 +397,15 @@ class ProfilePage:
     def create_generation_dropdown(self):
         return ft.Dropdown(
             label='Выберите поколение',
+            width=300,
+            border_radius=ft.border_radius.all(25),
+            options=[],
+            visible=False,
+        )
+
+    def create_body_type_dropdown(self):
+        return ft.Dropdown(
+            label='Выберите тип кузова',
             width=300,
             border_radius=ft.border_radius.all(25),
             options=[],
@@ -321,6 +459,7 @@ class ProfilePage:
                     self.brand_button,
                     self.model_dropdown,
                     self.generation_dropdown,
+                    self.body_type_dropdown,
                     self.save_button,
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -340,11 +479,17 @@ class ProfilePage:
             if self.generation_dropdown.visible
             else self.selected_generation
         )
+        selected_body_type = (
+            self.body_type_dropdown.value
+            if self.body_type_dropdown.visible
+            else None
+        )
 
         if selected_brand and selected_model:
             print(
                 f'Сохранён автомобиль: {selected_brand}'
-                f' - {selected_model} - {selected_generation}'
+                f' - {selected_model} - {selected_generation} '
+                f'- {selected_body_type}'
             )
         else:
             print('Выберите марку и модель автомобиля')
