@@ -121,14 +121,14 @@ class SignInPage:
                 'app.auth.refresh_token', tokens['refresh_token']
             )
             print(tokens)
-            self.open_profile_page()
+            self.open_wash_selection_page()
         else:
             self.page.add(ft.Text('Ошибка авторизации!', color=ft.colors.RED))
 
-    def open_profile_page(self):
-        from washer.ui_components.profile_page import ProfilePage
+    def open_wash_selection_page(self):
+        from washer.ui_components.wash_selection_page import WashSelectionPage
 
-        ProfilePage(self.page)
+        WashSelectionPage(self.page, self.username_field.value)
 
     def on_back_to_sign_up_click(self, _: ft.ControlEvent):
         from washer.ui_components.sign_up_page import SignUpPage
