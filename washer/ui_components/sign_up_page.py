@@ -160,6 +160,7 @@ class SignUpPage:
             self.page.client_storage.set(
                 'refresh_token', tokens['refresh_token']
             )
+            self.page.client_storage.set('username', username)
 
             self.open_wash_selection_page()
         else:
