@@ -161,17 +161,17 @@ class SignUpPage:
                 'refresh_token', tokens['refresh_token']
             )
 
-            self.open_profile_page()
+            self.open_wash_selection_page()
         else:
             print(f'Ошибка регистрации: {response.text}')
             self.page.add(
                 ft.Text(f'Ошибка: {response.text}', color=ft.colors.RED)
             )
 
-    def open_profile_page(self):
-        from washer.ui_components.profile_page import ProfilePage
+    def open_wash_selection_page(self):
+        from washer.ui_components.wash_selection_page import WashSelectionPage
 
-        ProfilePage(self.page)
+        WashSelectionPage(self.page, self.username_field.value)
 
     def open_sign_in_page(self, e=None):
         from washer.ui_components.sign_in_page import SignInPage
