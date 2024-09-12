@@ -115,12 +115,19 @@ class SignInPage:
 
         if 'access_token' in tokens:
             self.page.client_storage.set(
-                'app.auth.access_token', tokens['access_token']
+                'access_token', tokens['access_token']
             )
             self.page.client_storage.set(
-                'app.auth.refresh_token', tokens['refresh_token']
+                'refresh_token', tokens['refresh_token']
             )
-            print(tokens)
+            self.page.client_storage.set('username', username)
+
+            print(
+                "Tokens saved: "
+                f"{self.page.client_storage.get('access_token')}, "
+                f"{self.page.client_storage.get('refresh_token')}"
+            )
+
             self.open_wash_selection_page()
         else:
             self.page.add(ft.Text('Ошибка авторизации!', color=ft.colors.RED))
