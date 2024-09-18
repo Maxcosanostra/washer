@@ -102,8 +102,9 @@ class WashSelectionPage:
                 ),
                 self.create_search_bar(),
                 ft.Column(
-                    controls=[],
+                    controls=self.create_wash_list(),
                     spacing=10,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
             ],
             width=350,
@@ -129,25 +130,35 @@ class WashSelectionPage:
         )
 
     def create_car_wash_card(self, car_wash):
+        boxes_text = f"{car_wash.get('boxes', 'Unknown')} slots available"
+
         return ft.Card(
-            content=ft.Column(
-                [
-                    ft.Image(
-                        src='assets/spa_logo.png',
-                        width=100,
-                        height=100,
-                        fit=ft.ImageFit.COVER,
-                        border_radius=ft.border_radius.all(50),
-                    ),
-                    ft.Text(f"{car_wash['name']}"),
-                    ft.Text(f"{car_wash['boxes']} slots available"),
-                ],
-                spacing=10,
-                alignment=ft.MainAxisAlignment.CENTER,
+            content=ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Image(
+                            src='assets/spa_logo.png',
+                            width=100,
+                            height=100,
+                            fit=ft.ImageFit.COVER,
+                            border_radius=ft.border_radius.all(50),
+                        ),
+                        ft.Text(f"{car_wash['name']}"),
+                        ft.Text(boxes_text),
+                    ],
+                    spacing=10,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
+                on_click=lambda e: self.on_booking_click(car_wash),
             ),
             width=300,
             elevation=3,
         )
+
+    def on_booking_click(self, car_wash):
+        from washer.ui_components.booking_page import BookingPage
+
+        BookingPage(self.page, car_wash, self.username)
 
     def update_car_washes_list(self):
         car_wash_controls = [
