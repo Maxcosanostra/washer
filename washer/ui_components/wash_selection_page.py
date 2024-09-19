@@ -163,7 +163,8 @@ class WashSelectionPage:
     def on_booking_click(self, car_wash):
         from washer.ui_components.booking_page import BookingPage
 
-        BookingPage(self.page, car_wash, self.username)
+        cars = self.page.client_storage.get('cars') or []
+        BookingPage(self.page, car_wash, self.username, cars)
         self.page.update()
 
     def update_car_washes_list(self):
