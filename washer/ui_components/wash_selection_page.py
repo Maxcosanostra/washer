@@ -5,6 +5,8 @@ from washer.config import config
 
 
 class WashSelectionPage:
+    car_washes_cache = None
+
     def __init__(self, page: ft.Page, username: str = None):
         self.page = page
         self.api_url = config.api_url
@@ -102,7 +104,7 @@ class WashSelectionPage:
                 ),
                 self.create_search_bar(),
                 ft.Column(
-                    controls=self.create_wash_list(),
+                    controls=[],
                     spacing=10,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
@@ -132,33 +134,37 @@ class WashSelectionPage:
     def create_car_wash_card(self, car_wash):
         boxes_text = f"{car_wash.get('boxes', 'Unknown')} slots available"
 
-        return ft.Card(
-            content=ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Image(
-                            src='assets/spa_logo.png',
-                            width=100,
-                            height=100,
-                            fit=ft.ImageFit.COVER,
-                            border_radius=ft.border_radius.all(50),
-                        ),
-                        ft.Text(f"{car_wash['name']}"),
-                        ft.Text(boxes_text),
-                    ],
-                    spacing=10,
-                    alignment=ft.MainAxisAlignment.CENTER,
+        return ft.Container(
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Image(
+                                src='assets/spa_logo.png',
+                                width=100,
+                                height=100,
+                                fit=ft.ImageFit.COVER,
+                                border_radius=ft.border_radius.all(50),
+                            ),
+                            ft.Text(f"{car_wash['name']}"),
+                            ft.Text(boxes_text),
+                        ],
+                        spacing=10,
+                        alignment=ft.MainAxisAlignment.CENTER,
+                    ),
+                    on_click=lambda e: self.on_booking_click(car_wash),
                 ),
-                on_click=lambda e: self.on_booking_click(car_wash),
+                width=300,
+                elevation=3,
             ),
-            width=300,
-            elevation=3,
+            alignment=ft.alignment.center,
         )
 
     def on_booking_click(self, car_wash):
         from washer.ui_components.booking_page import BookingPage
 
         BookingPage(self.page, car_wash, self.username)
+        self.page.update()
 
     def update_car_washes_list(self):
         car_wash_controls = [
@@ -170,6 +176,12 @@ class WashSelectionPage:
         self.page.update()
 
     def load_car_washes(self):
+        if WashSelectionPage.car_washes_cache:
+            print('Using cached car washes data')
+            self.car_washes = WashSelectionPage.car_washes_cache
+            self.update_car_washes_list()
+            return
+
         access_token = self.page.client_storage.get('access_token')
         if not access_token:
             print('Access token not found, redirecting to login.')
@@ -187,6 +199,7 @@ class WashSelectionPage:
 
         if response.status_code == 200:
             self.car_washes = response.json().get('data', [])
+            WashSelectionPage.car_washes_cache = self.car_washes
             self.update_car_washes_list()
         elif response.status_code == 401:
             if 'token has expired' in response.text.lower():
