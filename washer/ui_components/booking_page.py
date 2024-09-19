@@ -4,10 +4,13 @@ import flet as ft
 
 
 class BookingPage:
-    def __init__(self, page: ft.Page, car_wash: dict, username: str):
+    def __init__(
+        self, page: ft.Page, car_wash: dict, username: str, cars: list
+    ):
         self.page = page
         self.car_wash = car_wash
         self.username = username
+        self.cars = cars
 
         self.car_wash_image = ft.Container(
             width=300,
@@ -22,6 +25,7 @@ class BookingPage:
 
         self.car_dropdown = ft.Dropdown(
             width=300,
+            hint_text='Выберите автомобиль',
             options=self.load_user_cars(),
         )
 
@@ -69,11 +73,24 @@ class BookingPage:
         )
 
     def load_user_cars(self):
-        cars = [
-            ft.dropdown.Option('Toyota Camry'),
-            ft.dropdown.Option('Honda Accord'),
+        car_options = [
+            ft.dropdown.Option(f"{car['brand']} {car['model']}")
+            for car in self.cars
         ]
-        return cars
+        return car_options
+
+    def on_add_car_click(self, e):
+        from washer.ui_components.select_car_page import SelectCarPage
+
+        SelectCarPage(self.page, self.on_car_saved)
+
+    def on_car_saved(self, car):
+        self.cars.append(car)
+        self.car_dropdown.options.append(
+            ft.dropdown.Option(f"{car['brand']} {car['model']}")
+        )
+        self.car_dropdown.value = f"{car['brand']} {car['model']}"
+        self.page.update()
 
     def open_date_picker(self, e):
         self.page.open(
@@ -85,21 +102,10 @@ class BookingPage:
             )
         )
 
-    def on_add_car_click(self, e):
-        from washer.ui_components.select_car_page import SelectCarPage
-
-        SelectCarPage(self.page, self.on_car_saved)
-
-    def on_car_saved(self, car):
-        self.car_dropdown.options.append(
-            ft.dropdown.Option(car['brand'] + ' ' + car['model'])
-        )
-        self.car_dropdown.value = car['brand'] + ' ' + car['model']
-        self.page.update()
-
     def on_date_change(self, e):
         print(f'Выбрана дата: {e.data}')
         self.page.add(ft.Text(f'Вы выбрали дату: {e.data}'))
+        self.page.update()
 
     def on_date_dismiss(self, e):
         print('Календарь закрыт без выбора даты.')
