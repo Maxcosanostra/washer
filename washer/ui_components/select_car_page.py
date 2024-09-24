@@ -564,18 +564,62 @@ class SelectCarPage:
         selected_car = {
             'brand': self.selected_brand,
             'model': self.model_dropdown.value,
-            'generation': self.selected_generation,
-            'body_type': self.body_type_dropdown.value
-            or self.selected_car.get('body_type'),
+            'generation': self.selected_generation or 'Не указано',
+            'body_type': self.body_type_dropdown.value,
+            'configuration_id': self.selected_generation_id,
+            'name': (
+                f"{self.selected_brand} "
+                f"{self.model_dropdown.value} "
+                f"{self.selected_generation or ''}".strip()
+            ),
         }
 
-        print(f'Сохраняемый автомобиль: {selected_car}')
+        print(
+            f'Отправка запроса на {self.api_url}/cars '
+            f'с данными: {selected_car}'
+        )
 
-        self.on_car_saved(selected_car)
+        response = self.page.api.create_user_car(selected_car)
 
-        from washer.ui_components.profile_page import ProfilePage
+        if response and response.status_code == 200:
+            print('Автомобиль успешно сохранен на сервере.')
 
-        ProfilePage(self.page)
+            from washer.ui_components.profile_page import ProfilePage
+
+            ProfilePage(self.page)
+        else:
+            error_message = response.text if response else 'Неизвестная ошибка'
+            print(f'Ошибка при сохранении автомобиля: {error_message}')
+            self.page.add(
+                ft.Text(f'Ошибка: {error_message}', color=ft.colors.RED)
+            )
+
+    def update_profile_page(self):
+        access_token = self.page.client_storage.get('access_token')
+        user_id = self.page.client_storage.get('user_id')
+
+        if not user_id:
+            print('User ID not found!')
+            return
+
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json',
+        }
+
+        url = f'{self.api_url.rstrip("/")}/cars?user_id={user_id}'
+
+        response = httpx.get(url, headers=headers)
+
+        if response.status_code == 200:
+            cars = response.json().get('data', [])
+            print(f'Автомобили успешно загружены: {cars}')
+
+            self.page.clean()
+            self.page.add(self.create_profile_page(cars))
+            self.page.update()
+        else:
+            print(f'Ошибка при загрузке автомобилей: {response.text}')
 
     def create_back_button(self):
         return ft.Container(
