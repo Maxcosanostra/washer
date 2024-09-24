@@ -162,6 +162,14 @@ class SignUpPage:
             )
             self.page.client_storage.set('username', username)
 
+            user_info = self.api.get_logged_user()
+
+            if 'id' in user_info:
+                self.page.client_storage.set('user_id', user_info['id'])
+                print(f"User ID получен: {user_info['id']}")
+            else:
+                print('User ID не был получен')
+
             self.open_wash_selection_page()
         else:
             print(f'Ошибка регистрации: {response.text}')
