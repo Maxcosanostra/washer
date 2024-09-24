@@ -114,6 +114,9 @@ class SignInPage:
         tokens = self.api.login(username, password)
 
         if 'access_token' in tokens:
+            self.page.api.access_token = tokens['access_token']
+            self.page.api.refresh_token = tokens['refresh_token']
+
             self.page.client_storage.set(
                 'access_token', tokens['access_token']
             )
@@ -122,10 +125,17 @@ class SignInPage:
             )
             self.page.client_storage.set('username', username)
 
+            user_info = self.api.get_logged_user()
+
+            if 'id' in user_info:
+                self.page.client_storage.set('user_id', user_info['id'])
+                print(f"User ID получен: {user_info['id']}")
+            else:
+                print('User ID не был получен')
+
             print(
-                "Tokens saved: "
-                f"{self.page.client_storage.get('access_token')}, "
-                f"{self.page.client_storage.get('refresh_token')}"
+                f'Токены сохранены: {self.page.api.access_token}, '
+                f'{self.page.api.refresh_token}'
             )
 
             self.open_wash_selection_page()
