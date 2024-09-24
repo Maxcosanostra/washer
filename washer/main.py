@@ -1,9 +1,12 @@
 import flet as ft
 
+from washer.api_requests import BackendApi
 from washer.ui_components.sign_up_page import SignUpPage
 
 
 def main(page: ft.Page):
+    page.api = BackendApi()
+
     page.title = 'User Registration'
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
