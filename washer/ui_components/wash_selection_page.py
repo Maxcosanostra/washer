@@ -168,13 +168,21 @@ class WashSelectionPage:
         self.page.update()
 
     def update_car_washes_list(self):
-        car_wash_controls = [
-            self.create_car_wash_card(wash) for wash in self.car_washes
-        ]
-        car_washes_column = self.page.controls[0].controls[2]
-        car_washes_column.controls = car_wash_controls
-        car_washes_column.alignment = ft.MainAxisAlignment.CENTER
-        self.page.update()
+        if len(self.page.controls) > 0:
+            car_washes_column = self.page.controls[0]
+            if (
+                isinstance(car_washes_column, ft.Column)
+                and len(car_washes_column.controls) > 2
+            ):
+                car_washes_container = car_washes_column.controls[2]
+                car_washes_container.controls = [
+                    self.create_car_wash_card(wash) for wash in self.car_washes
+                ]
+                self.page.update()
+            else:
+                print('Контейнер с мойками не найден или неверного типа.')
+        else:
+            print('Контейнер не содержит элементов управления.')
 
     def load_car_washes(self):
         if WashSelectionPage.car_washes_cache:
