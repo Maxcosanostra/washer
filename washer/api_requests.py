@@ -27,7 +27,7 @@ class BackendApi:
 
     def login(self, username: str, password: str) -> dict:
         response = httpx.post(
-            f'{self.url}jwt/token',
+            f'{self.url.rstrip("/")}/jwt/token',
             data={'username': username, 'password': password},
         )
         if response.status_code == 200:
@@ -37,3 +37,46 @@ class BackendApi:
             return tokens
         else:
             return {'error': 'Ошибка авторизации'}
+
+    def get_logged_user(self) -> dict:
+        if not self.access_token:
+            return {'error': 'Access token not found'}
+
+        headers = {
+            'Authorization': f'Bearer {self.access_token}',
+            'Accept': 'application/json',
+        }
+        response = httpx.get(
+            f'{self.url.rstrip("/")}/users/me', headers=headers
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {'error': 'Failed to fetch user information'}
+
+    def create_user_car(self, car_data: dict) -> httpx.Response:
+        if not self.access_token:
+            print('Токен доступа отсутствует!')
+            return None
+
+        api_url = f'{self.url.rstrip("/")}/cars'
+        headers = {
+            'Authorization': f'Bearer {self.access_token}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        }
+
+        response = httpx.post(api_url, json=car_data, headers=headers)
+        return response
+
+    def get_user_cars(self) -> httpx.Response:
+        headers = {'Authorization': f'Bearer {self.access_token}'}
+        api_url = f'{self.url.rstrip("/")}/cars'
+        response = httpx.get(api_url, headers=headers)
+        return response
+
+    def get_car_by_id(self, car_id: int) -> httpx.Response:
+        headers = {'Authorization': f'Bearer {self.access_token}'}
+        api_url = f'{self.url.rstrip("/")}/cars/{car_id}'
+        response = httpx.get(api_url, headers=headers)
+        return response
