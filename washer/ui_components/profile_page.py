@@ -1,4 +1,5 @@
 import flet as ft
+import httpx
 
 from washer.config import config
 from washer.ui_components.select_car_page import SelectCarPage
@@ -10,16 +11,54 @@ class ProfilePage:
         self.api_url = config.api_url
         self.username = self.page.client_storage.get('username')
 
-        self.cars = self.page.client_storage.get('cars') or []
+        self.cars = []
+        self.load_user_cars_from_server()
+
         self.bookings = self.page.client_storage.get('bookings') or []
 
         self.avatar_container = self.create_avatar_container()
-
         self.file_picker = self.create_file_picker()
         page.overlay.append(self.file_picker)
 
         page.clean()
         page.add(self.create_profile_page())
+
+    def load_user_cars_from_server(self):
+        """Загрузка автомобилей пользователя с сервера"""
+        try:
+            access_token = self.page.client_storage.get('access_token')
+            user_id = self.page.client_storage.get('user_id')
+
+            if not user_id:
+                print('User ID not found!')
+                return
+
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Accept': 'application/json',
+            }
+
+            url = (
+                f'{self.api_url.rstrip("/")}/cars?user_id={user_id}&limit=100'
+            )
+
+            response = httpx.get(url, headers=headers)
+
+            if response.status_code == 200:
+                cars = response.json().get('data', [])
+                if cars:
+                    print(f'Автомобили успешно загружены: {cars}')
+                    self.cars = cars
+                else:
+                    print('Автомобили не найдены на сервере.')
+                    self.cars = []
+            else:
+                print(
+                    f'Ошибка при загрузке автомобилей с сервера: '
+                    f'{response.status_code} - {response.text}'
+                )
+        except Exception as e:
+            print(f'Ошибка при запросе автомобилей с сервера: {e}')
 
     def create_tabs(self):
         return ft.Tabs(
@@ -139,8 +178,13 @@ class ProfilePage:
 
     def create_car_blocks(self):
         car_blocks = []
+
+        print(f'Создаем карточки для автомобилей: {len(self.cars)}')
+
         for index, car in enumerate(self.cars):
-            print(f'Отображаем автомобиль: {car}')
+            print(f'Отображаем автомобиль {index + 1}: {car}')
+
+            car_name = car.get('name', 'Название не указано')
 
             car_block = ft.Card(
                 content=ft.Container(
@@ -150,18 +194,9 @@ class ProfilePage:
                                 content=ft.Column(
                                     controls=[
                                         ft.Text(
-                                            f"Марка: {car['brand']}",
+                                            f'{car_name}',
                                             size=16,
                                             weight=ft.FontWeight.BOLD,
-                                        ),
-                                        ft.Text(f"Модель: {car['model']}"),
-                                        ft.Text(
-                                            f"Поколение: {car['generation']}"
-                                        ),
-                                        ft.Text(
-                                            f"Тип кузова: "
-                                            f"{car['body_type'] or
-                                               'Не указан'}"
                                         ),
                                     ],
                                     spacing=5,
@@ -188,6 +223,10 @@ class ProfilePage:
                 elevation=2,
             )
             car_blocks.append(car_block)
+
+        if not car_blocks:
+            print('Нет автомобилей для отображения')
+
         return car_blocks
 
     def create_booking_blocks(self):
@@ -279,7 +318,7 @@ class ProfilePage:
                 src=avatar_url,
                 width=100,
                 height=100,
-                fit=ft.ImageFit.COVER,  # Применяем обрезку сразу
+                fit=ft.ImageFit.COVER,
                 border_radius=ft.border_radius.all(50),
             )
             self.page.update()
@@ -296,20 +335,42 @@ class ProfilePage:
         SelectCarPage(self.page, self.on_car_saved)
 
     def on_car_saved(self, car):
-        self.cars.append(car)
-        self.page.client_storage.set('cars', self.cars)
+        user_key = f'cars_{self.username}'
+        saved_cars = self.page.client_storage.get(user_key) or []
 
+        saved_cars.append(car)
+        self.page.client_storage.set(user_key, saved_cars)
+
+        self.cars = saved_cars
         self.page.clean()
         self.page.add(self.create_profile_page())
         self.page.update()
 
     def on_delete_car(self, index):
-        del self.cars[index]
-        self.page.client_storage.set('cars', self.cars)
+        car_id = self.cars[index]['id']
 
-        self.page.clean()
-        self.page.add(self.create_profile_page())
-        self.page.update()
+        access_token = self.page.client_storage.get('access_token')
+
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json',
+        }
+
+        url = f'{self.api_url.rstrip("/")}/cars/{car_id}'
+        print(f'Отправка DELETE запроса на {url}')
+
+        response = httpx.delete(url, headers=headers)
+
+        if response.status_code == 200:
+            del self.cars[index]
+            self.page.client_storage.set('cars', self.cars)
+
+            self.page.clean()
+            self.page.add(self.create_profile_page())
+            self.page.update()
+            print(f'Автомобиль с ID {car_id} успешно удалён.')
+        else:
+            print(f'Ошибка при удалении автомобиля: {response.text}')
 
     def on_back_click(self, e):
         from washer.ui_components.wash_selection_page import WashSelectionPage
@@ -317,10 +378,14 @@ class ProfilePage:
         WashSelectionPage(self.page)
 
     def on_logout_click(self, e):
+        user_key = f'cars_{self.username}'
+        self.page.client_storage.remove(user_key)
+
         self.page.client_storage.remove('access_token')
         self.page.client_storage.remove('refresh_token')
         self.page.client_storage.remove('username')
         self.page.client_storage.remove('avatar_url')
+
         from washer.ui_components.sign_in_page import SignInPage
 
         SignInPage(self.page)
