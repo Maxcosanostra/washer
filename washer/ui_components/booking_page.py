@@ -10,7 +10,9 @@ class BookingPage:
         self.page = page
         self.car_wash = car_wash
         self.username = username
-        self.cars = cars
+        self.cars = []
+
+        self.load_user_cars()
 
         self.car_wash_image = ft.Container(
             width=300,
@@ -73,11 +75,13 @@ class BookingPage:
         )
 
     def load_user_cars(self):
-        car_options = [
-            ft.dropdown.Option(f"{car['brand']} {car['model']}")
-            for car in self.cars
+        """Загружаем автомобили из локального хранилища для отображения"""
+        cars = self.page.client_storage.get(f'cars_{self.username}') or []
+
+        return [
+            ft.dropdown.Option(car.get('name', 'Название не указано'))
+            for car in cars
         ]
-        return car_options
 
     def on_add_car_click(self, e):
         from washer.ui_components.select_car_page import SelectCarPage
