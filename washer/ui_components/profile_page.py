@@ -49,6 +49,8 @@ class ProfilePage:
                 if cars:
                     print(f'Автомобили успешно загружены: {cars}')
                     self.cars = cars
+
+                    self.page.client_storage.set(f'cars_{self.username}', cars)
                 else:
                     print('Автомобили не найдены на сервере.')
                     self.cars = []
@@ -363,7 +365,7 @@ class ProfilePage:
 
         if response.status_code == 200:
             del self.cars[index]
-            self.page.client_storage.set('cars', self.cars)
+            self.page.client_storage.set(f'cars_{self.username}', self.cars)
 
             self.page.clean()
             self.page.add(self.create_profile_page())
