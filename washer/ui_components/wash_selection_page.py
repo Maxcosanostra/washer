@@ -131,8 +131,45 @@ class WashSelectionPage:
             padding=ft.padding.symmetric(vertical=10),
         )
 
+    def load_location_data(self, location_id):
+        access_token = self.page.client_storage.get('access_token')
+
+        if not access_token:
+            print('Access token not found')
+            return None
+
+        url = f"{self.api_url.rstrip('/')}/car_washes/locations/{location_id}"
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json',
+        }
+        response = httpx.get(url, headers=headers)
+
+        if response.status_code == 200:
+            location = response.json()
+            print(f'Location data for location_id {location_id}: {location}')
+            return location
+        else:
+            print(
+                f'Failed to fetch location. Status code: '
+                f'{response.status_code}, Response: {response.text}'
+            )
+
+        return None
+
     def create_car_wash_card(self, car_wash):
         boxes_text = f"{car_wash.get('boxes', 'Unknown')} slots available"
+
+        location_id = car_wash.get('location_id')
+        location_data = (
+            self.load_location_data(location_id) if location_id else None
+        )
+
+        location_address = (
+            f"{location_data['city']}, {location_data['address']}"
+            if location_data
+            else 'Address not available'
+        )
 
         return ft.Container(
             content=ft.Card(
@@ -148,6 +185,7 @@ class WashSelectionPage:
                             ),
                             ft.Text(f"{car_wash['name']}"),
                             ft.Text(boxes_text),
+                            ft.Text(location_address),
                         ],
                         spacing=10,
                         alignment=ft.MainAxisAlignment.CENTER,
