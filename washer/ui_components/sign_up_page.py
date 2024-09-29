@@ -14,8 +14,21 @@ class SignUpPage:
         self.first_name_field = self.create_first_name_field()
         self.last_name_field = self.create_last_name_field()
 
+        self.image_picker = ft.FilePicker(on_result=self.on_file_picked)
+        self.page.overlay.append(self.image_picker)
+
+        self.selected_image = None
+
         page.clean()
+
         page.add(self.create_sign_up_container())
+
+        page.add(
+            ft.TextButton(
+                'Уже есть аккаунт? Войти',
+                on_click=self.open_sign_in_page,
+            )
+        )
 
     def create_username_field(self):
         return ft.TextField(
@@ -83,6 +96,13 @@ class SignUpPage:
                     self.username_field,
                     self.password_field,
                     self.confirm_password_field,
+                    ft.TextButton(
+                        'Выбрать изображение профиля',
+                        on_click=lambda _: self.image_picker.pick_files(
+                            allow_multiple=False,
+                            file_type=ft.FilePickerFileType.IMAGE,
+                        ),
+                    ),
                     self.create_sign_up_button_container(),
                     ft.TextButton(
                         'Уже есть аккаунт? Войти',
@@ -128,6 +148,11 @@ class SignUpPage:
             margin=ft.margin.only(top=20, bottom=15),
         )
 
+    def on_file_picked(self, e: ft.FilePickerResultEvent):
+        if e.files:
+            self.selected_image = e.files[0].path
+            print(f'Выбрано изображение: {self.selected_image}')
+
     def on_sign_up_click(self, _: ft.ControlEvent):
         username = self.username_field.value
         password = self.password_field.value
@@ -146,7 +171,11 @@ class SignUpPage:
             'last_name': last_name,
         }
 
-        response = self.api.register_user(data)
+        files = None
+        if self.selected_image:
+            files = {'image': open(self.selected_image, 'rb')}
+
+        response = self.api.register_user(data, files)
 
         if response.status_code == 200:
             tokens = response.json()
