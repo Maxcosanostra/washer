@@ -1,3 +1,5 @@
+import json
+
 import httpx
 
 from washer.config import config
@@ -9,12 +11,33 @@ class BackendApi:
         self.access_token = None
         self.refresh_token = None
 
-    def register_user(self, data: dict) -> httpx.Response:
+    def register_user(self, data: dict, files: dict = None) -> httpx.Response:
         api_url = self.url.rstrip('/')
 
-        print(f'Отправка запроса на {api_url}/jwt/register с данными {data}')
+        form_data = {
+            'new_user': (
+                None,
+                json.dumps(
+                    {
+                        'username': data['username'],
+                        'password': data['password'],
+                        'first_name': data['first_name'],
+                        'last_name': data['last_name'],
+                    }
+                ),
+                'application/json',
+            )
+        }
 
-        response = httpx.post(f'{api_url}/jwt/register', json=data)
+        if files:
+            form_data.update(files)
+
+        print(
+            f'Отправка запроса на {api_url}/jwt/register с данными '
+            f'{form_data} и файлами {files}'
+        )
+
+        response = httpx.post(f'{api_url}/jwt/register', files=form_data)
 
         print(f'Ответ сервера: {response.status_code}, {response.text}')
 
