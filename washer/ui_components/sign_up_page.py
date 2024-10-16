@@ -23,21 +23,14 @@ class SignUpPage:
 
         page.add(self.create_sign_up_container())
 
-        page.add(
-            ft.TextButton(
-                'Уже есть аккаунт? Войти',
-                on_click=self.open_sign_in_page,
-            )
-        )
-
     def create_username_field(self):
         return ft.TextField(
             label='Имя пользователя',
-            width=280,
-            text_size=12,
-            height=50,
-            border_radius=ft.border_radius.all(25),
-            content_padding=ft.Padding(left=10, top=5, right=10, bottom=5),
+            width=300,
+            text_size=15,
+            height=60,
+            border_radius=ft.border_radius.all(30),
+            content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
         )
 
     def create_password_field(self):
@@ -45,11 +38,11 @@ class SignUpPage:
             label='Пароль',
             password=True,
             can_reveal_password=True,
-            width=280,
-            text_size=12,
-            height=50,
-            border_radius=ft.border_radius.all(25),
-            content_padding=ft.Padding(left=10, top=5, right=10, bottom=5),
+            width=300,
+            text_size=15,
+            height=60,
+            border_radius=ft.border_radius.all(30),
+            content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
         )
 
     def create_confirm_password_field(self):
@@ -57,31 +50,31 @@ class SignUpPage:
             label='Подтвердите пароль',
             password=True,
             can_reveal_password=True,
-            width=280,
-            text_size=12,
-            height=50,
-            border_radius=ft.border_radius.all(25),
-            content_padding=ft.Padding(left=10, top=5, right=10, bottom=5),
+            width=300,
+            text_size=15,
+            height=60,
+            border_radius=ft.border_radius.all(30),
+            content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
         )
 
     def create_first_name_field(self):
         return ft.TextField(
             label='Имя',
-            width=280,
-            text_size=12,
-            height=50,
-            border_radius=ft.border_radius.all(25),
-            content_padding=ft.Padding(left=10, top=5, right=10, bottom=5),
+            width=300,
+            text_size=15,
+            height=60,
+            border_radius=ft.border_radius.all(30),
+            content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
         )
 
     def create_last_name_field(self):
         return ft.TextField(
             label='Фамилия',
-            width=280,
-            text_size=12,
-            height=50,
-            border_radius=ft.border_radius.all(25),
-            content_padding=ft.Padding(left=10, top=5, right=10, bottom=5),
+            width=300,
+            text_size=15,
+            height=60,
+            border_radius=ft.border_radius.all(30),
+            content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
         )
 
     def create_sign_up_container(self):
@@ -109,13 +102,11 @@ class SignUpPage:
                         on_click=self.open_sign_in_page,
                     ),
                 ],
-                alignment=ft.MainAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.START,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing=15,
+                spacing=10,
             ),
-            width=350,
-            height=720,
-            padding=ft.padding.all(20),
+            padding=ft.padding.only(top=5),
             border_radius=ft.border_radius.all(12),
         )
 
