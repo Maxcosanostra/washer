@@ -561,6 +561,17 @@ class SelectCarPage:
         )
 
     def on_save_click(self, e):
+        access_token = self.page.client_storage.get('access_token')
+
+        if not access_token:
+            print('Токен доступа отсутствует!')
+            self.page.add(
+                ft.Text(
+                    'Ошибка: Токен доступа отсутствует!', color=ft.colors.RED
+                )
+            )
+            return
+
         selected_car = {
             'brand': self.selected_brand,
             'model': self.model_dropdown.value,
@@ -574,24 +585,41 @@ class SelectCarPage:
             ),
         }
 
-        print(
-            f'Отправка запроса на {self.api_url}/cars '
-            f'с данными: {selected_car}'
-        )
+        api_url = f"{self.api_url.rstrip('/')}/cars"
 
-        response = self.page.api.create_user_car(selected_car)
+        print(f'Отправка запроса на {api_url} с данными: {selected_car}')
 
-        if response and response.status_code == 200:
-            print('Автомобиль успешно сохранен на сервере.')
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json',
+        }
 
-            from washer.ui_components.profile_page import ProfilePage
+        try:
+            response = httpx.post(api_url, json=selected_car, headers=headers)
 
-            ProfilePage(self.page)
-        else:
-            error_message = response.text if response else 'Неизвестная ошибка'
-            print(f'Ошибка при сохранении автомобиля: {error_message}')
+            if response.status_code == 200:
+                print('Автомобиль успешно сохранен на сервере.')
+                self.page.add(
+                    ft.Text(
+                        'Автомобиль успешно сохранен', color=ft.colors.GREEN
+                    )
+                )
+                from washer.ui_components.profile_page import ProfilePage
+
+                ProfilePage(self.page)
+            else:
+                error_message = response.text or 'Неизвестная ошибка'
+                print(f'Ошибка при сохранении автомобиля: {error_message}')
+                self.page.add(
+                    ft.Text(f'Ошибка: {error_message}', color=ft.colors.RED)
+                )
+        except Exception as e:
+            print(f'Ошибка при сохранении автомобиля: {e}')
             self.page.add(
-                ft.Text(f'Ошибка: {error_message}', color=ft.colors.RED)
+                ft.Text(
+                    f'Ошибка при сохранении автомобиля: {str(e)}',
+                    color=ft.colors.RED,
+                )
             )
 
     def update_profile_page(self):
