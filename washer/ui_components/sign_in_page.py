@@ -48,13 +48,12 @@ class SignInPage:
                     self.create_sign_in_button_container(),
                     ft.TextButton('Забыли пароль?'),
                 ],
-                alignment=ft.MainAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.START,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing=15,
+                spacing=10,
             ),
-            width=350,
-            height=720,
-            padding=ft.padding.all(20),
+            expand=True,
+            padding=ft.padding.symmetric(vertical=20, horizontal=20),
             border_radius=ft.border_radius.all(12),
         )
 
@@ -100,7 +99,7 @@ class SignInPage:
                 ],
                 alignment=ft.MainAxisAlignment.START,
             ),
-            margin=ft.margin.only(bottom=15),
+            margin=ft.margin.only(top=100, bottom=15),
         )
 
     def on_sign_in_click(self, _: ft.ControlEvent):
@@ -111,11 +110,13 @@ class SignInPage:
             self.page.add(ft.Text('Заполните все поля!', color=ft.colors.RED))
             return
 
+        print(f'Пытаемся войти с пользователем: {username}')
+
         tokens = self.api.login(username, password)
 
         if 'access_token' in tokens:
-            self.page.api.access_token = tokens['access_token']
-            self.page.api.refresh_token = tokens['refresh_token']
+            print(f"Токен доступа получен: {tokens['access_token']}")
+            print(f"Refresh токен получен: {tokens['refresh_token']}")
 
             self.page.client_storage.set(
                 'access_token', tokens['access_token']
@@ -125,22 +126,39 @@ class SignInPage:
             )
             self.page.client_storage.set('username', username)
 
+            print('Токены сохранены в client_storage')
+
             user_info = self.api.get_logged_user()
 
             if 'id' in user_info:
                 self.page.client_storage.set('user_id', user_info['id'])
-                print(f"User ID получен: {user_info['id']}")
+                self.page.client_storage.set(
+                    'role_id', user_info['role']['id']
+                )
+                print(f"User ID получен и сохранен: {user_info['id']}")
             else:
                 print('User ID не был получен')
 
-            print(
-                f'Токены сохранены: {self.page.api.access_token}, '
-                f'{self.page.api.refresh_token}'
-            )
-
-            self.open_wash_selection_page()
+            if user_info['role']['name'] == 'admin':
+                print(
+                    'Пользователь - администратор. '
+                    'Перенаправляем на страницу администратора.'
+                )
+                self.open_admin_page()
+            else:
+                print(
+                    'Пользователь - обычный. '
+                    'Перенаправляем на страницу выбора автомойки.'
+                )
+                self.open_wash_selection_page()
         else:
+            print('Ошибка авторизации! Токен доступа не был получен.')
             self.page.add(ft.Text('Ошибка авторизации!', color=ft.colors.RED))
+
+    def open_admin_page(self):
+        from washer.ui_components.admin_page import AdminPage
+
+        AdminPage(self.page)
 
     def open_wash_selection_page(self):
         from washer.ui_components.wash_selection_page import WashSelectionPage
