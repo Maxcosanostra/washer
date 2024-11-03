@@ -22,6 +22,7 @@ class SignInPage:
             height=60,
             border_radius=ft.border_radius.all(30),
             content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
+            autofocus=True,
         )
 
     def create_password_field(self):
@@ -36,70 +37,84 @@ class SignInPage:
         )
 
     def create_sign_in_container(self):
+        # input_field_width = 300
+
         return ft.Container(
-            content=ft.Column(
-                [
-                    self.create_back_button(),
-                    self.create_logo_container(),
-                    ft.Text('Войти', size=28, weight=ft.FontWeight.BOLD),
-                    self.create_description_container(),
-                    self.username_field,
-                    self.password_field,
-                    self.create_sign_in_button_container(),
-                    ft.TextButton('Забыли пароль?'),
+            content=ft.ListView(
+                controls=[
+                    ft.Container(height=40),
+                    ft.Row(
+                        [
+                            ft.IconButton(
+                                icon=ft.icons.ARROW_BACK,
+                                on_click=self.on_back_to_sign_up_click,
+                            ),
+                            ft.Text('Назад на регистрацию', size=16),
+                        ],
+                        alignment=ft.MainAxisAlignment.START,
+                    ),
+                    ft.Container(height=0),
+                    ft.Container(
+                        content=ft.Image(
+                            src='https://drive.google.com/uc?export=view&id=1NTTrkC4QdWS_BhsuHpxYs2ZErCMp2c2f',
+                            width=300,
+                            height=300,
+                        ),
+                        alignment=ft.alignment.center,
+                        margin=ft.margin.only(bottom=0),
+                    ),
+                    ft.Container(
+                        content=ft.Text(
+                            'Войти',
+                            size=28,
+                            weight=ft.FontWeight.BOLD,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        alignment=ft.alignment.center,
+                        margin=ft.margin.only(bottom=20),
+                    ),
+                    ft.Container(
+                        content=ft.Text(
+                            'Используйте учетную запись ниже для входа.',
+                            size=12,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        margin=ft.margin.only(bottom=15),
+                    ),
+                    ft.Container(
+                        content=self.username_field,
+                        width=300,
+                        alignment=ft.alignment.center,
+                        margin=ft.margin.only(bottom=10),
+                    ),
+                    ft.Container(
+                        content=self.password_field,
+                        width=300,
+                        alignment=ft.alignment.center,
+                        margin=ft.margin.only(bottom=10),
+                    ),
+                    ft.Container(
+                        content=ft.ElevatedButton(
+                            text='Войти',
+                            bgcolor=ft.colors.PURPLE_ACCENT,
+                            color=ft.colors.WHITE,
+                            on_click=self.on_sign_in_click,
+                            elevation=5,
+                        ),
+                        width=300,
+                        alignment=ft.alignment.center,
+                        margin=ft.margin.only(top=20, bottom=15),
+                    ),
+                    ft.TextButton(
+                        'Забыли пароль?',
+                        on_click=self.on_forgot_password_click,
+                    ),
                 ],
-                alignment=ft.MainAxisAlignment.START,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing=10,
+                expand=True,
+                padding=ft.padding.symmetric(vertical=20, horizontal=20),
             ),
             expand=True,
-            padding=ft.padding.symmetric(vertical=20, horizontal=20),
             border_radius=ft.border_radius.all(12),
-        )
-
-    def create_logo_container(self):
-        return ft.Container(
-            content=ft.Image(src='assets/logo.png', width=80, height=80),
-            alignment=ft.alignment.center,
-            margin=ft.margin.only(bottom=20),
-        )
-
-    def create_description_container(self):
-        return ft.Container(
-            content=ft.Text(
-                'Используйте учетную запись ниже для входа.',
-                size=12,
-                text_align=ft.TextAlign.CENTER,
-            ),
-            margin=ft.margin.only(bottom=15),
-        )
-
-    def create_sign_in_button_container(self):
-        return ft.Container(
-            content=ft.ElevatedButton(
-                text='Войти',
-                width=180,
-                bgcolor=ft.colors.PURPLE_ACCENT,
-                color=ft.colors.WHITE,
-                on_click=self.on_sign_in_click,
-            ),
-            margin=ft.margin.only(top=20, bottom=15),
-        )
-
-    def create_back_button(self):
-        return ft.Container(
-            content=ft.Row(
-                [
-                    ft.IconButton(
-                        icon=ft.icons.ARROW_BACK,
-                        icon_size=30,
-                        on_click=self.on_back_to_sign_up_click,
-                    ),
-                    ft.Text('Назад на регистрацию', size=16),
-                ],
-                alignment=ft.MainAxisAlignment.START,
-            ),
-            margin=ft.margin.only(top=100, bottom=15),
         )
 
     def on_sign_in_click(self, _: ft.ControlEvent):
@@ -111,13 +126,9 @@ class SignInPage:
             return
 
         print(f'Пытаемся войти с пользователем: {username}')
-
         tokens = self.api.login(username, password)
 
         if 'access_token' in tokens:
-            print(f"Токен доступа получен: {tokens['access_token']}")
-            print(f"Refresh токен получен: {tokens['refresh_token']}")
-
             self.page.client_storage.set(
                 'access_token', tokens['access_token']
             )
@@ -126,34 +137,19 @@ class SignInPage:
             )
             self.page.client_storage.set('username', username)
 
-            print('Токены сохранены в client_storage')
-
             user_info = self.api.get_logged_user()
-
             if 'id' in user_info:
                 self.page.client_storage.set('user_id', user_info['id'])
-                self.page.client_storage.set(
-                    'role_id', user_info['role']['id']
-                )
-                print(f"User ID получен и сохранен: {user_info['id']}")
-            else:
-                print('User ID не был получен')
 
             if user_info['role']['name'] == 'admin':
-                print(
-                    'Пользователь - администратор. '
-                    'Перенаправляем на страницу администратора.'
-                )
                 self.open_admin_page()
             else:
-                print(
-                    'Пользователь - обычный. '
-                    'Перенаправляем на страницу выбора автомойки.'
-                )
                 self.open_wash_selection_page()
         else:
-            print('Ошибка авторизации! Токен доступа не был получен.')
             self.page.add(ft.Text('Ошибка авторизации!', color=ft.colors.RED))
+
+    def on_forgot_password_click(self, e):
+        print('Переход на страницу восстановления пароля.')
 
     def open_admin_page(self):
         from washer.ui_components.admin_page import AdminPage
