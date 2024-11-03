@@ -8,13 +8,20 @@ from washer.api_requests import BackendApi
 
 class BookingPage:
     def __init__(
-        self, page: ft.Page, car_wash: dict, username: str, cars: list
+        self,
+        page: ft.Page,
+        car_wash: dict,
+        username: str,
+        cars: list,
+        location_data: dict = None,
     ):
         self.page = page
         self.car_wash = car_wash
         self.username = username
         self.api = BackendApi()
+        self.location_data = location_data
         self.api.set_access_token(self.page.client_storage.get('access_token'))
+
         self.selected_car_id = None
         self.selected_box_id = None
         self.selected_date = None
@@ -23,7 +30,21 @@ class BookingPage:
         self.cars = cars
         self.car_price = 0
 
-        # Индикатор загрузки
+        self.car_dropdown_disabled = False
+        self.box_dropdown_disabled = True
+        self.date_picker_button_disabled = True
+        self.time_dropdown_container_disabled = True
+        self.book_button_disabled = True
+
+        self.create_elements()
+
+        self.step_2_text = ft.Text(
+            'Шаг 2: Выберите бокс, дату и время',
+            size=20,
+            weight=ft.FontWeight.BOLD,
+            color=ft.colors.GREY,
+        )
+
         self.loading_overlay = ft.Container(
             content=ft.ProgressRing(),
             alignment=ft.alignment.center,
@@ -35,13 +56,34 @@ class BookingPage:
         self.page.adaptive = True
         self.page.scroll = 'adaptive'
 
+        self.page.appbar = ft.AppBar(
+            leading=ft.IconButton(
+                icon=ft.icons.ARROW_BACK,
+                on_click=self.on_back_click,
+                icon_color=ft.colors.WHITE,
+                padding=ft.padding.only(left=10),
+            ),
+            title=ft.Text('Бронирование', size=20, weight=ft.FontWeight.BOLD),
+            center_title=True,
+            bgcolor=ft.colors.SURFACE_VARIANT,
+            leading_width=40,
+        )
+
+        self.page.clean()
+        self.page.add(self.create_booking_page())
+        self.page.overlay.append(self.loading_overlay)
+
+        self.load_schedules()
+        self.load_boxes()
+
+    def create_elements(self):
         self.car_dropdown = ft.Dropdown(
             width=300,
             hint_text='Выберите автомобиль',
             options=self.load_user_cars(),
             on_change=self.on_car_select,
+            disabled=self.car_dropdown_disabled,
         )
-
         self.add_car_button = ft.ElevatedButton(
             text='Еще не добавили авто?',
             on_click=self.on_add_car_click,
@@ -49,28 +91,36 @@ class BookingPage:
             bgcolor=ft.colors.PURPLE,
             color=ft.colors.WHITE,
         )
-
-        self.date_picker_button = ft.ElevatedButton(
-            text='Выбрать дату',
-            icon=ft.icons.CALENDAR_MONTH,
-            on_click=self.open_date_picker,
-            width=300,
-        )
-
         self.box_dropdown = ft.Dropdown(
             label='Выберите бокс',
             width=300,
             options=[],
             on_change=self.on_box_select,
+            disabled=self.box_dropdown_disabled,
         )
-
-        self.time_dropdown_container = ft.Column()
-
+        self.date_picker_button = ft.ElevatedButton(
+            text='Выбрать дату',
+            icon=ft.icons.CALENDAR_MONTH,
+            on_click=self.open_date_picker,
+            width=300,
+            disabled=self.date_picker_button_disabled,
+        )
+        self.time_dropdown_container = ft.Column(
+            disabled=self.time_dropdown_container_disabled
+        )
         self.price_text = ft.Text(
             'Стоимость: ₸0',
             size=32,
             weight=ft.FontWeight.BOLD,
+            color=ft.colors.GREY,
+        )
+        self.book_button = ft.ElevatedButton(
+            text='Забронировать',
+            on_click=self.on_booking_click,
+            width=300,
+            bgcolor=ft.colors.BLUE,
             color=ft.colors.WHITE,
+            disabled=self.book_button_disabled,
         )
 
         self.back_button = ft.ElevatedButton(
@@ -80,20 +130,6 @@ class BookingPage:
             bgcolor=ft.colors.GREY_700,
             color=ft.colors.WHITE,
         )
-
-        self.book_button = ft.ElevatedButton(
-            text='Забронировать',
-            on_click=self.on_booking_click,
-            width=300,
-            bgcolor=ft.colors.BLUE,
-            color=ft.colors.WHITE,
-        )
-
-        self.page.clean()
-        self.page.add(self.create_booking_page())
-        self.page.overlay.append(self.loading_overlay)
-
-        self.load_boxes()
 
     def show_loading(self):
         self.loading_overlay.visible = True
@@ -107,19 +143,69 @@ class BookingPage:
         return ft.Container(
             content=ft.ListView(
                 controls=[
+                    self.create_car_wash_card(),
+                    ft.Text(
+                        'Шаг 1: Выберите автомобиль',
+                        size=20,
+                        weight=ft.FontWeight.BOLD,
+                    ),
+                    ft.Divider(),
                     self.car_dropdown,
                     self.add_car_button,
+                    self.step_2_text,
+                    ft.Divider(),
                     self.box_dropdown,
                     self.date_picker_button,
                     self.time_dropdown_container,
                     self.price_text,
                     self.book_button,
-                    self.back_button,
                 ],
                 padding=ft.padding.all(20),
                 spacing=20,
             ),
-            margin=ft.margin.only(top=100),
+            margin=ft.margin.only(top=20),
+            expand=True,
+        )
+
+    def create_car_wash_card(self):
+        image_link = self.car_wash.get('image_link', 'assets/spa_logo.png')
+        location_address = (
+            f"{self.location_data['city']}, {self.location_data['address']}"
+            if self.location_data
+            else 'Address not available'
+        )
+
+        return ft.Container(
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Image(
+                                src=image_link,
+                                fit=ft.ImageFit.COVER,
+                                expand=True,
+                            ),
+                            ft.Text(
+                                f"{self.car_wash['name']}",
+                                weight='bold',
+                                size=20,
+                                text_align=ft.TextAlign.LEFT,
+                            ),
+                            ft.Text(
+                                location_address,
+                                text_align=ft.TextAlign.LEFT,
+                                color=ft.colors.GREY,
+                            ),
+                        ],
+                        spacing=10,
+                        expand=True,
+                    ),
+                    padding=ft.padding.all(10),
+                    expand=True,
+                ),
+                elevation=3,
+            ),
+            alignment=ft.alignment.center,
             expand=True,
         )
 
@@ -216,12 +302,19 @@ class BookingPage:
                     self.load_body_type_id(configuration_id)
             else:
                 print('Configuration ID для автомобиля не определен.')
+
+            self.box_dropdown.disabled = False
+            self.step_2_text.color = ft.colors.WHITE
         else:
             print(
                 f'Автомобиль с ID {self.selected_car_id} не найден в списке.'
             )
 
+        self.page.update()
+
     def load_body_type_id(self, configuration_id, auto_update_price=False):
+        self.show_loading()
+
         url = (
             f"{self.api.url.rstrip('/')}/cars/configurations"
             f"?configuration_id={configuration_id}&limit=10000"
@@ -264,10 +357,13 @@ class BookingPage:
                     self.load_car_price(body_type_id, auto_update_price)
                 else:
                     print('Тип кузова для конфигурации не найден.')
+                    self.hide_loading()
             else:
                 print(f'Конфигурация с ID {configuration_id} не найдена.')
+                self.hide_loading()
         else:
             print(f'Ошибка при запросе конфигурации: {response.text}')
+            self.hide_loading()
 
     def load_car_price(self, body_type_id, auto_update_price=False):
         response = self.api.get_prices(self.car_wash['id'])
@@ -293,7 +389,7 @@ class BookingPage:
                 )
                 if auto_update_price:
                     self.show_price()
-                    self.hide_loading()
+                self.hide_loading()
             else:
                 print(f'Цена для body_type_id {body_type_id} не найдена.')
                 self.hide_loading()
@@ -303,6 +399,7 @@ class BookingPage:
 
     def show_price(self):
         self.price_text.value = f'Стоимость: ₸{int(self.car_price)}'
+        self.price_text.color = ft.colors.WHITE
         self.page.update()
 
     def on_box_select(self, e):
@@ -310,27 +407,67 @@ class BookingPage:
         print(f'Выбранный бокс: {self.selected_box_id}')
 
         self.time_dropdown_container.controls = []
+
+        self.date_picker_button.disabled = False
+
         self.page.update()
 
     def open_date_picker(self, e):
+        print(f'Загруженные расписания: {self.schedule_list}')
+
+        current_date = datetime.datetime.today()
+        available_dates = []
+
+        for schedule in self.schedule_list:
+            if 'day_of_week' in schedule:
+                day_of_week = schedule['day_of_week']
+                delta_days = (day_of_week - current_date.weekday()) % 7
+                target_date = current_date + datetime.timedelta(
+                    days=delta_days
+                )
+                available_dates.append(target_date)
+
+        print(f'Доступные даты: {available_dates}')
+
+        if available_dates:
+            first_date = min(available_dates)
+            last_date = max(available_dates)
+        else:
+            first_date = current_date
+            last_date = first_date
+
         self.page.open(
             ft.DatePicker(
-                first_date=datetime.datetime(year=2023, month=10, day=1),
-                last_date=datetime.datetime(year=2024, month=10, day=1),
+                first_date=first_date,
+                last_date=last_date,
                 on_change=self.on_date_change,
                 on_dismiss=self.on_date_dismiss,
             )
         )
 
-    def on_date_change(self, e):
-        self.selected_date = e.control.value.strftime('%Y-%m-%d')
-        print(f'Выбрана дата: {self.selected_date}')
-
-        if self.selected_box_id:
-            self.load_available_times()
+    def load_schedules(self):
+        """Загрузка доступных расписаний с сервера"""
+        response = self.api.get_schedules(self.car_wash['id'])
+        if response.status_code == 200:
+            data = response.json()
+            print(f'Ответ сервера: {data}')
+            self.schedule_list = data.get('data', [])
+            self.available_dates = [
+                datetime.datetime.strptime(
+                    schedule.get('date', ''), '%Y-%m-%d'
+                )
+                for schedule in self.schedule_list
+                if 'date' in schedule
+            ]
+            print(f'Доступные расписания: {self.available_dates}')
         else:
-            print('Выберите бокс для отображения доступного времени.')
+            print(f'Ошибка загрузки расписаний: {response.text}')
 
+    def on_date_change(self, e):
+        self.selected_date = e.control.value
+        if self.selected_date:
+            self.time_dropdown_container.disabled = False
+            self.load_available_times()
         self.page.update()
 
     def on_date_dismiss(self, e):
@@ -352,9 +489,29 @@ class BookingPage:
                 self.available_times = self.parse_available_times(all_times)
                 print(f'Доступные временные интервалы: {self.available_times}')
 
-                self.time_dropdown_container.controls = [
-                    self.create_time_dropdown()
-                ]
+                if not self.available_times:
+                    self.time_dropdown_container.controls = [
+                        ft.Text(
+                            'К сожалению, мест не осталось',
+                            color=ft.colors.RED,
+                            size=18,
+                            weight=ft.FontWeight.BOLD,
+                            text_align=ft.TextAlign.CENTER,
+                        )
+                    ]
+                else:
+                    self.time_dropdown_container.controls = [
+                        ft.Dropdown(
+                            hint_text='Выберите доступное время',
+                            options=[
+                                ft.dropdown.Option(self.format_time(time_slot))
+                                for time_slot in self.available_times
+                            ],
+                            on_change=self.on_time_select,
+                            disabled=False,
+                        )
+                    ]
+
                 self.page.update()
             else:
                 print(f'Ошибка загрузки доступного времени: {response.text}')
@@ -391,7 +548,12 @@ class BookingPage:
     def on_time_select(self, e):
         self.selected_time = e.control.value
         print(f'Выбрано время: {self.selected_time}')
-        self.show_price()
+
+        if self.selected_time:
+            self.book_button.disabled = False
+            self.show_price()
+
+        self.page.update()
 
     def on_booking_click(self, e):
         if (
@@ -399,7 +561,10 @@ class BookingPage:
             and self.selected_time
             and self.selected_car_id
         ):
-            start_datetime = f'{self.selected_date}T{self.selected_time}:00'
+            start_datetime = (
+                f'{self.selected_date.strftime("%Y-%m-%d")}'
+                f'T{self.selected_time}:00'
+            )
 
             try:
                 booking_data = {
@@ -416,6 +581,7 @@ class BookingPage:
 
                 if response.status_code == 200:
                     print('Букинг успешно создан!')
+                    self.show_confirmation_page()
                 else:
                     print(f'Ошибка создания букинга: {response.text}')
             except ValueError as ve:
@@ -454,6 +620,95 @@ class BookingPage:
             print(f'Ошибка загрузки боксов: {response.text}')
 
     def on_back_click(self, e):
+        self.page.appbar = None
+        self.page.clean()
+
+        from washer.ui_components.wash_selection_page import WashSelectionPage
+
+        WashSelectionPage(self.page)
+
+        self.page.update()
+
+    def show_confirmation_page(self):
+        self.page.appbar = None
+
+        self.page.clean()
+        self.page.scroll = 'adaptive'
+
+        address = self.location_data.get('address', 'Адрес недоступен')
+        city = self.location_data.get('city', 'Город не указан')
+        full_address = f'{city}, {address}'
+
+        booking_details = [
+            (
+                'Дата и время',
+                f"{self.selected_date.strftime('%d.%m.%Y')} "
+                f"в {self.selected_time}",
+            ),
+            ('Выбранный бокс', f'Бокс №{self.selected_box_id}'),
+            ('Автомойка', self.car_wash.get('name', 'Неизвестная автомойка')),
+            ('Адрес', full_address),
+            ('Цена', f'₸{self.car_price}'),
+        ]
+
+        booking_info_column = ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Text(label, weight=ft.FontWeight.BOLD),
+                        ft.Text(value, color=ft.colors.GREY_600),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                )
+                for label, value in booking_details
+            ],
+            spacing=10,
+            expand=True,
+        )
+
+        self.page.add(
+            ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text(
+                            'Ваше бронирование успешно!',
+                            size=24,
+                            weight=ft.FontWeight.BOLD,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        booking_info_column,
+                        ft.Image(
+                            src='https://drive.google.com/uc?export=view&id=1H-VOxdvmqgxK5J1Dv8jX_4Mc62XnSByy',
+                            width=300,
+                            height=300,
+                        ),
+                        ft.Text(
+                            'Будем рады видеть вас!',
+                            size=16,
+                            color=ft.colors.GREY_500,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        ft.ElevatedButton(
+                            text='Принято',
+                            on_click=self.redirect_to_wash_selection,
+                            bgcolor=ft.colors.BLUE,
+                            color=ft.colors.WHITE,
+                            width=300,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20,
+                ),
+                alignment=ft.alignment.center,
+                expand=True,
+                padding=ft.padding.only(top=100, left=20, right=20),
+            )
+        )
+
+        self.page.update()
+
+    def redirect_to_wash_selection(self, e):
         from washer.ui_components.wash_selection_page import WashSelectionPage
 
         WashSelectionPage(self.page)
