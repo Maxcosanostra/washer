@@ -11,14 +11,11 @@ class WashSelectionPage:
         self.page = page
         self.api_url = config.api_url
         self.username = username or self.page.client_storage.get('username')
+        self.avatar_container = self.create_avatar_container()
         self.car_washes = []
 
-        stored_username = self.page.client_storage.get('username')
-        if username and stored_username and stored_username != username:
-            self.page.client_storage.remove('avatar_url')
-            self.page.client_storage.remove('saved_cars')
-
-        self.page.client_storage.set('username', self.username)
+        self.page.adaptive = True
+        self.page.scroll = 'adaptive'
 
         access_token = self.page.client_storage.get('access_token')
         if not access_token:
@@ -26,16 +23,14 @@ class WashSelectionPage:
             self.redirect_to_sign_in_page()
             return
 
-        self.avatar_container = self.create_avatar_container()
-        self.file_picker = self.create_file_picker()
-        page.overlay.append(self.file_picker)
+        self.car_washes_list = ft.ListView(controls=[], padding=0, spacing=0)
 
         page.clean()
         page.add(self.create_main_container())
         self.load_car_washes()
 
     def create_avatar_container(self):
-        avatar_url = self.page.client_storage.get('avatar_url') or None
+        avatar_url = self.get_avatar_from_server()
 
         if avatar_url:
             avatar_content = ft.Image(
@@ -44,100 +39,254 @@ class WashSelectionPage:
                 height=50,
                 border_radius=ft.border_radius.all(25),
                 fit=ft.ImageFit.COVER,
-                key=f'avatar_{avatar_url}',
             )
         else:
-            avatar_content = ft.Icon(
-                ft.icons.PERSON, size=50, color=ft.colors.GREY
+            avatar_content = ft.Container(
+                content=ft.Icon(
+                    ft.icons.PERSON, size=50, color=ft.colors.GREY
+                ),
+                width=50,
+                height=50,
+                border_radius=ft.border_radius.all(25),
+                bgcolor=ft.colors.GREY_200,
+                alignment=ft.alignment.center,
             )
 
-        self.avatar_image = avatar_content
-
         return ft.Container(
-            content=self.avatar_image,
+            content=avatar_content,
             alignment=ft.alignment.center,
             padding=10,
             on_click=self.on_avatar_click,
         )
 
-    def on_avatar_click(self, e):
-        from washer.ui_components.profile_page import ProfilePage
-
-        ProfilePage(self.page)
-
-    def on_picture_select(self, e: ft.FilePickerResultEvent):
-        if e.files:
-            avatar_url = e.files[0].path
-            self.page.client_storage.set('avatar_url', avatar_url)
-
-            self.avatar_container.content = ft.Image(
-                src=avatar_url,
-                width=50,
-                height=50,
-                border_radius=ft.border_radius.all(25),
-            )
-            self.page.update()
-
-    def create_file_picker(self):
-        return ft.FilePicker(on_result=self.on_picture_select)
-
-    def create_main_container(self):
-        return ft.Column(
-            controls=[
-                ft.Container(
-                    content=ft.Row(
-                        [
-                            self.avatar_container,
-                            ft.Text(
-                                f'Welcome, {self.username}!',
-                                size=24,
-                                weight=ft.FontWeight.BOLD,
-                            ),
-                            ft.Container(expand=1),
-                        ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                    ),
-                    bgcolor=ft.colors.GREY_900,
-                    padding=ft.padding.all(20),
-                    width=350,
-                ),
-                self.create_search_bar(),
-                ft.Column(
-                    controls=[],
-                    spacing=10,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
-            ],
-            width=350,
-            height=720,
-            alignment=ft.MainAxisAlignment.START,
-        )
-
-    def create_wash_list(self):
-        return [self.create_car_wash_card(wash) for wash in self.car_washes]
-
-    def create_search_bar(self):
-        return ft.Container(
-            content=ft.TextField(
-                prefix=ft.Icon(ft.icons.SEARCH, size=20),
-                label='найти автомойку...',
-                label_style=ft.TextStyle(size=14),
-                width=320,
-                border_radius=ft.border_radius.all(15),
-                bgcolor=ft.colors.GREY_900,
-            ),
-            alignment=ft.alignment.center,
-            padding=ft.padding.symmetric(vertical=10),
-        )
-
-    def load_location_data(self, location_id):
+    def get_avatar_from_server(self):
         access_token = self.page.client_storage.get('access_token')
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json',
+        }
 
-        if not access_token:
-            print('Access token not found')
+        url = f"{self.api_url.rstrip('/')}/users/me"
+
+        response = httpx.get(url, headers=headers)
+        if response.status_code == 200:
+            user_data = response.json()
+            return user_data.get('image_link')
+        else:
+            print(f'Error fetching avatar: {response.status_code}')
             return None
 
+    def on_avatar_click(self, e=None):
+        from washer.ui_components.profile_page import ProfilePage
+
+        selected_car_wash = self.car_washes[0]
+        location_data = self.load_location_data(
+            selected_car_wash.get('location_id')
+        )
+
+        ProfilePage(
+            self.page, car_wash=selected_car_wash, location_data=location_data
+        )
+
+    def create_main_container(self):
+        self.car_washes_list = ft.ListView(
+            controls=self.create_wash_list(),
+            padding=0,
+            spacing=0,
+        )
+
+        return ft.Container(
+            content=ft.ListView(
+                controls=[
+                    self.create_welcome_card(),
+                    self.create_search_bar(),
+                    self.car_washes_list,
+                ],
+                padding=ft.padding.symmetric(horizontal=20, vertical=10),
+                spacing=10,
+            ),
+            margin=ft.margin.only(top=20),
+            expand=True,
+        )
+
+    def create_welcome_card(self):
+        return ft.Container(
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.Row(
+                        [
+                            ft.Container(
+                                content=self.avatar_container,
+                                alignment=ft.alignment.center,
+                            ),
+                            ft.Text(
+                                f'Привет, {self.username}!',
+                                size=20,
+                                weight=ft.FontWeight.BOLD,
+                                text_align=ft.TextAlign.LEFT,
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.START,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    padding=ft.padding.all(10),
+                    expand=True,
+                ),
+                elevation=3,
+            ),
+            alignment=ft.alignment.center,
+            expand=True,
+        )
+
+    def create_search_bar(self):
+        """Создает строку поиска для фильтрации автомоек по названию"""
+        return ft.Container(
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.TextField(
+                        prefix=ft.Icon(
+                            ft.icons.SEARCH, size=20, color=ft.colors.GREY
+                        ),
+                        label='найти автомойку...',
+                        label_style=ft.TextStyle(
+                            size=14, color=ft.colors.GREY
+                        ),
+                        width=320,
+                        height=50,
+                        border=ft.InputBorder.NONE,
+                        border_radius=ft.border_radius.all(15),
+                        bgcolor=ft.colors.TRANSPARENT,
+                        border_color=ft.colors.TRANSPARENT,
+                        filled=False,
+                        on_change=self.on_search_text_change,
+                    ),
+                    alignment=ft.alignment.center,
+                    padding=ft.padding.all(0),
+                ),
+                elevation=0,
+                width=320,
+            ),
+            alignment=ft.alignment.center,
+            padding=ft.padding.all(0),
+        )
+
+    def on_search_text_change(self, e):
+        """Обработчик изменения текста поиска для фильтрации автомоек"""
+        search_text = e.control.value.lower()
+        filtered_washes = [
+            wash
+            for wash in self.car_washes
+            if search_text in wash['name'].lower()
+        ]
+        self.update_wash_list(filtered_washes)
+
+    def update_wash_list(self, washes):
+        self.car_washes_list.controls = [
+            self.create_car_wash_card(wash) for wash in washes
+        ]
+        self.car_washes_list.update()
+
+    def create_wash_list(self):
+        """Создает список карточек автомоек на основе загруженных данных"""
+        return [self.create_car_wash_card(wash) for wash in self.car_washes]
+
+    def create_car_wash_card(self, car_wash):
+        """Создает карточку автомойки аналогично BookingPage"""
+        image_link = car_wash.get('image_link', 'assets/spa_logo.png')
+        location_id = car_wash.get('location_id')
+        location_data = (
+            self.load_location_data(location_id) if location_id else None
+        )
+        location_address = (
+            f"{location_data['city']}, {location_data['address']}"
+            if location_data
+            else 'Адрес недоступен'
+        )
+
+        return ft.Container(
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Image(
+                                src=image_link,
+                                fit=ft.ImageFit.COVER,
+                                expand=True,
+                            ),
+                            ft.Text(
+                                f"{car_wash['name']}",
+                                weight='bold',
+                                size=20,
+                                text_align=ft.TextAlign.LEFT,
+                            ),
+                            ft.Text(
+                                location_address,
+                                text_align=ft.TextAlign.LEFT,
+                                color=ft.colors.GREY,
+                            ),
+                        ],
+                        spacing=10,
+                        expand=True,
+                    ),
+                    padding=ft.padding.all(10),
+                    expand=True,
+                    on_click=lambda e: self.on_booking_click(car_wash),
+                ),
+                elevation=3,
+            ),
+            alignment=ft.alignment.center,
+            expand=True,
+        )
+
+    def on_booking_click(self, car_wash):
+        from washer.ui_components.booking_page import BookingPage
+
+        location_id = car_wash.get('location_id')
+        location_data = (
+            self.load_location_data(location_id) if location_id else None
+        )
+
+        cars = self.page.client_storage.get('cars') or []
+        BookingPage(
+            self.page,
+            car_wash,
+            self.username,
+            cars,
+            location_data=location_data,
+        )
+        self.page.update()
+
+    def load_car_washes(self):
+        """Загружает данные автомоек и обновляет список на странице"""
+        if WashSelectionPage.car_washes_cache:
+            print('Using cached car washes data')
+            self.car_washes = WashSelectionPage.car_washes_cache
+            self.update_wash_list(self.car_washes)
+            return
+
+        access_token = self.page.client_storage.get('access_token')
+        if not access_token:
+            print('Access token not found, redirecting to login.')
+            self.redirect_to_sign_in_page()
+            return
+
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json',
+        }
+        url = f'{self.api_url.rstrip("/")}/car_washes?page=1&limit=10'
+
+        response = httpx.get(url, headers=headers)
+        if response.status_code == 200:
+            self.car_washes = response.json().get('data', [])
+            WashSelectionPage.car_washes_cache = self.car_washes
+            self.update_wash_list(self.car_washes)
+        else:
+            print(f'Error loading car washes: {response.text}')
+
+    def load_location_data(self, location_id):
+        """Загрузка данных о локации по её ID"""
+        access_token = self.page.client_storage.get('access_token')
         url = f"{self.api_url.rstrip('/')}/car_washes/locations/{location_id}"
         headers = {
             'Authorization': f'Bearer {access_token}',
@@ -150,180 +299,10 @@ class WashSelectionPage:
             print(f'Location data for location_id {location_id}: {location}')
             return location
         else:
-            print(
-                f'Failed to fetch location. Status code: '
-                f'{response.status_code}, Response: {response.text}'
-            )
-
-        return None
-
-    def create_car_wash_card(self, car_wash):
-        boxes_text = f"{car_wash.get('boxes', 'Unknown')} slots available"
-
-        location_id = car_wash.get('location_id')
-        location_data = (
-            self.load_location_data(location_id) if location_id else None
-        )
-
-        location_address = (
-            f"{location_data['city']}, {location_data['address']}"
-            if location_data
-            else 'Address not available'
-        )
-
-        return ft.Container(
-            content=ft.Card(
-                content=ft.Container(
-                    content=ft.Column(
-                        [
-                            ft.Image(
-                                src='assets/spa_logo.png',
-                                width=100,
-                                height=100,
-                                fit=ft.ImageFit.COVER,
-                                border_radius=ft.border_radius.all(50),
-                            ),
-                            ft.Text(f"{car_wash['name']}"),
-                            ft.Text(boxes_text),
-                            ft.Text(location_address),
-                        ],
-                        spacing=10,
-                        alignment=ft.MainAxisAlignment.CENTER,
-                    ),
-                    on_click=lambda e: self.on_booking_click(car_wash),
-                ),
-                width=300,
-                elevation=3,
-            ),
-            alignment=ft.alignment.center,
-        )
-
-    def on_booking_click(self, car_wash):
-        from washer.ui_components.booking_page import BookingPage
-
-        cars = self.page.client_storage.get('cars') or []
-        BookingPage(self.page, car_wash, self.username, cars)
-        self.page.update()
-
-    def update_car_washes_list(self):
-        if len(self.page.controls) > 0:
-            car_washes_column = self.page.controls[0]
-            if (
-                isinstance(car_washes_column, ft.Column)
-                and len(car_washes_column.controls) > 2
-            ):
-                car_washes_container = car_washes_column.controls[2]
-                car_washes_container.controls = [
-                    self.create_car_wash_card(wash) for wash in self.car_washes
-                ]
-                self.page.update()
-            else:
-                print('Контейнер с мойками не найден или неверного типа.')
-        else:
-            print('Контейнер не содержит элементов управления.')
-
-    def load_car_washes(self):
-        if WashSelectionPage.car_washes_cache:
-            print('Using cached car washes data')
-            self.car_washes = WashSelectionPage.car_washes_cache
-            self.update_car_washes_list()
-            return
-
-        access_token = self.page.client_storage.get('access_token')
-        if not access_token:
-            print('Access token not found, redirecting to login.')
-            self.redirect_to_sign_in_page()
-            return
-
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-
-        url = f'{self.api_url.rstrip("/")}/car_washes?page=1&limit=10'
-
-        response = httpx.get(url, headers=headers)
-
-        if response.status_code == 200:
-            self.car_washes = response.json().get('data', [])
-            WashSelectionPage.car_washes_cache = self.car_washes
-            self.update_car_washes_list()
-        elif response.status_code == 401:
-            if 'token has expired' in response.text.lower():
-                print('Token has expired, attempting to refresh...')
-                if self.refresh_access_token():
-                    print('Token refreshed successfully, retrying request...')
-                    self.load_car_washes()
-                else:
-                    print('Failed to refresh token, redirecting to login.')
-                    self.page.add(
-                        ft.Text(
-                            'Session expired, please login again.',
-                            color=ft.colors.RED,
-                        )
-                    )
-                    self.redirect_to_sign_in_page()
-            else:
-                print('Could not validate credentials, redirecting to login.')
-                error_message = (
-                    'Error loading car washes: '
-                    'Could not validate credentials'
-                )
-
-                self.page.add(
-                    ft.Text(
-                        error_message,
-                        color=ft.colors.RED,
-                    )
-                )
-
-                self.redirect_to_sign_in_page()
-        else:
-            error_message = (
-                'Error loading car washes: ' 'Could not validate credentials'
-            )
-
-            self.page.add(
-                ft.Text(
-                    error_message,
-                    color=ft.colors.RED,
-                )
-            )
-
-    def refresh_access_token(self):
-        refresh_token = self.page.client_storage.get('refresh_token')
-        if not refresh_token:
-            print('Refresh token not found, redirecting to login.')
-            return False
-
-        response = httpx.post(
-            f'{self.api_url}/jwt/refresh',
-            json={'refresh_token': refresh_token},
-        )
-
-        if response.status_code == 200:
-            tokens = response.json()
-            print(f'New tokens received: {tokens}')
-            self.page.client_storage.set(
-                'access_token', tokens['access_token']
-            )
-            self.page.client_storage.set(
-                'refresh_token', tokens['refresh_token']
-            )
-            return True
-        else:
-            print(f'Error refreshing token: {response.text}')
-            return False
+            print(f'Failed to fetch location: {response.text}')
+            return None
 
     def redirect_to_sign_in_page(self):
         from washer.ui_components.sign_in_page import SignInPage
 
         SignInPage(self.page)
-
-    def on_search_change(self, e):
-        query = e.data.lower()
-        filtered_washes = [
-            wash for wash in self.car_washes if query in wash['name'].lower()
-        ]
-        self.car_washes = filtered_washes
-        self.update_car_washes_list()
