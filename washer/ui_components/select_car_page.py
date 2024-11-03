@@ -18,26 +18,52 @@ class SelectCarPage:
         self.body_types_dict = {}
         self.brand_button_text = 'Выберите марку автомобиля'
         self.selected_car = {}
+        self.snack_bar = None
+
+        self.page.appbar = self.create_add_car_appbar()
 
         self.search_dialog = self.create_search_dialog()
         self.brand_button = self.create_brand_button()
-
         self.model_dropdown = self.create_model_dropdown()
         self.generation_dropdown = self.create_generation_dropdown()
         self.body_type_dropdown = self.create_body_type_dropdown()
         self.save_button = self.create_save_button()
+        self.save_button.disabled = True
 
         page.clean()
         page.add(self.create_car_selection_page())
 
         self.load_brands()
+        self.setup_snack_bar()
+
+    def create_add_car_appbar(self):
+        return ft.AppBar(
+            leading=ft.IconButton(
+                icon=ft.icons.ARROW_BACK,
+                on_click=self.return_to_cars_page,
+                icon_color=ft.colors.WHITE,
+                padding=ft.padding.only(left=10),
+            ),
+            title=ft.Text(
+                'Добавить автомобиль', size=20, weight=ft.FontWeight.BOLD
+            ),
+            center_title=True,
+            bgcolor=ft.colors.SURFACE_VARIANT,
+            leading_width=40,
+        )
+
+    def return_to_cars_page(self, e=None):
+        self.page.appbar = None
+        from washer.ui_components.profile_page import ProfilePage
+
+        ProfilePage(self.page)
 
     def create_car_selection_page(self):
         return ft.Container(
             content=ft.Container(
                 content=ft.Column(
                     [
-                        self.create_back_button(),
+                        # self.create_back_button(),
                         ft.Text(
                             'Выберите автомобиль',
                             size=20,
@@ -208,8 +234,6 @@ class SelectCarPage:
         clean_url = self.api_url.rstrip('/')
         url = f'{clean_url}/cars/models?brand_id={brand_id}&limit=100'
 
-        print(f'Запрашиваемый URL: {url}')
-
         response = httpx.get(url, headers=headers)
 
         if response.status_code == 401:
@@ -229,9 +253,7 @@ class SelectCarPage:
                     self.redirect_to_sign_in_page()
         elif response.status_code == 200:
             models = response.json().get('data', [])
-            if not models:
-                print(f'Модели для марки {selected_brand} не найдены.')
-            else:
+            if models:
                 self.models_dict = {
                     model['name']: model['id'] for model in models
                 }
@@ -249,13 +271,17 @@ class SelectCarPage:
                 self.generation_dropdown.options = []
                 self.generation_dropdown.visible = False
                 self.selected_generation = None
+                self.body_type_dropdown.options = []
+                self.body_type_dropdown.visible = False
+                self.selected_model_id = None
+                self.selected_generation_id = None
+                self.save_button.disabled = True
 
                 self.page.update()
+            else:
+                print(f'Модели для марки {selected_brand} не найдены.')
         else:
-            print(
-                f'Ошибка при загрузке моделей автомобилей: '
-                f'{response.status_code} - {response.text}'
-            )
+            print(f'Ошибка при загрузке моделей автомобилей: {response.text}')
 
         self.close_search_dialog(None)
 
@@ -264,8 +290,8 @@ class SelectCarPage:
         self.selected_model_id = self.models_dict.get(selected_model)
 
         print(
-            f'Выбранная модель: '
-            f'{selected_model}, ID модели: {self.selected_model_id}'
+            f'Выбранная модель: {selected_model}, '
+            f'ID модели: {self.selected_model_id}'
         )
 
         if not self.selected_model_id:
@@ -280,11 +306,9 @@ class SelectCarPage:
 
         clean_url = self.api_url.rstrip('/')
         url = (
-            f'{clean_url}/cars/generations?'
-            f'model_id={self.selected_model_id}&limit=100'
+            f'{clean_url}/cars/generations'
+            f'?model_id={self.selected_model_id}&limit=100'
         )
-
-        print(f'Запрашиваемый URL для поколений: {url}')
 
         response = httpx.get(url, headers=headers)
 
@@ -303,11 +327,6 @@ class SelectCarPage:
                         )
                     )
                     self.redirect_to_sign_in_page()
-            else:
-                print(
-                    'Ошибка при загрузке поколений автомобилей: '
-                    'Could not validate credentials'
-                )
         elif response.status_code == 200:
             generations = response.json().get('data', [])
 
@@ -315,6 +334,11 @@ class SelectCarPage:
                 print('Поколения для выбранной модели не найдены.')
                 self.generation_dropdown.visible = False
                 return
+
+            self.generation_dropdown.options = []
+            self.body_type_dropdown.options = []
+            self.body_type_dropdown.visible = False
+            self.save_button.disabled = True
 
             if len(generations) == 1:
                 self.selected_generation = generations[0]['name']
@@ -325,6 +349,11 @@ class SelectCarPage:
                     f'({generations[0]["year_range"]})'
                 )
                 self.generation_dropdown.visible = False
+                self.show_snack_bar(
+                    f'Поколение "{self.selected_generation}" '
+                    f'выбрано автоматически',
+                    bgcolor=ft.colors.BLUE,
+                )
                 self.get_body_type(self.selected_generation_id)
             else:
                 self.generations_dict = {
@@ -336,14 +365,15 @@ class SelectCarPage:
                     for gen in generations
                 ]
                 self.generation_dropdown.visible = True
-                self.generation_dropdown.on_change = self.on_generation_select
 
-                print(f'Доступные поколения для модели {selected_model}:')
-                for gen in generations:
-                    print(
-                        f'Поколение: '
-                        f'{gen["name"]} ({gen["year_range"]}), ID: {gen["id"]}'
+                def on_generation_select(e):
+                    self.save_button.disabled = True
+                    self.selected_generation_id = self.generations_dict.get(
+                        self.generation_dropdown.value
                     )
+                    self.get_body_type(self.selected_generation_id)
+
+                self.generation_dropdown.on_change = on_generation_select
 
             self.page.update()
         else:
@@ -352,9 +382,9 @@ class SelectCarPage:
                 f'{response.status_code} - {response.text}'
             )
 
-    def on_generation_select(self, e):
+    def on_generation_select(self, e=None):
         """Обработчик выбора поколения"""
-        selected_generation = e.control.value
+        selected_generation = self.generation_dropdown.value
         self.selected_generation_id = self.generations_dict.get(
             selected_generation
         )
@@ -372,13 +402,13 @@ class SelectCarPage:
         self.body_type_dropdown.options = []
         self.body_type_dropdown.value = None
         self.body_type_dropdown.visible = False
+        self.save_button.disabled = True
         self.page.update()
         print('Скрыт и сброшен dropdown с типом кузова')
 
         self.get_body_type(self.selected_generation_id)
 
     def get_body_type(self, generation_id):
-        """Запрос на получение типа кузова на основе поколения"""
         access_token = self.page.client_storage.get('access_token')
         headers = {
             'Authorization': f'Bearer {access_token}',
@@ -387,11 +417,9 @@ class SelectCarPage:
 
         clean_url = self.api_url.rstrip('/')
         url = (
-            f'{clean_url}/cars/configurations?'
-            f'generation_id={generation_id}&limit=100'
+            f'{clean_url}/cars/configurations'
+            f'?generation_id={generation_id}&limit=100'
         )
-
-        print(f'Запрашиваемый URL для конфигураций: {url}')
 
         response = httpx.get(url, headers=headers)
 
@@ -410,45 +438,48 @@ class SelectCarPage:
                         )
                     )
                     self.redirect_to_sign_in_page()
-            else:
-                print(f'Ошибка при загрузке конфигураций: {response.text}')
         elif response.status_code == 200:
             configurations = response.json().get('data', [])
-            if configurations:
-                unique_body_types = {
-                    config['body_type_id'] for config in configurations
-                }
+            unique_body_types = {
+                config['body_type_id'] for config in configurations
+            }
 
-                if len(unique_body_types) > 1:
-                    print(f'Доступные body_type_id: {unique_body_types}')
+            if len(unique_body_types) > 1:
+                self.body_types_dict = self.fetch_body_type_names(
+                    unique_body_types
+                )
+                self.body_type_dropdown.options = [
+                    ft.dropdown.Option(self.body_types_dict[bt])
+                    for bt in unique_body_types
+                ]
+                self.body_type_dropdown.value = None
+                self.body_type_dropdown.visible = True
+                self.save_button.disabled = True
 
-                    self.body_types_dict = self.fetch_body_type_names(
-                        unique_body_types
-                    )
+                def on_body_type_select(e):
+                    if self.body_type_dropdown.value:
+                        self.save_button.disabled = False
+                        self.page.update()
 
-                    self.body_type_dropdown.options = [
-                        ft.dropdown.Option(self.body_types_dict[bt])
-                        for bt in unique_body_types
-                    ]
-                    self.body_type_dropdown.value = None
-                    self.body_type_dropdown.visible = True
-                    self.page.update()
-
-                    print(
-                        'Выберите тип кузова: '
-                        f'{[
-                            self.body_types_dict[bt]
-                            for bt in unique_body_types
-                        ]}'
-                    )
-
-                else:
-                    body_type_id = configurations[0]['body_type_id']
-                    body_type_name = self.get_body_type_name(body_type_id)
-                    print(f'Выбран тип кузова: {body_type_name}')
-                    self.body_type_dropdown.value = body_type_name
-                    self.body_type_dropdown.visible = True
-                    self.page.update()
+                self.body_type_dropdown.on_change = on_body_type_select
+                self.page.update()
+            elif unique_body_types:
+                body_type_id = list(unique_body_types)[0]
+                body_type_name = self.get_body_type_name(body_type_id)
+                print(f'Автоматически выбран тип кузова: {body_type_name}')
+                self.show_snack_bar(
+                    f'Тип кузова "{body_type_name}" выбран автоматически',
+                    bgcolor=ft.colors.BLUE,
+                )
+                self.body_type_dropdown.value = body_type_name
+                self.body_type_dropdown.visible = True
+                self.save_button.disabled = False
+                self.page.update()
+        else:
+            print(
+                f'Ошибка при загрузке конфигураций: '
+                f'{response.status_code} - {response.text}'
+            )
 
     def fetch_body_type_names(self, body_type_ids):
         """Запрос на получение имен типов кузова по их ID"""
@@ -572,6 +603,9 @@ class SelectCarPage:
             )
             return
 
+        if self.generation_dropdown.value and not self.selected_generation:
+            self.on_generation_select(None)  # Вызов без аргумента
+
         selected_car = {
             'brand': self.selected_brand,
             'model': self.model_dropdown.value,
@@ -596,7 +630,6 @@ class SelectCarPage:
 
         try:
             response = httpx.post(api_url, json=selected_car, headers=headers)
-
             if response.status_code == 200:
                 print('Автомобиль успешно сохранен на сервере.')
                 self.page.add(
@@ -649,21 +682,36 @@ class SelectCarPage:
         else:
             print(f'Ошибка при загрузке автомобилей: {response.text}')
 
-    def create_back_button(self):
-        return ft.Container(
-            content=ft.Row(
-                [
-                    ft.IconButton(
-                        icon=ft.icons.ARROW_BACK,
-                        icon_size=30,
-                        on_click=self.on_back_to_profile_click,
-                    ),
-                    ft.Text('Назад в профиль', size=16),
-                ],
-                alignment=ft.MainAxisAlignment.START,
-            ),
-            margin=ft.margin.only(bottom=15),
+    # def create_back_button(self):
+    #     return ft.Container(
+    #         content=ft.Row(
+    #             [
+    #                 ft.IconButton(
+    #                     icon=ft.icons.ARROW_BACK,
+    #                     icon_size=30,
+    #                     on_click=self.on_back_to_profile_click,
+    #                 ),
+    #                 ft.Text('Назад в профиль', size=16),
+    #             ],
+    #             alignment=ft.MainAxisAlignment.START,
+    #         ),
+    #         margin=ft.margin.only(bottom=15),
+    #     )
+
+    def setup_snack_bar(self):
+        """Инициализация SnackBar для показа сообщений."""
+        self.snack_bar = ft.SnackBar(
+            content=ft.Text(''), bgcolor=ft.colors.GREEN, duration=3000
         )
+        self.page.overlay.append(self.snack_bar)
+        self.page.update()
+
+    def show_snack_bar(self, message: str, bgcolor: str = ft.colors.GREEN):
+        """Показ SnackBar с сообщением."""
+        self.snack_bar.content.value = message
+        self.snack_bar.bgcolor = bgcolor
+        self.snack_bar.open = True
+        self.page.update()
 
     def on_back_to_profile_click(self, _: ft.ControlEvent):
         from washer.ui_components.profile_page import ProfilePage
