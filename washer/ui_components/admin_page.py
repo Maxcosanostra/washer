@@ -1,4 +1,5 @@
 import json
+import time
 from datetime import date
 
 import flet as ft
@@ -19,9 +20,16 @@ class AdminPage:
 
         self.page.adaptive = True
 
-        # Устанавливаем тему для всей страницы
-        # self.page.theme_mode = ft.ThemeMode.LIGHT
-        # self.page.bgcolor = None
+        self.page.appbar = ft.AppBar(
+            title=ft.Text(
+                'Управление автомойками',
+                size=20,
+                weight=ft.FontWeight.BOLD,
+                text_align=ft.TextAlign.CENTER,
+            ),
+            center_title=True,
+            bgcolor=ft.colors.SURFACE_VARIANT,
+        )
 
         self.loading_overlay = ft.Container(
             content=ft.ProgressRing(),
@@ -58,23 +66,6 @@ class AdminPage:
     def create_main_container(self):
         return ft.Column(
             controls=[
-                ft.Container(
-                    content=ft.Row(
-                        [
-                            ft.Text(
-                                'Управление автомойками',
-                                size=24,
-                                weight=ft.FontWeight.BOLD,
-                                text_align=ft.TextAlign.CENTER,
-                                expand=True,
-                            ),
-                        ],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                    ),
-                    bgcolor=ft.colors.GREY_900,
-                    padding=ft.padding.only(top=40, bottom=20),
-                    expand=False,
-                ),
                 self.car_washes_list_view,
                 ft.Container(
                     content=ft.TextButton(
@@ -96,7 +87,6 @@ class AdminPage:
 
     def load_car_washes(self):
         self.show_loading()
-
         self.load_locations()
 
         if AdminPage.car_washes_cache:
@@ -118,7 +108,6 @@ class AdminPage:
         }
 
         url = f'{self.api_url.rstrip("/")}/car_washes?page=1&limit=10'
-
         response = httpx.get(url, headers=headers)
 
         if response.status_code == 200:
@@ -144,7 +133,6 @@ class AdminPage:
         url = (
             f'{self.api_url.rstrip("/")}/car_washes/locations?page=1&limit=100'
         )
-
         response = httpx.get(url, headers=headers)
 
         if response.status_code == 200:
@@ -232,7 +220,6 @@ class AdminPage:
 
     def update_car_wash_image(self, car_wash_id):
         files = {'image': open(self.selected_image, 'rb')}
-
         new_values = {'name': 'Spa Detailing', 'location_id': 1}
 
         access_token = self.page.client_storage.get('access_token')
@@ -242,7 +229,6 @@ class AdminPage:
         }
 
         api_url = f"{self.api_url.rstrip('/')}/car_washes/{car_wash_id}"
-
         response = httpx.patch(
             api_url,
             files=files,
@@ -263,14 +249,23 @@ class AdminPage:
                 self.update_car_washes_list()
 
     def open_car_wash_edit_page(self, car_wash):
+        def load_edit_page(_):
+            self.page.appbar = None
+            self.page.update()
+
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
         CarWashEditPage(self.page, car_wash, self.api_url)
+        load_edit_page(None)
 
     def on_logout_click(self, _):
+        def delayed_hide_appbar():
+            time.sleep(0.1)
+            self.page.appbar = None
+            self.page.update()
+
         user_key = f'cars_{self.page.client_storage.get("username")}'
         self.page.client_storage.remove(user_key)
-
         self.page.client_storage.remove('access_token')
         self.page.client_storage.remove('refresh_token')
         self.page.client_storage.remove('username')
@@ -279,7 +274,13 @@ class AdminPage:
 
         SignInPage(self.page)
 
+        delayed_hide_appbar()
+
     def open_booking_table_page(self, car_wash):
+        def load_booking_table(_):
+            self.page.appbar = None
+            self.page.update()
+
         from washer.ui_components.admin_booking_table import AdminBookingTable
 
         if car_wash:
@@ -300,3 +301,4 @@ class AdminPage:
             return
 
         AdminBookingTable(self.page, car_wash, self.api_url, current_date)
+        load_booking_table(None)
