@@ -5,27 +5,52 @@ import flet as ft
 import httpx
 
 from washer.api_requests import BackendApi
-from washer.ui_components.admin_page import AdminPage
 
 
 class AdminBookingTable:
-    def __init__(self, page: ft.Page, car_wash, api_url, date):
+    def __init__(
+        self, page: ft.Page, car_wash, api_url, date, selected_date=None
+    ):
         self.page = page
         self.car_wash = car_wash
         self.api = BackendApi()
         self.api.set_access_token(self.page.client_storage.get('access_token'))
         self.api_url = api_url
         self.date = date
+        self.selected_date = selected_date
         self.schedule_data = []
         self.dates_storage = {}
         self.boxes_list = []
         self.available_times = {}
         self.bookings = []
+        self.loaded_days = set()
+
+        app_bar = ft.AppBar(
+            leading=ft.Row(
+                controls=[
+                    ft.IconButton(
+                        icon=ft.icons.ARROW_BACK,
+                        on_click=self.on_back_click,
+                        icon_color='#ef7b00',
+                        padding=ft.padding.only(left=10),
+                    ),
+                    ft.Text('Назад', size=16, color='#ef7b00'),
+                ],
+                alignment=ft.MainAxisAlignment.START,
+            ),
+            center_title=True,
+            bgcolor=ft.colors.SURFACE_VARIANT,
+            leading_width=100,
+        )
 
         self.load_boxes()
-        self.load_available_times()
+        self.load_available_times(datetime.date.today())
         self.load_bookings()
         self.load_schedules()
+
+        self.page.clean()
+        self.page.add(app_bar)
+        self.page.add(self.create_booking_page())
 
     def on_car_saved(self, car_data):
         print(f'Сохраненные данные автомобиля: {car_data}')
@@ -111,78 +136,96 @@ class AdminBookingTable:
         else:
             print(f'Ошибка загрузки боксов: {response.text}')
 
-    def load_available_times(self):
+    def load_available_times(self, target_date):
         print(
             f"Загружаем доступное время для автомойки с ID: "
-            f"{self.car_wash['id']} на неделю"
+            f"{self.car_wash['id']} на дату {target_date}"
         )
 
-        current_date = datetime.date.today()
+        response = self.api.get_available_times(
+            self.car_wash['id'], str(target_date)
+        )
 
-        for i in range(7):
-            target_date = current_date + datetime.timedelta(days=i)
-            response = self.api.get_available_times(
-                self.car_wash['id'], str(target_date)
+        if response.status_code == 200:
+            daily_times = response.json().get('available_times', {})
+            self.available_times[str(target_date)] = daily_times
+            self.loaded_days.add(target_date)
+            print(
+                f'Доступное время загружено для '
+                f'{target_date}: {daily_times}'
             )
-
-            if response.status_code == 200:
-                daily_times = response.json().get('available_times', {})
-                self.available_times[str(target_date)] = daily_times
-                print(
-                    f'Доступное время загружено для '
-                    f'{target_date}: {daily_times}'
-                )
-            else:
-                print(
-                    f'Ошибка загрузки доступного времени для '
-                    f'{target_date}: {response.text}'
-                )
+        else:
+            print(
+                f'Ошибка загрузки доступного времени для '
+                f'{target_date}: {response.text}'
+            )
 
     def create_booking_page(self):
-        rows = []
+        tabs = []
+        selected_index = 0
 
-        for schedule in self.schedule_data:
+        for i, schedule in enumerate(self.schedule_data):
             day_of_week = schedule.get('day_of_week')
-            day_name = self.get_day_name(day_of_week)
             schedule_date = self.dates_storage.get(day_of_week)
             formatted_date = schedule_date.strftime('%d %B')
+            day_name = self.get_day_name(day_of_week)
             day_with_date = f'{day_name} ({formatted_date})'
 
-            timeslots = self.generate_timeslots(
+            if self.selected_date and schedule_date == self.selected_date:
+                selected_index = i
+
+            tab_content = (
+                self.create_booking_table(
+                    day_with_date,
+                    schedule,
+                    self.generate_timeslots(
+                        schedule['start_time'], schedule['end_time']
+                    ),
+                )
+                if i == selected_index
+                else ft.Container()
+            )
+
+            tabs.append(ft.Tab(text=day_name, content=tab_content))
+
+        booking_tabs = ft.Tabs(
+            tabs=tabs,
+            selected_index=selected_index,
+            expand=True,
+            on_change=lambda e: self.on_tab_change(booking_tabs),
+        )
+
+        self.on_tab_change(booking_tabs)
+
+        return booking_tabs
+
+    def on_tab_change(self, booking_tabs):
+        selected_index = booking_tabs.selected_index
+        selected_tab = booking_tabs.tabs[selected_index]
+        day_of_week = self.schedule_data[selected_index]['day_of_week']
+        schedule_date = self.dates_storage[day_of_week]
+
+        if schedule_date not in self.loaded_days:
+            self.load_available_times(schedule_date)
+
+        schedule = self.schedule_data[selected_index]
+        day_with_date = (
+            f"{self.get_day_name(day_of_week)} "
+            f"({schedule_date.strftime('%d %B')})"
+        )
+        selected_tab.content = self.create_booking_table(
+            day_with_date,
+            schedule,
+            self.generate_timeslots(
                 schedule['start_time'], schedule['end_time']
-            )
-            rows.append(
-                self.create_booking_table(day_with_date, schedule, timeslots)
-            )
-
-        back_button = ft.ElevatedButton(
-            text='Назад',
-            on_click=self.on_back_click,
-            width=200,
-            bgcolor=ft.colors.GREY_700,
-            color=ft.colors.WHITE,
+            ),
         )
-
-        scrollable_content = ft.Column(
-            controls=rows,
-            spacing=20,
-            scroll='auto',
-            expand=True,
-        )
-
-        return ft.Column(
-            controls=[
-                scrollable_content,
-                ft.Container(
-                    content=back_button, alignment=ft.alignment.center
-                ),
-            ],
-            expand=True,
-        )
+        self.page.update()
 
     def create_booking_table(self, day_with_date, schedule, timeslots):
         rows = []
 
+        # Заголовок с датой
         header = ft.Container(
             content=ft.Text(
                 day_with_date,
@@ -192,7 +235,6 @@ class AdminBookingTable:
             ),
             alignment=ft.alignment.center,
             padding=ft.padding.only(bottom=10),
-            bgcolor=ft.colors.GREY_900,
             height=50,
         )
         rows.append(header)
@@ -213,9 +255,7 @@ class AdminBookingTable:
         )
         rows.append(
             ft.Container(
-                content=box_header,
-                bgcolor=ft.colors.GREY_800,
-                padding=ft.padding.all(5),
+                content=box_header, padding=ft.padding.all(5), height=50
             )
         )
 
@@ -257,14 +297,8 @@ class AdminBookingTable:
                 )
 
                 if booking:
-                    car_name = (
-                        self.get_car_name(booking['user_car_id'])
-                        if booking.get('user_car_id')
-                        else 'Неизвестно'
-                    )
                     color = ft.colors.GREY_500
-                    price = booking.get('price', 'Не указана')
-                    text = f'Занято\n{car_name}\n₸{price}'
+                    text = 'Занято'
 
                     start_time = datetime.datetime.strptime(
                         booking['start_datetime'], '%Y-%m-%dT%H:%M:%S'
@@ -299,7 +333,7 @@ class AdminBookingTable:
                             on_click=lambda e,
                             booking=booking: self.open_booking_details_dialog(
                                 booking
-                            ),
+                            ),  # Открываем детали по клику
                         )
                     )
 
@@ -355,13 +389,11 @@ class AdminBookingTable:
                             )
                         )
 
-            row = ft.Row(controls=row_controls, spacing=5)
+            row = ft.Row(controls=row_controls, spacing=5, height=50)
             rows.append(ft.Container(content=row))
 
-        return ft.Container(
-            content=ft.Column(controls=rows, spacing=5),
-            padding=ft.padding.all(10),
-            expand=True,
+        return ft.ListView(
+            controls=rows, padding=ft.padding.all(10), expand=True
         )
 
     def get_car_name(self, user_car_id):
@@ -418,4 +450,6 @@ class AdminBookingTable:
         return days_of_week_names[day_of_week]
 
     def on_back_click(self, e):
-        AdminPage(self.page)
+        from washer.ui_components.carwash_edit_page import CarWashEditPage
+
+        CarWashEditPage(self.page, self.car_wash, self.api_url)
