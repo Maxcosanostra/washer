@@ -211,10 +211,7 @@ class ScheduleManagementPage:
         response = self.api.delete_schedule(schedule_id)
         if response.status_code == 200:
             print(f'Расписание с ID {schedule_id} успешно удалено.')
-            self.load_schedules()
-            self.page.controls.clear()
-            self.page.add(self.create_schedule_management_page())
-            self.page.update()
+            self.refresh_schedule_list()
         else:
             print(f'Ошибка при удалении расписания: {response.text}')
         self.hide_loading()
@@ -423,22 +420,33 @@ class ScheduleManagementPage:
                 )
 
         self.hide_loading()
+        self.refresh_schedule_list()  # Обновляем только список расписаний
 
-        self.update_schedule_and_scroll()
+    # def update_schedule_and_scroll(self):
+    #     """Старый метод для обновления расписаний
+    #     с полной перезагрузкой страницы."""
+    #     self.show_loading()
+    #
+    #     response = self.api.get_schedules(self.car_wash['id'])
+    #     if response.status_code == 200:
+    #         self.schedule_list = response.json().get('data', [])
+    #         print(f'Загружено расписаний: {len(self.schedule_list)}')
+    #
+    #     self.page.controls.clear()
+    #     self.page.add(self.create_schedule_management_page())
+    #     self.page.update()
+    #
+    #     self.hide_loading()
 
-    def update_schedule_and_scroll(self):
-        self.show_loading()
-
-        response = self.api.get_schedules(self.car_wash['id'])
-        if response.status_code == 200:
-            self.schedule_list = response.json().get('data', [])
-            print(f'Загружено расписаний: {len(self.schedule_list)}')
-
-        self.page.controls.clear()
-        self.page.add(self.create_schedule_management_page())
+    def refresh_schedule_list(self):
+        """Метод для обновления секции расписания
+        без полной перезагрузки страницы
+        """
+        self.load_schedules()
+        self.schedule_list_container.content = (
+            self.create_schedule_list_section()
+        )
         self.page.update()
-
-        self.hide_loading()
 
     def on_add_schedule(self, e):
         if (
@@ -476,32 +484,20 @@ class ScheduleManagementPage:
                 )
 
         self.hide_loading()
-
-        self.update_schedule_and_scroll()
+        self.refresh_schedule_list()
 
     def create_schedule_management_page(self):
+        self.schedule_list_container = ft.Container(
+            content=self.create_schedule_list_section(), expand=True
+        )
+
         return ft.ListView(
             controls=[
-                # ft.Container(
-                #     content=ft.Row(
-                #         [
-                #             ft.IconButton(
-                #                 icon=ft.icons.ARROW_BACK,
-                #                 icon_size=30,
-                #                 on_click=self.on_back_to_edit_page,
-                #             ),
-                #             ft.Text('Назад', size=16),
-                #         ],
-                #         alignment=ft.MainAxisAlignment.START,
-                #     ),
-                #     expand=0,
-                #     padding=ft.padding.symmetric(vertical=20),
-                # ),
                 self.create_week_schedule_section(),
                 ft.Divider(),
                 self.create_manual_schedule_section(),
                 ft.Divider(),
-                self.create_schedule_list_section(),
+                self.schedule_list_container,
             ],
             spacing=20,
             padding=ft.padding.symmetric(horizontal=20),
