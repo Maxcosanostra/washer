@@ -107,6 +107,19 @@ class AdminSelectCarPage:
                 self.show_success_message('Букинг успешно создан!')
                 self.confirm_button.disabled = True
                 self.page.update()
+
+                from washer.ui_components.admin_booking_table import (
+                    AdminBookingTable,
+                )
+
+                AdminBookingTable(
+                    self.page,
+                    self.car_wash,
+                    self.api_url,
+                    self.date,
+                    selected_date=self.date,
+                )
+
             else:
                 print(f'Ошибка создания букинга: {response.text}')
                 self.show_error_message(
