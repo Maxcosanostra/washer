@@ -259,3 +259,9 @@ class BackendApi:
         print(f'Ответ сервера: {response.status_code}, {response.text}')
 
         return response
+
+    def delete_booking(self, booking_id: int) -> httpx.Response:
+        api_url = f"{self.url.rstrip('/')}/car_washes/bookings/{booking_id}"
+        headers = self.get_headers()
+        response = httpx.delete(api_url, headers=headers)
+        return response
