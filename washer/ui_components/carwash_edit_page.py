@@ -7,6 +7,7 @@ import flet as ft
 import httpx
 
 from washer.api_requests import BackendApi
+from washer.ui_components.archived_schedule_page import ArchivedSchedulePage
 from washer.ui_components.box_revenue_page import BoxRevenuePage
 from washer.ui_components.schedule_management_page import (
     ScheduleManagementPage,
@@ -291,11 +292,23 @@ class CarWashEditPage:
                     padding=ft.padding.symmetric(vertical=10),
                 ),
                 self.create_schedule_list_section(),
+                ft.Divider(),
+                ft.TextButton(
+                    text='Архив расписаний',
+                    on_click=self.on_view_archived_schedule_click,
+                    style=ft.ButtonStyle(
+                        color='#ef7b00',
+                    ),
+                    expand=True,
+                ),
             ],
             spacing=20,
             padding=ft.padding.symmetric(horizontal=20),
             expand=True,
         )
+
+    def on_view_archived_schedule_click(self, e):
+        ArchivedSchedulePage(self.page, self.car_wash, self.api_url)
 
     def create_booking_button(self):
         return ft.Container(
