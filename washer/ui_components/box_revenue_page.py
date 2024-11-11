@@ -39,6 +39,7 @@ class BoxRevenuePage:
 
             if response.status_code == 200:
                 bookings_data = response.json().get('data', [])
+                current_time = datetime.datetime.now()
                 self.bookings = [
                     booking
                     for booking in bookings_data
@@ -46,6 +47,10 @@ class BoxRevenuePage:
                     and booking['start_datetime'].startswith(
                         self.current_date.strftime('%Y-%m-%d')
                     )
+                    and datetime.datetime.fromisoformat(
+                        booking['end_datetime']
+                    )
+                    < current_time
                 ]
                 print('Полученные бронирования:', self.bookings)
             else:
