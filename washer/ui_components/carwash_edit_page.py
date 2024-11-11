@@ -25,6 +25,7 @@ class CarWashEditPage:
         self.selected_image_bytes = None
         self.body_type_dict = {}
         self.total_revenue = 0
+        self.boxes_list = []
 
         self.page.adaptive = True
 
@@ -64,9 +65,13 @@ class CarWashEditPage:
             fit=ft.ImageFit.COVER,
         )
 
+        self.load_boxes()
         self.load_body_types()
         self.load_schedules()
         self.load_total_revenue()
+
+        if self.boxes_list:
+            self.today_bookings = self.load_today_bookings()
 
         page.clean()
         page.add(app_bar)
@@ -119,11 +124,20 @@ class CarWashEditPage:
                 bookings_data = response.json().get('data', [])
                 current_date_str = datetime.date.today().strftime('%Y-%m-%d')
                 total_revenue = 0
+                current_time = datetime.datetime.now()
+
                 for booking in bookings_data:
                     booking_date = booking.get('start_datetime', '')
-                    if booking_date.startswith(current_date_str):
+                    end_time = datetime.datetime.fromisoformat(
+                        booking.get('end_datetime', '')
+                    )
+                    if (
+                        booking_date.startswith(current_date_str)
+                        and end_time < current_time
+                    ):
                         price = float(booking.get('price', 0))
                         total_revenue += price
+
                 self.total_revenue = total_revenue
             else:
                 print(
@@ -291,6 +305,8 @@ class CarWashEditPage:
                     alignment=ft.alignment.center,
                     padding=ft.padding.symmetric(vertical=10),
                 ),
+                self.create_booking_status_dashboard(),
+                ft.Divider(),
                 self.create_schedule_list_section(),
                 ft.Divider(),
                 ft.TextButton(
@@ -305,6 +321,164 @@ class CarWashEditPage:
             spacing=20,
             padding=ft.padding.symmetric(horizontal=20),
             expand=True,
+        )
+
+    def load_today_bookings(self):
+        try:
+            car_wash_id = self.car_wash['id']
+            headers = {
+                'Authorization': f'Bearer {self.api.access_token}',
+                'Accept': 'application/json',
+            }
+            url = (
+                f"{self.api_url.rstrip('/')}/car_washes/bookings"
+                f"?car_wash_id={car_wash_id}&limit=1000"
+            )
+            response = httpx.get(url, headers=headers)
+
+            if response.status_code == 200:
+                all_bookings = response.json().get('data', [])
+                today = datetime.date.today().strftime('%Y-%m-%d')
+                today_bookings = [
+                    booking
+                    for booking in all_bookings
+                    if booking['start_datetime'].startswith(today)
+                ]
+
+                for booking in today_bookings:
+                    box = next(
+                        (
+                            box
+                            for box in self.boxes_list
+                            if box['id'] == booking['box_id']
+                        ),
+                        None,
+                    )
+                    booking['box_name'] = (
+                        box['name'] if box else 'Неизвестный бокс'
+                    )
+                    if box is None:
+                        print(
+                            f"Не удалось найти бокс с ID: {booking['box_id']}"
+                        )
+
+                return today_bookings
+            else:
+                print(
+                    f'Ошибка загрузки букингов: '
+                    f'{response.status_code}, {response.text}'
+                )
+                return []
+        except Exception as e:
+            print(f'Ошибка при загрузке букингов: {e}')
+            return []
+
+    def load_boxes(self):
+        response = self.api.get_boxes(self.car_wash['id'])
+        if response.status_code == 200:
+            self.boxes_list = response.json().get('data', [])
+            print('Боксы загружены успешно')
+        else:
+            print(f'Ошибка загрузки боксов: {response.text}')
+
+    def create_booking_status_dashboard(self):
+        header = ft.Row(
+            controls=[
+                ft.Text(
+                    'Время начала',
+                    weight='bold',
+                    width=70,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Text(
+                    'Время окончания',
+                    weight='bold',
+                    width=90,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Text(
+                    'Бокс',
+                    weight='bold',
+                    width=70,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Text(
+                    'Статус',
+                    weight='bold',
+                    width=90,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        )
+
+        rows = [header]
+        current_time = datetime.datetime.now()
+
+        sorted_bookings = sorted(
+            self.today_bookings, key=lambda b: b['start_datetime']
+        )
+
+        for booking in sorted_bookings:
+            start_time = datetime.datetime.fromisoformat(
+                booking['start_datetime']
+            )
+            end_time = datetime.datetime.fromisoformat(booking['end_datetime'])
+
+            if current_time < start_time - datetime.timedelta(hours=1):
+                status = 'В ожидании'
+                color = '#FFD700'
+            elif (
+                start_time - datetime.timedelta(hours=1)
+                <= current_time
+                < start_time
+            ):
+                status = 'В ожидании'
+                color = '#FFD700'
+            elif start_time <= current_time <= end_time:
+                status = 'В процессе'
+                color = '#FFA500'
+            else:
+                status = 'Завершено'
+                color = '#32CD32'
+
+            box_name = booking.get('box_name', 'Неизвестный бокс')
+
+            row = ft.Row(
+                controls=[
+                    ft.Text(
+                        start_time.strftime('%H:%M'),
+                        width=70,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Text(
+                        end_time.strftime('%H:%M'),
+                        width=90,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Text(
+                        box_name, width=70, text_align=ft.TextAlign.CENTER
+                    ),
+                    ft.Text(
+                        status,
+                        width=90,
+                        text_align=ft.TextAlign.CENTER,
+                        color=color,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            )
+            rows.append(row)
+
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text('Табло статусов букингов', size=24, weight='bold'),
+                    *rows,
+                ],
+                spacing=10,
+            ),
+            padding=ft.padding.symmetric(vertical=10),
         )
 
     def on_view_archived_schedule_click(self, e):
@@ -340,7 +514,31 @@ class CarWashEditPage:
         AdminBookingTable(self.page, self.car_wash, self.api_url, current_date)
 
     def create_schedule_list_section(self):
-        rows = []
+        header = ft.Row(
+            controls=[
+                ft.Text(
+                    'Дата',
+                    weight='bold',
+                    width=80,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Text(
+                    'День недели',
+                    weight='bold',
+                    width=120,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Text(
+                    'Время',
+                    weight='bold',
+                    width=120,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        )
+
+        rows = [header]
 
         sorted_schedules = sorted(
             self.schedule_list,
@@ -363,61 +561,33 @@ class CarWashEditPage:
                 schedule['end_time'], '%H:%M:%S'
             ).strftime('%H:%M')
 
-            rows.append(
-                ft.Row(
-                    controls=[
-                        ft.Text(
-                            f'{schedule_date}',
-                            expand=1,
-                            text_align=ft.TextAlign.LEFT,
-                        ),
-                        ft.Text(
-                            f'{day_name}',
-                            expand=2,
-                            text_align=ft.TextAlign.LEFT,
-                        ),
-                        ft.Text(
-                            f'{start_time} - {end_time}',
-                            expand=2,
-                            text_align=ft.TextAlign.LEFT,
-                        ),
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                )
+            row = ft.Row(
+                controls=[
+                    ft.Text(
+                        schedule_date, width=80, text_align=ft.TextAlign.CENTER
+                    ),
+                    ft.Text(
+                        day_name, width=120, text_align=ft.TextAlign.CENTER
+                    ),
+                    ft.Text(
+                        f'{start_time} - {end_time}',
+                        width=120,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             )
+            rows.append(row)
 
         return ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Text('Текущее расписание', size=24),
-                    ft.Row(
-                        controls=[
-                            ft.Text(
-                                'Дата',
-                                weight='bold',
-                                expand=1,
-                                text_align=ft.TextAlign.LEFT,
-                            ),
-                            ft.Text(
-                                'День недели',
-                                weight='bold',
-                                expand=2,
-                                text_align=ft.TextAlign.LEFT,
-                            ),
-                            ft.Text(
-                                'Время',
-                                weight='bold',
-                                expand=2,
-                                text_align=ft.TextAlign.LEFT,
-                            ),
-                        ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    ),
-                ]
-                + rows,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ft.Text('Текущее расписание', size=24, weight='bold'),
+                    *rows,
+                ],
+                spacing=10,
             ),
-            key='schedule_list_section',
+            padding=ft.padding.symmetric(vertical=10),
         )
 
     def get_day_name(self, day_of_week):
