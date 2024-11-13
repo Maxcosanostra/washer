@@ -337,17 +337,23 @@ class ProfilePage:
         car_blocks = [self.create_car_display(car) for car in self.cars]
 
         if not self.cars:
-            empty_image = ft.Image(
-                src='https://drive.google.com/uc?id=122KNtdntfiTPaOB5eAA0b1N_IxCPMY3a',
-                width=300,
-                height=300,
-                fit=ft.ImageFit.COVER,
+            empty_image = ft.Container(
+                content=ft.Image(
+                    src='https://drive.google.com/uc?id=122KNtdntfiTPaOB5eAA0b1N_IxCPMY3a',
+                    width=300,
+                    height=300,
+                    fit=ft.ImageFit.COVER,
+                ),
+                padding=ft.padding.only(top=100),
             )
-            empty_text = ft.Text(
-                'У вас пока нет добавленных автомобилей',
-                size=18,
-                color=ft.colors.GREY_500,
-                text_align=ft.TextAlign.CENTER,
+            empty_text = ft.Container(
+                content=ft.Text(
+                    'У вас пока нет добавленных автомобилей',
+                    size=18,
+                    color=ft.colors.GREY_500,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                padding=ft.padding.only(top=20),
             )
             car_blocks = [
                 empty_image,
@@ -440,7 +446,7 @@ class ProfilePage:
             ),
             title=ft.Text('Мои записи', size=20, weight=ft.FontWeight.BOLD),
             center_title=True,
-            bgcolor=ft.colors.SURFACE_VARIANT,
+            bgcolor=ft.colors.PURPLE,
             leading_width=40,
         )
 
@@ -464,17 +470,24 @@ class ProfilePage:
         ]
 
         if not booking_content:
-            empty_image = ft.Image(
-                src='https://drive.google.com/uc?id=11B4mRtzpx2TjtO6X4t-nc5gdf_fHHEoK',
-                width=300,
-                height=300,
-                fit=ft.ImageFit.COVER,
+            empty_image = ft.Container(
+                content=ft.Image(
+                    src='https://drive.google.com/uc?id=11B4mRtzpx2TjtO6X4t-nc5gdf_fHHEoK',
+                    width=300,
+                    height=300,
+                    fit=ft.ImageFit.COVER,
+                ),
+                padding=ft.padding.only(top=130),
             )
-            empty_text = ft.Text(
-                'У вас пока нет активных записей',
-                size=18,
-                color=ft.colors.GREY_500,
-                text_align=ft.TextAlign.CENTER,
+            empty_text = ft.Container(
+                content=ft.Text(
+                    'У вас пока нет активных записей',
+                    size=18,
+                    color=ft.colors.GREY_500,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                padding=ft.padding.only(top=20),
+                # Отступ между изображением и текстом
             )
             booking_content = [empty_image, empty_text]
 
