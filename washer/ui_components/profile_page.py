@@ -45,53 +45,59 @@ class ProfilePage:
 
     def create_profile_card(self):
         return ft.Container(
-            content=ft.Column(
-                [
-                    ft.Row(
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
                         [
-                            ft.IconButton(
-                                icon=ft.icons.ARROW_BACK,
-                                on_click=self.on_back_click,
+                            ft.Row(
+                                [
+                                    ft.IconButton(
+                                        icon=ft.icons.ARROW_BACK,
+                                        on_click=self.on_back_click,
+                                    ),
+                                    ft.Container(expand=1),
+                                    ft.IconButton(
+                                        icon=ft.icons.LOGOUT,
+                                        on_click=self.on_logout_click,
+                                    ),
+                                ],
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                             ),
-                            ft.Container(expand=1),
-                            ft.IconButton(
-                                icon=ft.icons.LOGOUT,
-                                on_click=self.on_logout_click,
+                            ft.Container(
+                                content=self.avatar_container,
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(top=-50),
+                            ),
+                            ft.Container(
+                                content=ft.Text(
+                                    self.username,
+                                    size=20,
+                                    weight=ft.FontWeight.BOLD,
+                                ),
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(top=-10),
+                            ),
+                            ft.Container(
+                                content=ft.ElevatedButton(
+                                    icon=ft.icons.CAMERA_ALT,
+                                    text='Изменить фото профиля',
+                                    on_click=self.on_avatar_click,
+                                    width=300,
+                                ),
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(top=5),
                             ),
                         ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        alignment=ft.MainAxisAlignment.START,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=5,
                     ),
-                    ft.Container(
-                        content=self.avatar_container,
-                        alignment=ft.alignment.center,
-                        padding=ft.padding.only(top=-50),
-                    ),
-                    ft.Container(
-                        content=ft.Text(
-                            self.username, size=20, weight=ft.FontWeight.BOLD
-                        ),
-                        alignment=ft.alignment.center,
-                        padding=ft.padding.only(top=-10),
-                    ),
-                    ft.Container(
-                        content=ft.ElevatedButton(
-                            icon=ft.icons.CAMERA_ALT,
-                            text='Изменить фото профиля',
-                            on_click=self.on_avatar_click,
-                            width=300,
-                        ),
-                        alignment=ft.alignment.center,
-                        padding=ft.padding.only(top=5),
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.START,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing=5,
+                    padding=ft.padding.all(15),
+                ),
+                elevation=3,
             ),
-            bgcolor=ft.colors.GREY_900,
-            padding=ft.padding.all(10),
-            border_radius=ft.border_radius.all(20),
-            height=250,
+            width=370,
+            margin=ft.margin.only(bottom=20),
         )
 
     def create_profile_page(self):
@@ -203,16 +209,26 @@ class ProfilePage:
         self.page.update()
 
     def create_account_settings_page(self):
+        self.page.appbar = ft.AppBar(
+            leading=ft.IconButton(
+                icon=ft.icons.ARROW_BACK,
+                on_click=self.return_to_profile,
+                icon_color=ft.colors.WHITE,
+                padding=ft.padding.only(left=10),
+            ),
+            title=ft.Text(
+                'Учетная запись', size=20, weight=ft.FontWeight.BOLD
+            ),
+            center_title=True,
+            bgcolor=ft.colors.BLUE,  # Изменение на голубой цвет
+            leading_width=40,
+        )
+
         return ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.IconButton(
-                        icon=ft.icons.ARROW_BACK,
-                        on_click=self.return_to_profile,
-                        icon_color=ft.colors.WHITE,
-                    ),
                     ft.Text(
-                        'Страница настроек аккаунта',
+                        'Настройки аккаунта будут здесь',
                         size=20,
                         color=ft.colors.GREY_700,
                     ),
@@ -239,7 +255,7 @@ class ProfilePage:
             ),
             title=ft.Text('Финансы', size=20, weight=ft.FontWeight.BOLD),
             center_title=True,
-            bgcolor=ft.colors.SURFACE_VARIANT,
+            bgcolor=ft.colors.BLUE,
             leading_width=40,
         )
 
@@ -314,7 +330,7 @@ class ProfilePage:
                 'Мои автомобили', size=20, weight=ft.FontWeight.BOLD
             ),
             center_title=True,
-            bgcolor=ft.colors.SURFACE_VARIANT,
+            bgcolor=ft.colors.BLUE,
             leading_width=40,
         )
 
