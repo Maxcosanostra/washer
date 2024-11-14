@@ -265,3 +265,9 @@ class BackendApi:
         headers = self.get_headers()
         response = httpx.delete(api_url, headers=headers)
         return response
+
+    def update_user(self, user_id: int, new_values: dict) -> httpx.Response:
+        api_url = f"{self.url.rstrip('/')}/users/{user_id}"
+        headers = self.get_headers()
+        response = httpx.patch(api_url, json=new_values, headers=headers)
+        return response
