@@ -5,6 +5,7 @@ import flet as ft
 import httpx
 
 from washer.config import config
+from washer.ui_components.account_settings_page import AccountSettingsPage
 from washer.ui_components.select_car_page import SelectCarPage
 
 
@@ -203,42 +204,16 @@ class ProfilePage:
             border_radius=ft.border_radius.all(12),
         )
 
+    # def open_account_settings(self, e):
+    #     self.page.clean()
+    #     self.page.add(self.create_account_settings_page())
+    #     self.page.update()
+
     def open_account_settings(self, e):
+        """Открывает страницу,используя отдельный класс AccountSettingsPage."""
         self.page.clean()
-        self.page.add(self.create_account_settings_page())
+        AccountSettingsPage(self.page)  # Создаем экземпляр отдельного класса
         self.page.update()
-
-    def create_account_settings_page(self):
-        self.page.appbar = ft.AppBar(
-            leading=ft.IconButton(
-                icon=ft.icons.ARROW_BACK,
-                on_click=self.return_to_profile,
-                icon_color=ft.colors.WHITE,
-                padding=ft.padding.only(left=10),
-            ),
-            title=ft.Text(
-                'Учетная запись', size=20, weight=ft.FontWeight.BOLD
-            ),
-            center_title=True,
-            bgcolor=ft.colors.BLUE,  # Изменение на голубой цвет
-            leading_width=40,
-        )
-
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Text(
-                        'Настройки аккаунта будут здесь',
-                        size=20,
-                        color=ft.colors.GREY_700,
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing=15,
-            ),
-            padding=ft.padding.all(20),
-        )
 
     def open_finances_page(self, e):
         self.page.clean()
