@@ -406,9 +406,11 @@ class BookingPage:
         self.selected_box_id = e.control.value
         print(f'Выбранный бокс: {self.selected_box_id}')
 
-        self.time_dropdown_container.controls = []
-
+        self.selected_date = None
+        self.date_picker_button.text = 'Выбрать дату'
         self.date_picker_button.disabled = False
+        self.time_dropdown_container.controls = []
+        self.time_dropdown_container.disabled = True
 
         self.page.update()
 
@@ -466,8 +468,13 @@ class BookingPage:
     def on_date_change(self, e):
         self.selected_date = e.control.value
         if self.selected_date:
+            self.date_picker_button.text = (
+                f"Выбранная дата: {self.selected_date.strftime('%d.%m.%Y')}"
+            )
             self.time_dropdown_container.disabled = False
             self.load_available_times()
+        else:
+            self.date_picker_button.text = 'Выбрать дату'
         self.page.update()
 
     def on_date_dismiss(self, e):
@@ -486,7 +493,44 @@ class BookingPage:
                 )
                 print(f'Доступное время: {all_times}')
 
-                self.available_times = self.parse_available_times(all_times)
+                current_datetime = datetime.datetime.now()
+                selected_date_as_date = self.selected_date.date()
+
+                filtered_times = []
+
+                for time_range in all_times:
+                    start_time = datetime.datetime.fromisoformat(time_range[0])
+                    end_time = datetime.datetime.fromisoformat(time_range[1])
+
+                    while start_time < end_time:
+                        if selected_date_as_date == current_datetime.date():
+                            if start_time > current_datetime:
+                                filtered_times.append(
+                                    [
+                                        start_time.isoformat(),
+                                        (
+                                            start_time
+                                            + datetime.timedelta(hours=1)
+                                        ).isoformat(),
+                                    ]
+                                )
+                        elif selected_date_as_date > current_datetime.date():
+                            filtered_times.append(
+                                [
+                                    start_time.isoformat(),
+                                    (
+                                        start_time
+                                        + datetime.timedelta(hours=1)
+                                    ).isoformat(),
+                                ]
+                            )
+                        start_time += datetime.timedelta(hours=1)
+
+                print(f'Отфильтрованные временные интервалы: {filtered_times}')
+
+                self.available_times = self.parse_available_times(
+                    filtered_times
+                )
                 print(f'Доступные временные интервалы: {self.available_times}')
 
                 if not self.available_times:
