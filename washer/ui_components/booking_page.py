@@ -503,8 +503,15 @@ class BookingPage:
                     end_time = datetime.datetime.fromisoformat(time_range[1])
 
                     while start_time < end_time:
+                        potential_end_time = start_time + datetime.timedelta(
+                            hours=2
+                        )
+
                         if selected_date_as_date == current_datetime.date():
-                            if start_time > current_datetime:
+                            if (
+                                start_time > current_datetime
+                                and potential_end_time <= end_time
+                            ):
                                 filtered_times.append(
                                     [
                                         start_time.isoformat(),
@@ -515,15 +522,16 @@ class BookingPage:
                                     ]
                                 )
                         elif selected_date_as_date > current_datetime.date():
-                            filtered_times.append(
-                                [
-                                    start_time.isoformat(),
-                                    (
-                                        start_time
-                                        + datetime.timedelta(hours=1)
-                                    ).isoformat(),
-                                ]
-                            )
+                            if potential_end_time <= end_time:
+                                filtered_times.append(
+                                    [
+                                        start_time.isoformat(),
+                                        (
+                                            start_time
+                                            + datetime.timedelta(hours=1)
+                                        ).isoformat(),
+                                    ]
+                                )
                         start_time += datetime.timedelta(hours=1)
 
                 print(f'Отфильтрованные временные интервалы: {filtered_times}')
