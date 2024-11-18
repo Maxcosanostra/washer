@@ -175,7 +175,7 @@ class CarWashEditPage:
                     content=ft.Text(
                         f"{self.car_wash['name']}",
                         size=24,
-                        weight='bold',
+                        weight=ft.FontWeight.BOLD,
                         text_align=ft.TextAlign.CENTER,
                     ),
                     padding=ft.padding.only(top=10),
@@ -309,7 +309,7 @@ class CarWashEditPage:
                             content=ft.Text(
                                 f'{self.total_revenue} ₸',
                                 size=40,
-                                weight='bold',
+                                weight=ft.FontWeight.BOLD,
                                 text_align=ft.TextAlign.CENTER,
                             ),
                             padding=ft.padding.all(20),
@@ -402,25 +402,25 @@ class CarWashEditPage:
             controls=[
                 ft.Text(
                     'Время начала',
-                    weight='bold',
+                    weight=ft.FontWeight.BOLD,
                     width=70,
                     text_align=ft.TextAlign.CENTER,
                 ),
                 ft.Text(
                     'Время окончания',
-                    weight='bold',
+                    weight=ft.FontWeight.BOLD,
                     width=90,
                     text_align=ft.TextAlign.CENTER,
                 ),
                 ft.Text(
                     'Бокс',
-                    weight='bold',
+                    weight=ft.FontWeight.BOLD,
                     width=70,
                     text_align=ft.TextAlign.CENTER,
                 ),
                 ft.Text(
                     'Статус',
-                    weight='bold',
+                    weight=ft.FontWeight.BOLD,
                     width=90,
                     text_align=ft.TextAlign.CENTER,
                 ),
@@ -489,7 +489,11 @@ class CarWashEditPage:
         return ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Text('Табло статусов букингов', size=24, weight='bold'),
+                    ft.Text(
+                        'Табло статусов букингов',
+                        size=24,
+                        weight=ft.FontWeight.BOLD,
+                    ),
                     *rows,
                 ],
                 spacing=10,
@@ -542,19 +546,19 @@ class CarWashEditPage:
             controls=[
                 ft.Text(
                     'Дата',
-                    weight='bold',
+                    weight=ft.FontWeight.BOLD,
                     width=80,
                     text_align=ft.TextAlign.CENTER,
                 ),
                 ft.Text(
                     'День недели',
-                    weight='bold',
+                    weight=ft.FontWeight.BOLD,
                     width=120,
                     text_align=ft.TextAlign.CENTER,
                 ),
                 ft.Text(
                     'Время',
-                    weight='bold',
+                    weight=ft.FontWeight.BOLD,
                     width=120,
                     text_align=ft.TextAlign.CENTER,
                 ),
@@ -606,7 +610,11 @@ class CarWashEditPage:
         return ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Text('Текущее расписание', size=24, weight='bold'),
+                    ft.Text(
+                        'Текущее расписание',
+                        size=24,
+                        weight=ft.FontWeight.BOLD,
+                    ),
                     *rows,
                 ],
                 spacing=10,
