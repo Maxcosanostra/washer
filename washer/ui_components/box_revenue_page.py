@@ -68,7 +68,7 @@ class BoxRevenuePage:
                 f"{self.current_date.strftime('%d.%m.%Y')} - "
                 f"бокс {self.box['name']}",
                 size=24,
-                weight='bold',
+                weight=ft.FontWeight.BOLD,
                 text_align=ft.TextAlign.CENTER,
             ),
             padding=ft.padding.symmetric(vertical=20),
@@ -133,13 +133,13 @@ class BoxRevenuePage:
                 controls=[
                     ft.Text(
                         'Итого:',
-                        weight='bold',
+                        weight=ft.FontWeight.BOLD,
                         expand=2,
                         text_align=ft.TextAlign.LEFT,
                     ),
                     ft.Text(
                         f'{total_revenue} ₸',
-                        weight='bold',
+                        weight=ft.FontWeight.BOLD,
                         expand=1,
                         text_align=ft.TextAlign.RIGHT,
                     ),
@@ -154,13 +154,13 @@ class BoxRevenuePage:
                 controls=[
                     ft.Text(
                         'Зарплата (40%):',
-                        weight='bold',
+                        weight=ft.FontWeight.BOLD,
                         expand=2,
                         text_align=ft.TextAlign.LEFT,
                     ),
                     ft.Text(
                         f'{salary} ₸',
-                        weight='bold',
+                        weight=ft.FontWeight.BOLD,
                         expand=1,
                         text_align=ft.TextAlign.RIGHT,
                     ),
@@ -175,13 +175,13 @@ class BoxRevenuePage:
                 controls=[
                     ft.Text(
                         'Чистая прибыль:',
-                        weight='bold',
+                        weight=ft.FontWeight.BOLD,
                         expand=2,
                         text_align=ft.TextAlign.LEFT,
                     ),
                     ft.Text(
                         f'{net_profit} ₸',
-                        weight='bold',
+                        weight=ft.FontWeight.BOLD,
                         expand=1,
                         text_align=ft.TextAlign.RIGHT,
                     ),
