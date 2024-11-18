@@ -99,7 +99,7 @@ class ArchivedSchedulePage:
             return ft.Text(
                 'Данные для завершенных дней отсутствуют.',
                 size=20,
-                weight='bold',
+                weight=ft.FontWeight.BOLD,
             )
 
         tabs = []
@@ -122,7 +122,7 @@ class ArchivedSchedulePage:
             content=ft.Text(
                 f'Сводка букингов за\n{date}',
                 size=24,
-                weight='bold',
+                weight=ft.FontWeight.BOLD,
                 text_align=ft.TextAlign.CENTER,
                 overflow=ft.TextOverflow.CLIP,
             ),
@@ -134,14 +134,30 @@ class ArchivedSchedulePage:
 
         table_header = ft.Row(
             controls=[
-                ft.Text('Бокс', weight='bold', width=80, text_align='center'),
                 ft.Text(
-                    'Время', weight='bold', width=100, text_align='center'
+                    'Бокс',
+                    weight=ft.FontWeight.BOLD,
+                    width=80,
+                    text_align='center',
                 ),
                 ft.Text(
-                    'Автомобиль', weight='bold', width=120, text_align='center'
+                    'Время',
+                    weight=ft.FontWeight.BOLD,
+                    width=100,
+                    text_align='center',
                 ),
-                ft.Text('Цена', weight='bold', width=80, text_align='center'),
+                ft.Text(
+                    'Автомобиль',
+                    weight=ft.FontWeight.BOLD,
+                    width=120,
+                    text_align='center',
+                ),
+                ft.Text(
+                    'Цена',
+                    weight=ft.FontWeight.BOLD,
+                    width=80,
+                    text_align='center',
+                ),
             ],
             alignment=ft.MainAxisAlignment.SPACE_AROUND,
         )
