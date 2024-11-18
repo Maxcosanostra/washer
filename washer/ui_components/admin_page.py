@@ -255,7 +255,7 @@ class AdminPage:
 
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, car_wash, self.api_url)
+        CarWashEditPage(self.page, car_wash, self.api_url, self.locations)
         load_edit_page(None)
 
     def on_logout_click(self, _):
