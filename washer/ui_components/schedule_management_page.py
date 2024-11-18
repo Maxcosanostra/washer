@@ -181,19 +181,19 @@ class ScheduleManagementPage:
                         controls=[
                             ft.Text(
                                 'Дата',
-                                weight='bold',
+                                weight=ft.FontWeight.BOLD,
                                 expand=1,
                                 text_align=ft.TextAlign.LEFT,
                             ),
                             ft.Text(
                                 'День недели',
-                                weight='bold',
+                                weight=ft.FontWeight.BOLD,
                                 expand=2,
                                 text_align=ft.TextAlign.LEFT,
                             ),
                             ft.Text(
                                 'Время',
-                                weight='bold',
+                                weight=ft.FontWeight.BOLD,
                                 expand=2,
                                 text_align=ft.TextAlign.LEFT,
                             ),
