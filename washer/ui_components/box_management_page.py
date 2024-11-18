@@ -4,11 +4,12 @@ from washer.ui_components.box_revenue_page import BoxRevenuePage
 
 
 class BoxManagementPage:
-    def __init__(self, page: ft.Page, car_wash, api_url, api):
+    def __init__(self, page: ft.Page, car_wash, api_url, api, locations):
         self.page = page
         self.car_wash = car_wash
         self.api_url = api_url
         self.api = api
+        self.locations = locations
         self.boxes_list = []
 
         app_bar = ft.AppBar(
@@ -288,4 +289,4 @@ class BoxManagementPage:
     def on_back_to_edit_page(self, e=None):
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, self.car_wash, self.api_url)
+        CarWashEditPage(self.page, self.car_wash, self.api_url, self.locations)
