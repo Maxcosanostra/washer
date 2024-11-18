@@ -187,7 +187,7 @@ class BookingPage:
                             ),
                             ft.Text(
                                 f"{self.car_wash['name']}",
-                                weight='bold',
+                                weight=ft.FontWeight.BOLD,
                                 size=20,
                                 text_align=ft.TextAlign.LEFT,
                             ),
