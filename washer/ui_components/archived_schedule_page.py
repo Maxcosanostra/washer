@@ -7,12 +7,13 @@ from washer.api_requests import BackendApi
 
 
 class ArchivedSchedulePage:
-    def __init__(self, page: ft.Page, car_wash, api_url):
+    def __init__(self, page: ft.Page, car_wash, api_url, locations):
         self.page = page
         self.car_wash = car_wash
         self.api = BackendApi()
         self.api.set_access_token(self.page.client_storage.get('access_token'))
         self.api_url = api_url
+        self.locations = locations
         self.schedule_data = []
         self.boxes_list = []
         self.bookings = []
@@ -218,4 +219,4 @@ class ArchivedSchedulePage:
     def on_back_click(self, e):
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, self.car_wash, self.api_url)
+        CarWashEditPage(self.page, self.car_wash, self.api_url, self.locations)
