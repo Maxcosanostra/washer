@@ -6,12 +6,13 @@ from washer.api_requests import BackendApi
 
 
 class ScheduleManagementPage:
-    def __init__(self, page: ft.Page, car_wash, api_url):
+    def __init__(self, page: ft.Page, car_wash, api_url, locations):
         self.page = page
         self.car_wash = car_wash
         self.api = BackendApi()
         self.api.set_access_token(self.page.client_storage.get('access_token'))
         self.api_url = api_url
+        self.locations = locations
 
         self.schedule_list = []
         self.selected_days = []
@@ -507,4 +508,4 @@ class ScheduleManagementPage:
     def on_back_to_edit_page(self, e=None):
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, self.car_wash, self.api_url)
+        CarWashEditPage(self.page, self.car_wash, self.api_url, self.locations)
