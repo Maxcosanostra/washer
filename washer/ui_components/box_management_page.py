@@ -109,7 +109,7 @@ class BoxManagementPage:
                     ft.Text(
                         box['name'],
                         size=16,
-                        weight='bold',
+                        weight=ft.FontWeight.BOLD,
                         text_align=ft.TextAlign.LEFT,
                         expand=True,
                     ),
