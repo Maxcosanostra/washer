@@ -172,7 +172,7 @@ class AdminPage:
                             ),
                             ft.Text(
                                 f"{car_wash['name']}",
-                                weight='bold',
+                                weight=ft.FontWeight.BOLD,
                                 size=20,
                                 text_align=ft.TextAlign.LEFT,
                             ),
