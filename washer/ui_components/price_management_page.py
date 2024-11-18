@@ -5,13 +5,20 @@ from washer.api_requests import BackendApi
 
 class PriceManagementPage:
     def __init__(
-        self, page: ft.Page, car_wash, api_url, body_type_dict, prices
+        self,
+        page: ft.Page,
+        car_wash,
+        api_url,
+        body_type_dict,
+        prices,
+        locations,
     ):
         self.page = page
         self.car_wash = car_wash
         self.api_url = api_url
         self.body_type_dict = body_type_dict
         self.price_list = prices
+        self.locations = locations
 
         self.api = BackendApi()
         access_token = self.page.client_storage.get('access_token')
@@ -315,4 +322,4 @@ class PriceManagementPage:
     def on_back_to_edit_page(self, e=None):
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, self.car_wash, self.api_url)
+        CarWashEditPage(self.page, self.car_wash, self.api_url, self.locations)
