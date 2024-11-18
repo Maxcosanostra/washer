@@ -15,12 +15,13 @@ from washer.ui_components.schedule_management_page import (
 
 
 class CarWashEditPage:
-    def __init__(self, page: ft.Page, car_wash, api_url):
+    def __init__(self, page: ft.Page, car_wash, api_url, locations):
         self.page = page
         self.car_wash = car_wash
         self.api = BackendApi()
         self.api.set_access_token(self.page.client_storage.get('access_token'))
         self.api_url = api_url
+        self.locations = locations
         self.selected_image = None
         self.selected_image_bytes = None
         self.body_type_dict = {}
@@ -150,6 +151,12 @@ class CarWashEditPage:
             self.total_revenue = 0
 
     def create_edit_page(self):
+        location_id = self.car_wash.get('location_id')
+        location = self.locations.get(location_id, {})
+        city = location.get('city', 'Неизвестный город')
+        address = location.get('address', 'Неизвестный адрес')
+        location_display = f'{city}, {address}'
+
         self.avatar_container = ft.Container(
             content=ft.Image(
                 src=self.car_wash['image_link'],
@@ -172,6 +179,15 @@ class CarWashEditPage:
                         text_align=ft.TextAlign.CENTER,
                     ),
                     padding=ft.padding.only(top=10),
+                ),
+                ft.Container(
+                    content=ft.Text(
+                        f'{location_display}',
+                        size=16,
+                        text_align=ft.TextAlign.CENTER,
+                        color=ft.colors.GREY,
+                    ),
+                    padding=ft.padding.only(bottom=10),
                 ),
                 ft.Row(
                     controls=[
@@ -482,7 +498,9 @@ class CarWashEditPage:
         )
 
     def on_view_archived_schedule_click(self, e):
-        ArchivedSchedulePage(self.page, self.car_wash, self.api_url)
+        ArchivedSchedulePage(
+            self.page, self.car_wash, self.api_url, self.locations
+        )
 
     def create_booking_button(self):
         return ft.Container(
@@ -511,7 +529,13 @@ class CarWashEditPage:
         from washer.ui_components.admin_booking_table import AdminBookingTable
 
         current_date = str(date.today())
-        AdminBookingTable(self.page, self.car_wash, self.api_url, current_date)
+        AdminBookingTable(
+            self.page,
+            self.car_wash,
+            self.api_url,
+            current_date,
+            locations=self.locations,
+        )
 
     def create_schedule_list_section(self):
         header = ft.Row(
@@ -626,7 +650,9 @@ class CarWashEditPage:
         )
 
     def on_schedule_button_click(self, e):
-        ScheduleManagementPage(self.page, self.car_wash, self.api_url)
+        ScheduleManagementPage(
+            self.page, self.car_wash, self.api_url, self.locations
+        )
 
     def create_boxes_button(self):
         return ft.Container(
@@ -654,7 +680,9 @@ class CarWashEditPage:
     def on_boxes_button_click(self, e):
         from washer.ui_components.box_management_page import BoxManagementPage
 
-        BoxManagementPage(self.page, self.car_wash, self.api_url, self.api)
+        BoxManagementPage(
+            self.page, self.car_wash, self.api_url, self.api, self.locations
+        )
 
     def create_prices_button(self):
         return ft.Container(
@@ -694,11 +722,18 @@ class CarWashEditPage:
 
         prices = self.load_prices()
         PriceManagementPage(
-            self.page, self.car_wash, self.api_url, self.body_type_dict, prices
+            self.page,
+            self.car_wash,
+            self.api_url,
+            self.body_type_dict,
+            prices,
+            self.locations,
         )
 
     def open_box_revenue_page(self, box):
-        BoxRevenuePage(self.page, box, self.car_wash, self.api_url)
+        BoxRevenuePage(
+            self.page, box, self.car_wash, self.api_url, self.locations
+        )
 
     def on_image_picked(self, e: ft.FilePickerResultEvent):
         if e.files:
