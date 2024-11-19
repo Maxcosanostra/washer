@@ -1,6 +1,4 @@
-import json
 import time
-from datetime import date
 
 import flet as ft
 import httpx
@@ -38,9 +36,6 @@ class AdminPage:
             bgcolor='rgba(0, 0, 0, 0.8)',
             expand=True,
         )
-
-        self.image_picker = ft.FilePicker(on_result=self.on_file_picked)
-        self.page.overlay.append(self.image_picker)
 
         self.car_washes_list_view = ft.ListView(
             controls=[],
@@ -180,17 +175,6 @@ class AdminPage:
                                 f'{location_display}',
                                 text_align=ft.TextAlign.LEFT,
                             ),
-                            ft.TextButton(
-                                'Изменить изображение',
-                                on_click=lambda _: self.change_image(
-                                    car_wash['id']
-                                ),
-                            ),
-                            ft.TextButton(
-                                'Посмотреть букинги',
-                                on_click=lambda e,
-                                cw=car_wash: self.open_booking_table_page(cw),
-                            ),
                         ],
                         spacing=10,
                     ),
@@ -202,51 +186,6 @@ class AdminPage:
             ),
             alignment=ft.alignment.center,
         )
-
-    def change_image(self, car_wash_id):
-        self.current_car_wash_id = car_wash_id
-        self.image_picker.pick_files(
-            allow_multiple=False, file_type=ft.FilePickerFileType.IMAGE
-        )
-
-    def on_file_picked(self, e: ft.FilePickerResultEvent):
-        if e.files:
-            self.selected_image = e.files[0].path
-            print(
-                f'Выбрано изображение: {self.selected_image} '
-                f'для автомойки {self.current_car_wash_id}'
-            )
-            self.update_car_wash_image(self.current_car_wash_id)
-
-    def update_car_wash_image(self, car_wash_id):
-        files = {'image': open(self.selected_image, 'rb')}
-        new_values = {'name': 'Spa Detailing', 'location_id': 1}
-
-        access_token = self.page.client_storage.get('access_token')
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-
-        api_url = f"{self.api_url.rstrip('/')}/car_washes/{car_wash_id}"
-        response = httpx.patch(
-            api_url,
-            files=files,
-            data={'new_values': json.dumps(new_values)},
-            headers=headers,
-        )
-
-        if response.status_code == 200:
-            print('Изображение успешно обновлено')
-            self.refresh_cache(car_wash_id, files['image'].name)
-        else:
-            print(f'Ошибка при обновлении изображения: {response.text}')
-
-    def refresh_cache(self, car_wash_id, new_image_link):
-        for car_wash in AdminPage.car_washes_cache:
-            if car_wash['id'] == car_wash_id:
-                car_wash['image_link'] = new_image_link
-                self.update_car_washes_list()
 
     def open_car_wash_edit_page(self, car_wash):
         def load_edit_page(_):
@@ -275,30 +214,3 @@ class AdminPage:
         SignInPage(self.page)
 
         delayed_hide_appbar()
-
-    def open_booking_table_page(self, car_wash):
-        def load_booking_table(_):
-            self.page.appbar = None
-            self.page.update()
-
-        from washer.ui_components.admin_booking_table import AdminBookingTable
-
-        if car_wash:
-            print(
-                f"Открываем страницу букингов для автомойки: "
-                f"{car_wash['name']} (ID: {car_wash['id']})"
-            )
-        else:
-            print('Ошибка: car_wash не передан!')
-
-        current_date = str(date.today())
-
-        if not car_wash.get('id'):
-            print('Ошибка: ID автомойки не найден')
-            return
-        if not self.api_url:
-            print('Ошибка: API URL не передан')
-            return
-
-        AdminBookingTable(self.page, car_wash, self.api_url, current_date)
-        load_booking_table(None)
