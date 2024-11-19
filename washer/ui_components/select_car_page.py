@@ -36,6 +36,14 @@ class SelectCarPage:
         self.load_brands()
         self.setup_snack_bar()
 
+    def redirect_to_sign_in_page(self):
+        print('Redirecting to sign-in page...')
+        self.page.client_storage.remove('access_token')
+        self.page.client_storage.remove('refresh_token')
+        from washer.ui_components.sign_in_page import SignInPage
+
+        SignInPage(self.page)
+
     def create_add_car_appbar(self):
         return ft.AppBar(
             leading=ft.IconButton(
