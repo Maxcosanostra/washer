@@ -160,8 +160,8 @@ class CarWashEditPage:
         self.avatar_container = ft.Container(
             content=ft.Image(
                 src=self.car_wash['image_link'],
-                width=200,
-                height=200,
+                width=150,
+                height=150,
                 fit=ft.ImageFit.COVER,
                 border_radius=ft.border_radius.all(100),
             ),
@@ -247,7 +247,7 @@ class CarWashEditPage:
                                         on_click=self.on_prices_button_click,
                                     ),
                                     ft.Text(
-                                        'Цены',
+                                        'Прайс',
                                         size=12,
                                         text_align=ft.TextAlign.CENTER,
                                     ),
@@ -490,7 +490,7 @@ class CarWashEditPage:
             content=ft.Column(
                 controls=[
                     ft.Text(
-                        'Табло статусов букингов',
+                        'Статус букингов',
                         size=24,
                         weight=ft.FontWeight.BOLD,
                     ),
@@ -753,8 +753,8 @@ class CarWashEditPage:
 
             self.avatar_container.content = ft.Image(
                 src=self.selected_image,
-                width=200,
-                height=200,
+                width=150,
+                height=150,
                 fit=ft.ImageFit.COVER,
                 border_radius=ft.border_radius.all(100),
             )
@@ -805,11 +805,13 @@ class CarWashEditPage:
             self.car_wash['image_link'] = response.json().get(
                 'image_link', self.car_wash['image_link']
             )
-            self.image_element.src = self.car_wash['image_link']
-            self.page.update()
-
-            self.page.clean()
-            self.page.add(self.create_edit_page())
+            self.avatar_container.content = ft.Image(
+                src=self.car_wash['image_link'],
+                width=150,
+                height=150,
+                fit=ft.ImageFit.COVER,
+                border_radius=ft.border_radius.all(100),
+            )
             self.page.update()
         else:
             print(f'Ошибка при загрузке изображения: {response.text}')
