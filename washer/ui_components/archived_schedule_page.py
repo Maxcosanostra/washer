@@ -138,31 +138,32 @@ class ArchivedSchedulePage:
                     'Бокс',
                     weight=ft.FontWeight.BOLD,
                     width=80,
-                    text_align='center',
+                    text_align=ft.TextAlign.CENTER,
                 ),
                 ft.Text(
                     'Время',
                     weight=ft.FontWeight.BOLD,
                     width=100,
-                    text_align='center',
+                    text_align=ft.TextAlign.CENTER,
                 ),
                 ft.Text(
                     'Автомобиль',
                     weight=ft.FontWeight.BOLD,
                     width=120,
-                    text_align='center',
+                    text_align=ft.TextAlign.CENTER,
                 ),
                 ft.Text(
                     'Цена',
                     weight=ft.FontWeight.BOLD,
                     width=80,
-                    text_align='center',
+                    text_align=ft.TextAlign.CENTER,
                 ),
             ],
             alignment=ft.MainAxisAlignment.SPACE_AROUND,
         )
 
         rows = [header, table_header]
+        total_price = 0
 
         for booking in bookings:
             box_name = booking['box_name']
@@ -173,22 +174,57 @@ class ArchivedSchedulePage:
                 booking['end_datetime']
             ).strftime('%H:%M')
             car_name = booking.get('car_name', 'Неизвестно')
-            price = booking.get('price', 'Не указана')
+            price = booking.get('price', 0)
+
+            total_price += float(price) if price else 0
 
             row = ft.Row(
                 controls=[
-                    ft.Text(box_name, width=80, text_align='center'),
+                    ft.Text(
+                        box_name, width=80, text_align=ft.TextAlign.CENTER
+                    ),
                     ft.Text(
                         f'{start_time} - {end_time}',
                         width=100,
-                        text_align='center',
+                        text_align=ft.TextAlign.CENTER,
                     ),
-                    ft.Text(car_name, width=120, text_align='center'),
-                    ft.Text(f'₸{price}', width=80, text_align='center'),
+                    ft.Text(
+                        car_name, width=120, text_align=ft.TextAlign.CENTER
+                    ),
+                    ft.Text(
+                        f'₸{price}', width=80, text_align=ft.TextAlign.CENTER
+                    ),
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_AROUND,
             )
             rows.append(row)
+
+        rows.append(
+            ft.Container(
+                height=10,
+            )
+        )
+
+        total_row = ft.Row(
+            controls=[
+                ft.Text(
+                    'Итого',
+                    weight=ft.FontWeight.BOLD,
+                    width=80,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Text('', width=100),
+                ft.Text('', width=120),
+                ft.Text(
+                    f'₸{int(total_price)}',
+                    weight=ft.FontWeight.BOLD,
+                    width=80,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_AROUND,
+        )
+        rows.append(total_row)
 
         delete_button = ft.Container(
             content=ft.ElevatedButton(
