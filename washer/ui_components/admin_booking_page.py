@@ -9,7 +9,14 @@ from washer.config import config
 
 class AdminSelectCarPage:
     def __init__(
-        self, page: ft.Page, on_car_saved, car_wash, box_id, date, time
+        self,
+        page: ft.Page,
+        on_car_saved,
+        car_wash,
+        box_id,
+        date,
+        time,
+        locations=None,
     ):
         self.page = page
         self.api_url = config.api_url
@@ -31,6 +38,7 @@ class AdminSelectCarPage:
         self.box_id = box_id
         self.date = date
         self.time = time
+        self.locations = locations
         self.api = BackendApi()
         self.api.set_access_token(self.page.client_storage.get('access_token'))
 
