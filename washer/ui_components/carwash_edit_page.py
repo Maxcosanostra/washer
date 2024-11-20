@@ -24,9 +24,14 @@ class CarWashEditPage:
         self.locations = locations
         self.selected_image = None
         self.selected_image_bytes = None
+        self.original_image = self.car_wash['image_link']
         self.body_type_dict = {}
         self.total_revenue = 0
         self.boxes_list = []
+
+        self.show_change_button = False
+        self.show_save_button = False
+        self.show_cancel_button = False
 
         self.page.adaptive = True
 
@@ -58,13 +63,6 @@ class CarWashEditPage:
 
         self.image_picker = ft.FilePicker(on_result=self.on_image_picked)
         self.page.overlay.append(self.image_picker)
-
-        self.image_element = ft.Image(
-            src=self.car_wash['image_link'],
-            width=300,
-            height=200,
-            fit=ft.ImageFit.COVER,
-        )
 
         self.load_boxes()
         self.load_body_types()
@@ -166,11 +164,43 @@ class CarWashEditPage:
                 border_radius=ft.border_radius.all(100),
             ),
             alignment=ft.alignment.center,
+            on_click=self.on_avatar_click,
+        )
+
+        self.change_button = ft.TextButton(
+            text='Изменить изображение',
+            on_click=lambda _: self.image_picker.pick_files(
+                allow_multiple=False,
+                file_type=ft.FilePickerFileType.IMAGE,
+            ),
+            visible=self.show_change_button,
+        )
+
+        self.save_button = ft.TextButton(
+            text='Сохранить',
+            on_click=self.on_save_click,
+            style=ft.ButtonStyle(color=ft.colors.WHITE),
+            visible=self.show_save_button,
+        )
+
+        self.cancel_button = ft.TextButton(
+            text='Отменить',
+            on_click=self.on_cancel_click,
+            style=ft.ButtonStyle(color=ft.colors.RED),
+            visible=self.show_cancel_button,
         )
 
         return ft.ListView(
             controls=[
                 self.avatar_container,
+                ft.Row(
+                    controls=[
+                        self.change_button,
+                        self.save_button,
+                        self.cancel_button,
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
                 ft.Container(
                     content=ft.Text(
                         f"{self.car_wash['name']}",
@@ -193,114 +223,39 @@ class CarWashEditPage:
                     controls=[
                         ft.Container(
                             content=ft.Icon(
-                                ft.icons.UPLOAD, size=30, color='#ef7b00'
+                                ft.icons.DIRECTIONS_CAR,
+                                size=50,
+                                color='#ef7b00',
                             ),
-                            on_click=lambda _: self.image_picker.pick_files(
-                                allow_multiple=False,
-                                file_type=ft.FilePickerFileType.IMAGE,
-                            ),
-                            tooltip='Загрузить новое изображение',
+                            on_click=self.on_boxes_button_click,
                         ),
                         ft.Container(
                             content=ft.Icon(
-                                ft.icons.SAVE, size=30, color='#ef7b00'
+                                ft.icons.ATTACH_MONEY,
+                                size=50,
+                                color='#ef7b00',
                             ),
-                            on_click=self.on_save_click,
-                            tooltip='Сохранить изменения',
+                            on_click=self.on_prices_button_click,
+                        ),
+                        ft.Container(
+                            content=ft.Icon(
+                                ft.icons.CALENDAR_TODAY,
+                                size=50,
+                                color='#ef7b00',
+                            ),
+                            on_click=self.on_schedule_button_click,
+                        ),
+                        ft.Container(
+                            content=ft.Icon(
+                                ft.icons.VIEW_LIST,
+                                size=50,
+                                color='#ef7b00',
+                            ),
+                            on_click=self.on_booking_button_click,
                         ),
                     ],
-                    alignment=ft.MainAxisAlignment.CENTER,
+                    alignment=ft.MainAxisAlignment.SPACE_EVENLY,
                     spacing=10,
-                ),
-                ft.Divider(),
-                ft.Container(
-                    content=ft.Row(
-                        controls=[
-                            ft.Column(
-                                controls=[
-                                    ft.Container(
-                                        content=ft.Icon(
-                                            ft.icons.DIRECTIONS_CAR,
-                                            size=50,
-                                            color='#ef7b00',
-                                        ),
-                                        on_click=self.on_boxes_button_click,
-                                    ),
-                                    ft.Text(
-                                        'Боксы',
-                                        size=12,
-                                        text_align=ft.TextAlign.CENTER,
-                                    ),
-                                ],
-                                alignment=ft.MainAxisAlignment.CENTER,
-                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                width=80,
-                            ),
-                            ft.Column(
-                                controls=[
-                                    ft.Container(
-                                        content=ft.Icon(
-                                            ft.icons.ATTACH_MONEY,
-                                            size=50,
-                                            color='#ef7b00',
-                                        ),
-                                        on_click=self.on_prices_button_click,
-                                    ),
-                                    ft.Text(
-                                        'Прайс',
-                                        size=12,
-                                        text_align=ft.TextAlign.CENTER,
-                                    ),
-                                ],
-                                alignment=ft.MainAxisAlignment.CENTER,
-                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                width=80,
-                            ),
-                            ft.Column(
-                                controls=[
-                                    ft.Container(
-                                        content=ft.Icon(
-                                            ft.icons.CALENDAR_TODAY,
-                                            size=50,
-                                            color='#ef7b00',
-                                        ),
-                                        on_click=self.on_schedule_button_click,
-                                    ),
-                                    ft.Text(
-                                        'Расписание',
-                                        size=12,
-                                        text_align=ft.TextAlign.CENTER,
-                                    ),
-                                ],
-                                alignment=ft.MainAxisAlignment.CENTER,
-                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                width=80,
-                            ),
-                            ft.Column(
-                                controls=[
-                                    ft.Container(
-                                        content=ft.Icon(
-                                            ft.icons.VIEW_LIST,
-                                            size=50,
-                                            color='#ef7b00',
-                                        ),
-                                        on_click=self.on_booking_button_click,
-                                    ),
-                                    ft.Text(
-                                        'Букинги',
-                                        size=12,
-                                        text_align=ft.TextAlign.CENTER,
-                                    ),
-                                ],
-                                alignment=ft.MainAxisAlignment.CENTER,
-                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                width=80,
-                            ),
-                        ],
-                        alignment=ft.MainAxisAlignment.SPACE_EVENLY,
-                        spacing=10,
-                    ),
-                    padding=ft.padding.only(left=0, right=15),
                 ),
                 ft.Divider(),
                 ft.Container(
@@ -328,9 +283,7 @@ class CarWashEditPage:
                 ft.TextButton(
                     text='Архив расписаний',
                     on_click=self.on_view_archived_schedule_click,
-                    style=ft.ButtonStyle(
-                        color='#ef7b00',
-                    ),
+                    style=ft.ButtonStyle(color='#ef7b00'),
                     expand=True,
                 ),
             ],
@@ -743,13 +696,20 @@ class CarWashEditPage:
             self.page, box, self.car_wash, self.api_url, self.locations
         )
 
+    def on_avatar_click(self, e):
+        self.show_change_button = not self.show_change_button
+        self.update_button_visibility(
+            show_change=self.show_change_button,
+            show_save=False,
+            show_cancel=False,
+        )
+
     def on_image_picked(self, e: ft.FilePickerResultEvent):
         if e.files:
+            self.original_image = self.car_wash['image_link']
             self.selected_image = e.files[0].path
             if hasattr(e.files[0], 'bytes') and e.files[0].bytes:
                 self.selected_image_bytes = e.files[0].bytes
-            else:
-                self.selected_image = e.files[0].path
 
             self.avatar_container.content = ft.Image(
                 src=self.selected_image,
@@ -758,12 +718,48 @@ class CarWashEditPage:
                 fit=ft.ImageFit.COVER,
                 border_radius=ft.border_radius.all(100),
             )
+            self.update_button_visibility(
+                show_change=False,
+                show_save=True,
+                show_cancel=True,
+            )
             self.page.update()
+
+    def on_cancel_click(self, e):
+        self.avatar_container.content = ft.Image(
+            src=self.original_image,
+            width=150,
+            height=150,
+            fit=ft.ImageFit.COVER,
+            border_radius=ft.border_radius.all(100),
+        )
+        self.update_button_visibility(
+            show_change=False,
+            show_save=False,
+            show_cancel=False,
+        )
+        self.page.update()
 
     def on_save_click(self, e):
         if self.selected_image or self.selected_image_bytes:
             self.show_loading()
             self.upload_image()
+            self.update_button_visibility(
+                show_change=False,
+                show_save=False,
+                show_cancel=False,
+            )
+
+    def update_button_visibility(self, show_change, show_save, show_cancel):
+        self.show_change_button = show_change
+        self.show_save_button = show_save
+        self.show_cancel_button = show_cancel
+
+        self.change_button.visible = show_change
+        self.save_button.visible = show_save
+        self.cancel_button.visible = show_cancel
+
+        self.page.update()
 
     def upload_image(self):
         files = None
