@@ -9,7 +9,13 @@ from washer.api_requests import BackendApi
 
 class AdminBookingTable:
     def __init__(
-        self, page: ft.Page, car_wash, api_url, date, selected_date=None
+        self,
+        page: ft.Page,
+        car_wash,
+        api_url,
+        date,
+        selected_date=None,
+        locations=None,
     ):
         self.page = page
         self.car_wash = car_wash
@@ -18,6 +24,7 @@ class AdminBookingTable:
         self.api_url = api_url
         self.date = date
         self.selected_date = selected_date
+        self.locations = locations
         self.schedule_data = []
         self.dates_storage = {}
         self.boxes_list = []
@@ -98,6 +105,11 @@ class AdminBookingTable:
                 datetime.datetime.combine(datetime.date.today(), start_time)
                 + datetime.timedelta(hours=1)
             ).time()
+
+        if start_time == end_time:
+            timeslots.append(end_time.strftime('%H:%M'))
+
+        print(f'Сгенерированные временные слоты: {timeslots}')
         return timeslots
 
     def load_schedules(self):
@@ -262,7 +274,6 @@ class AdminBookingTable:
         skip_slots = {}
         for time in timeslots:
             row_controls = [ft.Text(time, weight='bold', width=100, height=40)]
-
             current_date = self.dates_storage[schedule['day_of_week']]
 
             for box in self.boxes_list:
@@ -306,6 +317,7 @@ class AdminBookingTable:
                     end_time = datetime.datetime.strptime(
                         booking['end_datetime'], '%Y-%m-%dT%H:%M:%S'
                     ).time()
+
                     duration_slots = int(
                         (
                             datetime.datetime.combine(
@@ -333,10 +345,9 @@ class AdminBookingTable:
                             on_click=lambda e,
                             booking=booking: self.open_booking_details_dialog(
                                 booking
-                            ),  # Открываем детали по клику
+                            ),
                         )
                     )
-
                 else:
                     box_times = self.available_times.get(
                         str(current_date), {}
@@ -347,7 +358,7 @@ class AdminBookingTable:
                     )
 
                     if is_available:
-                        color = ft.colors.GREEN
+                        color = ft.colors.BLUE
                         text = 'Свободно'
                         row_controls.append(
                             ft.Container(
@@ -452,4 +463,4 @@ class AdminBookingTable:
     def on_back_click(self, e):
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, self.car_wash, self.api_url)
+        CarWashEditPage(self.page, self.car_wash, self.api_url, self.locations)
