@@ -1,6 +1,7 @@
-import flet as ft
+import datetime
 
-from washer.ui_components.box_revenue_page import BoxRevenuePage
+import flet as ft
+import httpx
 
 
 class BoxManagementPage:
@@ -11,6 +12,8 @@ class BoxManagementPage:
         self.api = api
         self.locations = locations
         self.boxes_list = []
+        self.current_tab_index = 0
+        self.tab_contents = {}
 
         app_bar = ft.AppBar(
             leading=ft.Row(
@@ -42,8 +45,7 @@ class BoxManagementPage:
         self.load_boxes()
         self.page.clean()
         self.page.add(app_bar)
-        self.page.add(self.create_box_management_page())
-        self.page.overlay.append(self.loading_overlay)
+        self.page.add(self.create_box_management_tabs())
 
     def show_loading(self):
         self.loading_overlay.visible = True
@@ -54,71 +56,197 @@ class BoxManagementPage:
         self.page.update()
 
     def load_boxes(self):
-        self.show_loading()
-        response = self.api.get_boxes(self.car_wash['id'])
-        if response.status_code == 200:
-            all_boxes = response.json().get('data', [])
-            self.boxes_list = [
-                box
-                for box in all_boxes
-                if box['car_wash_id'] == self.car_wash['id']
-            ]
-        else:
-            print(f'Ошибка загрузки боксов: {response.text}')
-        self.hide_loading()
+        try:
+            response = self.api.get_boxes(self.car_wash['id'])
+            if response.status_code == 200:
+                self.boxes_list = response.json().get('data', [])
+                print(f'Успешно загружены боксы: {self.boxes_list}')
+            else:
+                print(f'Ошибка загрузки боксов: {response.text}')
+        except Exception as e:
+            print(f'Ошибка при загрузке боксов: {e}')
 
-    def create_box_management_page(self):
-        return ft.ListView(
-            controls=[
-                # ft.Container(
-                #     content=ft.Row(
-                #         [
-                #             ft.IconButton(
-                #                 icon=ft.icons.ARROW_BACK,
-                #                 icon_size=30,
-                #                 on_click=self.on_back_to_edit_page,
-                #             ),
-                #             ft.Text('Назад', size=16),
-                #         ],
-                #         alignment=ft.MainAxisAlignment.START,
-                #     ),
-                #     expand=0,
-                #     padding=ft.padding.symmetric(vertical=20),
-                # ),
-                ft.Text(
-                    'Управление боксами', size=24, weight=ft.FontWeight.BOLD
-                ),
-                ft.Column(
-                    controls=[
-                        self.create_box_item_ui(box) for box in self.boxes_list
-                    ],
-                    alignment=ft.MainAxisAlignment.START,
-                    spacing=10,
-                ),
-                self.create_add_box_ui(),
-            ],
-            spacing=20,
-            padding=ft.padding.symmetric(horizontal=20),
-            expand=True,
+    def load_boxes_and_refresh(self):
+        try:
+            self.load_boxes()
+            self.refresh_tabs()
+        except Exception as e:
+            print(f'Ошибка при загрузке боксов и обновлении вкладок: {e}')
+        finally:
+            self.hide_loading()
+
+    def load_bookings(self, box):
+        try:
+            access_token = self.page.client_storage.get('access_token')
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Accept': 'application/json',
+            }
+            url = (
+                f"{self.api_url.rstrip('/')}/car_washes/bookings"
+                f"?car_wash_id={self.car_wash['id']}&limit=1000"
+            )
+            response = httpx.get(url, headers=headers)
+
+            if response.status_code == 200:
+                bookings_data = response.json().get('data', [])
+                current_date = datetime.date.today()
+                current_time = datetime.datetime.now()
+                return [
+                    booking
+                    for booking in bookings_data
+                    if booking['box_id'] == box['id']
+                    and booking['start_datetime'].startswith(
+                        current_date.strftime('%Y-%m-%d')
+                    )
+                    and datetime.datetime.fromisoformat(
+                        booking['end_datetime']
+                    )
+                    < current_time
+                ]
+            else:
+                print(
+                    f'Ошибка загрузки букингов: '
+                    f'{response.status_code}, {response.text}'
+                )
+        except Exception as e:
+            print(f'Ошибка при загрузке букингов: {e}')
+        return []
+
+    def create_box_management_tabs(self):
+        self.tab_contents = {}
+
+        tabs = [
+            ft.Tab(
+                text=box['name'],
+                content=self.create_box_tab_content(box),
+            )
+            for box in self.boxes_list
+        ]
+
+        for i, box in enumerate(self.boxes_list):
+            self.tab_contents[box['id']] = tabs[i].content
+
+        tabs.append(
+            ft.Tab(
+                text='Добавить бокс',
+                content=self.create_add_box_ui(),
+            )
         )
 
-    def create_box_item_ui(self, box):
-        box_container = ft.Container(
-            content=ft.Row(
+        return ft.Tabs(
+            tabs=tabs,
+            expand=True,
+            selected_index=self.current_tab_index,
+            on_change=self.on_tab_change,
+        )
+
+    def create_box_tab_content(self, box):
+        bookings = self.load_bookings(box)
+
+        booking_rows = []
+        total_revenue = 0
+
+        for index, booking in enumerate(bookings, start=1):
+            service_name = booking.get('service_name', 'Не указано')
+            price = round(float(booking.get('price', 0)))
+            time = datetime.datetime.strptime(
+                booking.get('start_datetime', 'Не указано'),
+                '%Y-%m-%dT%H:%M:%S',
+            ).strftime('%H:%M')
+            total_revenue += price
+
+            booking_rows.append(
+                ft.Row(
+                    controls=[
+                        ft.Text(
+                            f'{index}. {time}',
+                            expand=1,
+                            text_align=ft.TextAlign.LEFT,
+                        ),
+                        ft.Text(
+                            service_name,
+                            expand=2,
+                            text_align=ft.TextAlign.LEFT,
+                        ),
+                        ft.Text(
+                            f'{price} ₸',
+                            expand=1,
+                            text_align=ft.TextAlign.RIGHT,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                )
+            )
+
+        salary = round(total_revenue * 0.4)
+        net_profit = total_revenue - salary
+
+        rows = [
+            ft.Container(
+                content=ft.Text(
+                    f"Бокс: {box['name']}",
+                    size=24,
+                    weight=ft.FontWeight.BOLD,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                alignment=ft.alignment.center,
+                padding=ft.padding.only(bottom=10),
+            ),
+            *booking_rows,
+            ft.Row(
                 controls=[
                     ft.Text(
-                        box['name'],
-                        size=16,
+                        'Итого:',
                         weight=ft.FontWeight.BOLD,
+                        expand=2,
                         text_align=ft.TextAlign.LEFT,
-                        expand=True,
                     ),
-                    ft.IconButton(
-                        icon=ft.icons.RECEIPT_LONG,
-                        on_click=lambda _: self.open_box_revenue_page(box),
-                        icon_size=20,
-                        tooltip='Посмотреть выручку',
+                    ft.Text(
+                        f'{total_revenue} ₸',
+                        weight=ft.FontWeight.BOLD,
+                        expand=1,
+                        text_align=ft.TextAlign.RIGHT,
                     ),
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            ),
+            ft.Row(
+                controls=[
+                    ft.Text(
+                        'Зарплата (40%):',
+                        weight=ft.FontWeight.BOLD,
+                        expand=2,
+                        text_align=ft.TextAlign.LEFT,
+                    ),
+                    ft.Text(
+                        f'{salary} ₸',
+                        weight=ft.FontWeight.BOLD,
+                        expand=1,
+                        text_align=ft.TextAlign.RIGHT,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            ),
+            ft.Row(
+                controls=[
+                    ft.Text(
+                        'Чистая прибыль:',
+                        weight=ft.FontWeight.BOLD,
+                        expand=2,
+                        text_align=ft.TextAlign.LEFT,
+                    ),
+                    ft.Text(
+                        f'{net_profit} ₸',
+                        weight=ft.FontWeight.BOLD,
+                        expand=1,
+                        text_align=ft.TextAlign.RIGHT,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            ),
+            ft.Row(
+                controls=[
                     ft.IconButton(
                         icon=ft.icons.EDIT,
                         on_click=lambda _: self.show_edit_name_modal(box),
@@ -134,157 +262,261 @@ class BoxManagementPage:
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
-            padding=ft.padding.all(10),
-            margin=ft.margin.only(bottom=10),
-            border_radius=ft.border_radius.all(8),
-            bgcolor=ft.colors.GREY_900,
-            shadow=ft.BoxShadow(
-                offset=ft.Offset(0, 2),
-                blur_radius=4,
-                color=ft.colors.GREY_700,
+        ]
+
+        return ft.Container(
+            content=ft.ListView(
+                controls=rows,
+                padding=ft.padding.all(10),
+                spacing=5,
             ),
-            width=300,
-        )
-        return box_container
-
-    def open_box_revenue_page(self, box):
-        BoxRevenuePage(self.page, box, self.car_wash, self.api_url)
-
-    def show_edit_name_modal(self, box):
-        name_field = ft.TextField(
-            label='Новое имя бокса',
-            value=box['name'],
-            width=300,
-        )
-        save_button = ft.ElevatedButton(
-            text='Сохранить',
-            on_click=lambda e: self.on_save_box(box, name_field.value),
-        )
-        close_button = ft.TextButton(text='Отмена', on_click=self.close_modal)
-
-        self.modal_container = ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Text('Редактировать имя бокса', size=18),
-                    name_field,
-                    ft.Row(
-                        controls=[save_button, close_button],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                    ),
-                ],
-                alignment=ft.alignment.center,
-            ),
-            padding=ft.padding.all(10),
-            alignment=ft.alignment.center,
-            bgcolor=ft.colors.GREY_900,
+            expand=True,
+            padding=ft.padding.symmetric(horizontal=20),
         )
 
-        self.page.controls.append(self.modal_container)
+    def update_tab_content(self, box):
+        if box['id'] in self.tab_contents:
+            self.tab_contents[box['id']].content = self.create_box_tab_content(
+                box
+            )
+            self.tab_contents[box['id']].update()
+
+    def refresh_tabs(self):
+        while len(self.page.controls) > 1:
+            self.page.controls.pop()
+
+        tabs = self.create_box_management_tabs()
+        self.page.add(tabs)
         self.page.update()
 
-    def close_modal(self, e=None):
-        if self.modal_container in self.page.controls:
-            self.page.controls.remove(self.modal_container)
-        self.page.update()
+    def on_tab_change(self, e):
+        self.current_tab_index = e.control.selected_index
 
     def create_add_box_ui(self):
+        add_box_field = ft.TextField(
+            label='Имя нового бокса',
+            width=300,
+            text_size=15,
+            height=60,
+            border_radius=ft.border_radius.all(30),
+            content_padding=ft.padding.only(
+                left=20, top=5, right=10, bottom=5
+            ),
+            text_align=ft.TextAlign.CENTER,
+            autofocus=True,
+        )
+        add_box_button = ft.TextButton(
+            text='Сохранить',
+            on_click=lambda e: self.on_add_box(add_box_field.value),
+        )
+
+        content = ft.Column(
+            controls=[
+                ft.Text(
+                    'Добавить новый бокс',
+                    size=18,
+                    weight=ft.FontWeight.BOLD,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                add_box_field,
+                ft.Row(
+                    controls=[add_box_button],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
+            ],
+            spacing=20,
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+
         return ft.Container(
-            content=ft.IconButton(
-                icon=ft.icons.CREATE,
-                icon_size=30,
-                tooltip='Добавить новый бокс',
-                on_click=self.show_add_box_field,
-            ),
+            content=content,
             alignment=ft.alignment.center,
-            padding=ft.padding.all(10),
+            padding=ft.padding.all(20),
         )
 
-    def show_add_box_field(self, e):
-        self.add_box_field = ft.TextField(
-            label='Имя нового бокса', width=200, text_align=ft.TextAlign.CENTER
-        )
-        self.add_box_button = ft.TextButton(
-            text='Сохранить', on_click=self.on_add_box_from_modal
-        )
-        self.close_button = ft.TextButton(
-            text='Отмена', on_click=self.close_modal
-        )
-
-        self.modal_container = ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Container(
-                        content=ft.Text(
-                            'Добавить новый бокс',
-                            size=18,
-                            text_align=ft.TextAlign.CENTER,
-                        ),
-                        alignment=ft.alignment.center,
-                    ),
-                    ft.Container(
-                        content=self.add_box_field,
-                        alignment=ft.alignment.center,
-                    ),
-                    ft.Row(
-                        controls=[self.add_box_button, self.close_button],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-            ),
-            padding=ft.padding.all(10),
-            alignment=ft.alignment.center,
-            bgcolor=ft.colors.GREY_900,
-        )
-
-        self.page.controls.append(self.modal_container)
-        self.page.update()
-
-    def on_add_box_from_modal(self, e):
+    def on_add_box(self, box_name):
         self.show_loading()
         new_box_data = {
-            'name': self.add_box_field.value,
+            'name': box_name,
             'car_wash_id': self.car_wash['id'],
             'user_id': 1,
         }
 
         response = self.api.create_box(new_box_data)
         if response.status_code == 200:
-            print(f"Бокс '{self.add_box_field.value}' успешно добавлен.")
-            self.close_modal(e)
-            self.load_boxes()
-            self.page.controls.clear()
-            self.page.add(self.create_box_management_page())
-            self.page.update()
+            print(f"Бокс '{box_name}' успешно добавлен.")
+            new_box = response.json().get('data', {})
+
+            if not new_box:
+                print('Сервер вернул пустой ответ. Обновляем список боксов...')
+                self.load_boxes_and_refresh()
+            else:
+                self.boxes_list.append(new_box)
+                self.add_new_tab(new_box)
         else:
             print(f'Ошибка добавления бокса: {response.text}')
         self.hide_loading()
 
+    def add_new_tab(self, box):
+        try:
+            new_tab_content = self.create_box_tab_content(box)
+            self.tab_contents[box['id']] = new_tab_content
+
+            tabs_control = self.page.controls[-1]
+            if isinstance(tabs_control, ft.Tabs):
+                tabs_control.tabs.insert(
+                    len(tabs_control.tabs) - 1,
+                    ft.Tab(
+                        text=box['name'],
+                        content=new_tab_content,
+                    ),
+                )
+                tabs_control.update()
+        except KeyError as e:
+            print(f'Ошибка при создании вкладки: отсутствует ключ {e}')
+
+    def refresh_page(self):
+        self.page.clean()
+        self.page.add(self.create_box_management_tabs())
+        self.page.update()
+
     def on_delete_box(self, box_id):
+        def confirm_delete(e):
+            self.page.close(dlg_modal)
+            self.delete_box_from_server(box_id)
+
+        def cancel_delete(e):
+            self.page.close(dlg_modal)
+
+        dlg_modal = ft.AlertDialog(
+            modal=True,
+            title=ft.Container(
+                content=ft.Text(
+                    'Подтверждение удаления',
+                    text_align=ft.TextAlign.CENTER,
+                    size=16,
+                    weight=ft.FontWeight.BOLD,
+                ),
+                margin=ft.margin.only(bottom=7),
+            ),
+            content=ft.Container(
+                content=ft.Text(
+                    'Вы уверены, что хотите удалить этот бокс?',
+                    text_align=ft.TextAlign.CENTER,
+                    size=14,
+                ),
+                alignment=ft.alignment.center,
+            ),
+            actions=[
+                ft.TextButton('Да', on_click=confirm_delete),
+                ft.TextButton(
+                    content=ft.Text('Нет', color=ft.colors.RED),
+                    on_click=cancel_delete,
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        self.page.open(dlg_modal)
+
+    def delete_box_from_server(self, box_id):
         self.show_loading()
         response = self.api.delete_box(box_id)
         if response.status_code == 200:
-            print(f'Бокс с ID {box_id} успешно удален.')
-            self.load_boxes()
-            self.page.controls.clear()
-            self.page.add(self.create_box_management_page())
-            self.page.update()
+            print(f'Бокс с ID {box_id} успешно удалён.')
+            self.boxes_list = [
+                box for box in self.boxes_list if box['id'] != box_id
+            ]
+            self.refresh_tabs()
         else:
             print(f'Ошибка при удалении бокса: {response.text}')
         self.hide_loading()
 
+    def show_edit_name_modal(self, box):
+        name_field = ft.TextField(
+            label='Новое имя бокса',
+            value=box['name'],
+            width=300,
+            text_size=15,
+            height=60,
+            border_radius=ft.border_radius.all(30),
+            content_padding=ft.padding.only(
+                left=20, top=5, right=10, bottom=5
+            ),
+            text_align=ft.TextAlign.CENTER,
+            autofocus=True,
+        )
+
+        save_button = ft.ElevatedButton(
+            text='Сохранить',
+            on_click=lambda e: self.on_save_box(box, name_field.value),
+        )
+        close_button = ft.TextButton(
+            text='Отмена',
+            on_click=self.close_modal,
+        )
+
+        modal_content = ft.Column(
+            controls=[
+                ft.Text(
+                    'Редактировать имя бокса',
+                    size=18,
+                    weight=ft.FontWeight.BOLD,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                name_field,
+                ft.Row(
+                    controls=[save_button, close_button],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=20,
+                ),
+            ],
+            spacing=20,
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+
+        self.modal_container = ft.Container(
+            content=modal_content,
+            alignment=ft.alignment.bottom_center,
+            padding=ft.padding.all(20),
+            margin=ft.margin.only(top=250),
+            bgcolor='rgba(0, 0, 0, 0.5)',
+            expand=False,
+        )
+
+        self.loading_overlay = ft.Container(
+            content=ft.ProgressRing(),
+            alignment=ft.alignment.center,
+            visible=False,
+            expand=True,
+        )
+
+        self.page.overlay.append(self.modal_container)
+        self.page.overlay.append(self.loading_overlay)
+        self.page.update()
+
+    def close_modal(self, e=None):
+        if (
+            hasattr(self, 'modal_container')
+            and self.modal_container in self.page.overlay
+        ):
+            self.page.overlay.remove(self.modal_container)
+        self.page.update()
+
     def on_save_box(self, box, new_name):
-        self.show_loading()
-        response = self.api.update_box(box['id'], new_name)
-        if response.status_code == 200:
-            print(f"Бокс с ID {box['id']} успешно обновлен.")
-            self.load_boxes()
-            self.page.controls.clear()
-            self.page.add(self.create_box_management_page())
-            self.page.update()
-        else:
-            print(f'Ошибка при обновлении бокса: {response.text}')
-        self.hide_loading()
+        if new_name.strip():
+            self.show_loading()
+            box['name'] = new_name
+            response = self.api.update_box(box['id'], new_name)
+            if response.status_code == 200:
+                print(f"Бокс с ID {box['id']} успешно обновлён.")
+                self.refresh_tabs()
+            else:
+                print(f'Ошибка при обновлении бокса: {response.text}')
+            self.hide_loading()
+        self.close_modal()
 
     def on_back_to_edit_page(self, e=None):
         from washer.ui_components.carwash_edit_page import CarWashEditPage
