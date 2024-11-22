@@ -191,7 +191,6 @@ class WashSelectionPage:
         return [self.create_car_wash_card(wash) for wash in self.car_washes]
 
     def create_car_wash_card(self, car_wash):
-        """Создает карточку автомойки аналогично BookingPage"""
         image_link = car_wash.get('image_link', 'assets/spa_logo.png')
         location_id = car_wash.get('location_id')
         location_data = (
@@ -208,34 +207,37 @@ class WashSelectionPage:
                 content=ft.Container(
                     content=ft.Column(
                         [
-                            ft.Image(
-                                src=image_link,
-                                fit=ft.ImageFit.COVER,
-                                expand=True,
+                            ft.Container(
+                                content=ft.Image(
+                                    src=image_link,
+                                    fit=ft.ImageFit.COVER,
+                                    width=float('inf'),
+                                ),
+                                height=200,
+                                alignment=ft.alignment.center,
                             ),
                             ft.Text(
                                 f"{car_wash['name']}",
                                 weight=ft.FontWeight.BOLD,
-                                size=20,
-                                text_align=ft.TextAlign.LEFT,
+                                size=24,
+                                text_align=ft.TextAlign.CENTER,
                             ),
                             ft.Text(
                                 location_address,
-                                text_align=ft.TextAlign.LEFT,
+                                text_align=ft.TextAlign.CENTER,
                                 color=ft.colors.GREY,
+                                size=16,
                             ),
                         ],
                         spacing=10,
-                        expand=True,
                     ),
                     padding=ft.padding.all(10),
-                    expand=True,
-                    on_click=lambda e: self.on_booking_click(car_wash),
                 ),
                 elevation=3,
             ),
             alignment=ft.alignment.center,
-            expand=True,
+            width=400,
+            on_click=lambda e: self.on_booking_click(car_wash),
         )
 
     def on_booking_click(self, car_wash):
