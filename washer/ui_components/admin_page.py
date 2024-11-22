@@ -159,21 +159,26 @@ class AdminPage:
                 content=ft.Container(
                     content=ft.Column(
                         [
-                            ft.Image(
-                                src=image_link,
-                                width=300,
-                                height=180,
-                                fit=ft.ImageFit.COVER,
+                            ft.Container(
+                                content=ft.Image(
+                                    src=image_link,
+                                    fit=ft.ImageFit.COVER,
+                                    width=float('inf'),
+                                ),
+                                height=200,
+                                alignment=ft.alignment.center,
                             ),
                             ft.Text(
                                 f"{car_wash['name']}",
                                 weight=ft.FontWeight.BOLD,
-                                size=20,
-                                text_align=ft.TextAlign.LEFT,
+                                size=24,
+                                text_align=ft.TextAlign.CENTER,
                             ),
                             ft.Text(
-                                f'{location_display}',
-                                text_align=ft.TextAlign.LEFT,
+                                location_display,
+                                text_align=ft.TextAlign.CENTER,
+                                color=ft.colors.GREY,
+                                size=16,
                             ),
                         ],
                         spacing=10,
@@ -181,10 +186,10 @@ class AdminPage:
                     padding=ft.padding.all(10),
                     on_click=lambda e: self.open_car_wash_edit_page(car_wash),
                 ),
-                width=300,
                 elevation=3,
             ),
             alignment=ft.alignment.center,
+            width=400,
         )
 
     def open_car_wash_edit_page(self, car_wash):
