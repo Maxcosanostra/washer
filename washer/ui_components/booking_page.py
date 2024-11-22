@@ -152,7 +152,10 @@ class BookingPage:
                     ft.Divider(),
                     self.car_dropdown,
                     self.add_car_button,
-                    self.step_2_text,
+                    ft.Container(
+                        content=self.step_2_text,
+                        margin=ft.margin.only(top=20),
+                    ),
                     ft.Divider(),
                     self.box_dropdown,
                     self.date_picker_button,
@@ -180,10 +183,14 @@ class BookingPage:
                 content=ft.Container(
                     content=ft.Column(
                         [
-                            ft.Image(
-                                src=image_link,
-                                fit=ft.ImageFit.COVER,
-                                expand=True,
+                            ft.Container(
+                                content=ft.Image(
+                                    src=image_link,
+                                    fit=ft.ImageFit.COVER,
+                                    width=float('inf'),
+                                ),
+                                height=200,
+                                alignment=ft.alignment.center,
                             ),
                             ft.Text(
                                 f"{self.car_wash['name']}",
@@ -198,15 +205,13 @@ class BookingPage:
                             ),
                         ],
                         spacing=10,
-                        expand=True,
                     ),
                     padding=ft.padding.all(10),
-                    expand=True,
                 ),
                 elevation=3,
             ),
             alignment=ft.alignment.center,
-            expand=True,
+            width=400,
         )
 
     def load_user_cars(self):
@@ -304,7 +309,7 @@ class BookingPage:
                 print('Configuration ID для автомобиля не определен.')
 
             self.box_dropdown.disabled = False
-            self.step_2_text.color = ft.colors.WHITE
+            self.step_2_text.color = None
         else:
             print(
                 f'Автомобиль с ID {self.selected_car_id} не найден в списке.'
@@ -399,7 +404,7 @@ class BookingPage:
 
     def show_price(self):
         self.price_text.value = f'Стоимость: ₸{int(self.car_price)}'
-        self.price_text.color = ft.colors.WHITE
+        self.price_text.color = None
         self.page.update()
 
     def on_box_select(self, e):
