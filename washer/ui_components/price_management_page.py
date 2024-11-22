@@ -24,7 +24,35 @@ class PriceManagementPage:
         access_token = self.page.client_storage.get('access_token')
         self.api.set_access_token(access_token)
 
-        app_bar = ft.AppBar(
+        self.load_prices_from_server()
+
+        self.page.clean()
+        self.page.add(self.create_price_management_page())
+
+    def load_prices_from_server(self):
+        response = self.api.get_prices(self.car_wash['id'])
+        if response.status_code == 200:
+            self.price_list = response.json().get('data', [])
+        else:
+            print(f'Ошибка загрузки цен: {response.text}')
+            self.price_list = []
+
+    def create_price_management_page(self):
+        self.price_list_container = ft.Container(
+            content=ft.ListView(
+                controls=[
+                    *[
+                        self.create_price_display(price)
+                        for price in self.price_list
+                    ],
+                    self.create_add_price_section(),
+                ],
+                padding=ft.padding.all(20),
+            ),
+            expand=True,
+        )
+
+        self.page.appbar = ft.AppBar(
             leading=ft.Row(
                 controls=[
                     ft.IconButton(
@@ -42,121 +70,84 @@ class PriceManagementPage:
             leading_width=100,
         )
 
-        self.loading_overlay = ft.Container(
-            content=ft.ProgressRing(),
-            alignment=ft.alignment.center,
-            visible=False,
-            bgcolor='rgba(0, 0, 0, 0.8)',
-            expand=True,
+        return self.price_list_container
+
+    def create_price_display(self, price):
+        body_type_name = self.body_type_dict.get(
+            price['body_type_id'], 'Неизвестный тип кузова'
         )
-        self.page.overlay.append(self.loading_overlay)
 
-        self.page.clean()
-        self.page.add(app_bar)
-        self.page.add(self.create_price_management_page())
-        self.page.overlay.append(self.loading_overlay)
-
-    def show_loading(self):
-        self.loading_overlay.visible = True
-        self.page.update()
-
-    def hide_loading(self):
-        self.loading_overlay.visible = False
-        self.page.update()
-
-    def close_modal(self, e=None):
-        if (
-            hasattr(self, 'modal_container')
-            and self.modal_container in self.page.controls
-        ):
-            self.page.controls.remove(self.modal_container)
-            self.page.update()
-
-    def refresh_price_list(self):
-        """Метод для обновления секции цен без полной перезагрузки страницы."""
-        self.price_list = self.load_prices()
-        self.price_list_container.content = self.create_price_list_content()
-        self.page.update()
-
-    def load_prices(self):
-        response = self.api.get_prices(self.car_wash['id'])
-        if response.status_code == 200:
-            return response.json().get('data', [])
-        else:
-            print(f'Ошибка загрузки цен: {response.text}')
-            return []
-
-    def create_price_management_page(self):
-        self.price_list_container = ft.Container(
-            content=self.create_price_list_content()
-        )
-        return ft.ListView(
+        price_info = ft.Column(
             controls=[
-                # ft.Container(
-                #     content=ft.Row(
-                #         [
-                #             ft.IconButton(
-                #                 icon=ft.icons.ARROW_BACK,
-                #                 icon_size=30,
-                #                 on_click=self.on_back_to_edit_page,
-                #             ),
-                #             ft.Text('Назад', size=16),
-                #         ],
-                #         alignment=ft.MainAxisAlignment.START,
-                #     ),
-                #     expand=0,
-                #     padding=ft.padding.symmetric(vertical=20),
-                # ),
-                self.price_list_container,  # Секция со списком цен
-                self.create_add_price_section(),
-            ],
-            spacing=20,
-            padding=ft.padding.symmetric(horizontal=20),
-            expand=True,
-        )
-
-    def create_price_list_content(self):
-        rows = []
-        for price in self.price_list:
-            body_type_name = self.body_type_dict.get(
-                price['body_type_id'], 'Неизвестный тип кузова'
-            )
-            rows.append(
                 ft.Row(
-                    controls=[
+                    [
                         ft.Text(
-                            f'{body_type_name}',
-                            expand=2,
-                            text_align=ft.TextAlign.LEFT,
+                            'Тип кузова', weight=ft.FontWeight.BOLD, size=14
                         ),
                         ft.Text(
-                            f"{price['price']} ₸",
-                            expand=2,
-                            text_align=ft.TextAlign.LEFT,
-                        ),
-                        ft.IconButton(
-                            icon=ft.icons.EDIT,
-                            tooltip='Редактировать цену',
-                            on_click=lambda e,
-                            p=price: self.on_edit_price_click(p),
-                            icon_size=18,
-                        ),
-                        ft.IconButton(
-                            icon=ft.icons.DELETE,
-                            tooltip='Удалить цену',
-                            on_click=lambda e, p=price: self.on_delete_price(
-                                p['id']
-                            ),
-                            icon_size=18,
+                            body_type_name, size=14, color=ft.colors.GREY_600
                         ),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                )
-            )
+                ),
+                ft.Row(
+                    [
+                        ft.Text('Цена', weight=ft.FontWeight.BOLD, size=14),
+                        ft.Text(
+                            f"{price['price']} ₸",
+                            size=14,
+                            color=ft.colors.GREY_600,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+            ],
+            spacing=5,
+        )
 
-        return ft.Column(
-            controls=[ft.Text('Текущие цены', size=24), *rows],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        return ft.Container(
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            price_info,
+                            ft.Divider(),
+                            ft.Row(
+                                controls=[
+                                    ft.TextButton(
+                                        'Редактировать',
+                                        on_click=(
+                                            lambda e: self.on_edit_price_click(
+                                                price
+                                            )
+                                        ),
+                                        style=ft.ButtonStyle(
+                                            color=ft.colors.BLUE
+                                        ),
+                                    ),
+                                    ft.TextButton(
+                                        'Удалить',
+                                        on_click=(
+                                            lambda e: self.on_delete_price(
+                                                price['id']
+                                            )
+                                        ),
+                                        style=ft.ButtonStyle(
+                                            color=ft.colors.RED_400
+                                        ),
+                                    ),
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER,
+                            ),
+                        ],
+                        spacing=2,
+                    ),
+                    padding=ft.padding.all(10),
+                ),
+                elevation=3,
+            ),
+            margin=ft.margin.only(bottom=10),
+            width=400,
         )
 
     def create_add_price_section(self):
@@ -184,31 +175,42 @@ class PriceManagementPage:
             ],
             width=300,
         )
-        price_field = ft.TextField(label='Цена', width=300)
+        price_field = ft.TextField(
+            label='Введите цену',
+            width=300,
+            text_size=15,
+            height=60,
+            border_radius=ft.border_radius.all(30),
+            content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
+        )
+
+        add_button = ft.ElevatedButton(
+            text='Добавить цену',
+            on_click=lambda e: self.on_create_price_click(
+                body_type_dropdown.value, price_field.value
+            ),
+            width=250,
+            bgcolor='#ef7b00',
+            color=ft.colors.WHITE,
+        )
 
         return ft.Container(
             content=ft.Column(
                 controls=[
                     ft.Text(
-                        'Добавить цену',
+                        'Добавить новую цену',
                         size=24,
                         text_align=ft.TextAlign.CENTER,
                     ),
                     body_type_dropdown,
                     price_field,
-                    ft.ElevatedButton(
-                        text='Создать цену',
-                        on_click=lambda e: self.on_create_price_click(
-                            body_type_dropdown.value, price_field.value
-                        ),
-                        width=150,
-                    ),
+                    add_button,
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=10,
             ),
             alignment=ft.alignment.center,
             padding=ft.padding.symmetric(horizontal=20, vertical=10),
-            expand=True,
         )
 
     def on_create_price_click(self, body_type_id, price):
@@ -225,97 +227,135 @@ class PriceManagementPage:
         response = self.api.create_price(price_data)
         if response.status_code == 200:
             print('Цена успешно добавлена')
-            self.refresh_price_list()
+            self.load_prices_from_server()
+            self.page.clean()
+            self.page.add(self.create_price_management_page())
         else:
             print(f'Ошибка добавления цены: {response.text}')
 
     def on_edit_price_click(self, price):
+        def save_changes(e):
+            new_price = price_field.value
+            if not new_price:
+                print('Поле цены не может быть пустым!')
+                return
+
+            try:
+                new_price_value = float(new_price)
+            except ValueError:
+                print('Введите корректное значение для цены!')
+                return
+
+            response = self.api.update_price(
+                price['id'], {'price': new_price_value}
+            )
+            if response.status_code == 200:
+                print('Цена успешно обновлена.')
+                self.load_prices_from_server()
+                self.refresh_price_list()
+                self.page.close(dlg_modal)
+            else:
+                print(f'Ошибка обновления цены: {response.text}')
+
+        def cancel_edit(e):
+            self.page.close(dlg_modal)
+
         price_field = ft.TextField(
-            label='Цена', value=str(price['price']), width=200
+            label='Новая цена',
+            value=str(price['price']),
+            width=300,
+            text_size=15,
+            height=40,
+            border_radius=ft.border_radius.all(30),
+            content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
         )
-        save_button = ft.TextButton(
-            text='Сохранить',
-            on_click=lambda e: self.on_save_price_click(
-                price['id'], price_field.value
+
+        dlg_modal = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(
+                'Редактирование цены',
+                text_align=ft.TextAlign.CENTER,
             ),
-        )
-        close_button = ft.TextButton(text='Отмена', on_click=self.close_modal)
-
-        body_type = self.body_type_dict.get(
-            price['body_type_id'], 'Неизвестный тип кузова'
-        )
-
-        self.modal_container = ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Text(
-                        f'Редактирование цены для {body_type}',
-                        size=18,
-                    ),
-                    price_field,
-                    ft.Row(
-                        controls=[save_button, close_button],
-                        alignment=ft.MainAxisAlignment.CENTER,
+                    ft.Container(
+                        content=price_field,
+                        padding=ft.padding.only(top=20),
                     ),
                 ],
-                alignment=ft.alignment.center,
             ),
-            alignment=ft.alignment.center,
-            padding=ft.padding.all(10),
-            bgcolor=ft.colors.GREY_900,
+            actions=[
+                ft.TextButton('Сохранить', on_click=save_changes),
+                ft.TextButton('Отмена', on_click=cancel_edit),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
         )
 
-        self.page.controls.append(self.modal_container)
+        self.page.open(dlg_modal)
+
+    def refresh_price_list(self):
+        """Обновляет список цен без полной перезагрузки страницы."""
+        self.price_list_container.content = ft.ListView(
+            controls=[
+                *[
+                    self.create_price_display(price)
+                    for price in self.price_list
+                ],
+                self.create_add_price_section(),
+            ],
+            padding=ft.padding.all(20),
+        )
         self.page.update()
-
-    def on_save_price_click(self, price_id, new_price):
-        if not new_price:
-            print('Заполните поле цены!')
-            return
-
-        price_data = {'price': float(new_price)}
-
-        response = self.api.update_price(price_id, price_data)
-        if response.status_code == 200:
-            print('Цена успешно обновлена')
-            self.refresh_price_list()
-            self.close_modal()
-        else:
-            print(f'Ошибка обновления цены: {response.text}')
 
     def on_delete_price(self, price_id):
-        confirm_button = ft.TextButton(
-            text='Подтвердить', on_click=lambda e: self.delete_price(price_id)
-        )
-        cancel_button = ft.TextButton(text='Отмена', on_click=self.close_modal)
+        def confirm_delete(e):
+            self.page.close(dlg_modal)
+            self.delete_price(price_id)
 
-        self.modal_container = ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Text(
-                        'Вы уверены, что хотите удалить эту цену?', size=18
-                    ),
-                    ft.Row(
-                        controls=[confirm_button, cancel_button],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                    ),
-                ],
+        def cancel_delete(e):
+            self.page.close(dlg_modal)
+
+        dlg_modal = ft.AlertDialog(
+            modal=True,
+            title=ft.Container(
+                content=ft.Text(
+                    'Подтверждение удаления',
+                    text_align=ft.TextAlign.CENTER,
+                    size=16,
+                    weight=ft.FontWeight.BOLD,
+                ),
+                margin=ft.margin.only(bottom=7),
+            ),
+            content=ft.Container(
+                content=ft.Text(
+                    'Вы уверены, что хотите удалить эту цену?',
+                    text_align=ft.TextAlign.CENTER,
+                    size=14,
+                ),
                 alignment=ft.alignment.center,
             ),
-            alignment=ft.alignment.center,
-            padding=ft.padding.all(10),
-            bgcolor=ft.colors.GREY_900,
+            actions=[
+                ft.TextButton(
+                    content=ft.Text('Да'),
+                    on_click=confirm_delete,
+                ),
+                ft.TextButton(
+                    content=ft.Text('Нет', color=ft.colors.RED),
+                    on_click=cancel_delete,
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.SPACE_EVENLY,
         )
 
-        self.page.controls.append(self.modal_container)
-        self.page.update()
+        self.page.open(dlg_modal)
 
     def delete_price(self, price_id):
         response = self.api.delete_price(price_id)
         if response.status_code == 200:
             print(f'Цена с ID {price_id} успешно удалена.')
-            self.refresh_price_list()
-            self.close_modal()
+            self.load_prices_from_server()
+            self.page.clean()
+            self.page.add(self.create_price_management_page())
         else:
             print(f'Ошибка удаления цены: {response.text}')
 
