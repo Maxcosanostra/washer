@@ -356,14 +356,16 @@ class ProfilePage:
 
     def create_car_display(self, car):
         car_name = car.get('name', 'Название не указано')
-        model = car.get('model', 'Модель не указана')
-        year = car.get('year', 'Год не указан')
-        color = car.get('color', 'Цвет не указан')
+        parts = car_name.split(' ')
+        brand = parts[0] if len(parts) > 0 else 'Бренд не указан'
+        model = (
+            ' '.join(parts[1:-1]) if len(parts) > 2 else 'Модель не указана'
+        )
+        generation = parts[-1] if len(parts) > 1 else 'Поколение не указано'
 
         car_details = [
             ('Модель', model),
-            ('Год выпуска', year),
-            ('Цвет', color),
+            ('Поколение', generation),
         ]
 
         car_info_column = ft.Column(
@@ -393,8 +395,21 @@ class ProfilePage:
             content=ft.Card(
                 content=ft.Container(
                     content=ft.Column(
-                        [ft.Text(car_name, size=20, weight=ft.FontWeight.BOLD)]
-                        + [car_info_column, ft.Divider(), delete_button],
+                        [
+                            ft.Container(
+                                content=ft.Text(
+                                    brand,
+                                    size=20,
+                                    weight=ft.FontWeight.BOLD,
+                                    text_align=ft.TextAlign.CENTER,
+                                ),
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(bottom=10),
+                            ),
+                            car_info_column,
+                            ft.Divider(),
+                            delete_button,
+                        ],
                         spacing=15,
                     ),
                     padding=ft.padding.all(15),
