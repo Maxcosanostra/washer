@@ -14,6 +14,7 @@ class BoxManagementPage:
         self.boxes_list = []
         self.current_tab_index = 0
         self.tab_contents = {}
+        self.setup_snack_bar()
 
         app_bar = ft.AppBar(
             leading=ft.Row(
@@ -391,29 +392,20 @@ class BoxManagementPage:
 
         dlg_modal = ft.AlertDialog(
             modal=True,
-            title=ft.Container(
-                content=ft.Text(
-                    'Подтверждение удаления',
-                    text_align=ft.TextAlign.CENTER,
-                    size=16,
-                    weight=ft.FontWeight.BOLD,
-                ),
-                margin=ft.margin.only(bottom=7),
+            title=ft.Text(
+                'Подтверждение удаления',
+                text_align=ft.TextAlign.CENTER,
+                size=16,
+                weight=ft.FontWeight.BOLD,
             ),
-            content=ft.Container(
-                content=ft.Text(
-                    'Вы уверены, что хотите удалить этот бокс?',
-                    text_align=ft.TextAlign.CENTER,
-                    size=14,
-                ),
-                alignment=ft.alignment.center,
+            content=ft.Text(
+                'Вы уверены, что хотите удалить этот бокс?',
+                text_align=ft.TextAlign.CENTER,
+                size=14,
             ),
             actions=[
                 ft.TextButton('Да', on_click=confirm_delete),
-                ft.TextButton(
-                    content=ft.Text('Нет', color=ft.colors.RED),
-                    on_click=cancel_delete,
-                ),
+                ft.TextButton('Нет', on_click=cancel_delete),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -429,9 +421,44 @@ class BoxManagementPage:
                 box for box in self.boxes_list if box['id'] != box_id
             ]
             self.refresh_tabs()
+            self.show_snack_bar(
+                'Бокс успешно удалён!', bgcolor=ft.colors.GREEN
+            )
+        elif response.status_code == 400:
+            error_message = response.json().get(
+                'detail', 'Невозможно удалить бокс.'
+            )
+            print(f'Ошибка при удалении бокса: {error_message}')
+            self.show_snack_bar(
+                f'Ошибка: {error_message}\nУдалите '
+                f'записи перед удалением бокса.',
+                bgcolor=ft.colors.RED,
+            )
         else:
             print(f'Ошибка при удалении бокса: {response.text}')
+            self.show_snack_bar(
+                'На данном боксе зарегистрирована история записей.',
+                bgcolor=ft.colors.RED,
+            )
         self.hide_loading()
+
+    def setup_snack_bar(self):
+        self.snack_bar = ft.SnackBar(
+            content=ft.Container(
+                content=ft.Text('', text_align=ft.TextAlign.CENTER),
+                alignment=ft.alignment.center,
+            ),
+            bgcolor=ft.colors.GREEN,
+            duration=3000,
+        )
+        self.page.overlay.append(self.snack_bar)
+        self.page.update()
+
+    def show_snack_bar(self, message: str, bgcolor: str = ft.colors.GREEN):
+        self.snack_bar.content.content.value = message
+        self.snack_bar.bgcolor = bgcolor
+        self.snack_bar.open = True
+        self.page.update()
 
     def show_edit_name_modal(self, box):
         name_field = ft.TextField(
