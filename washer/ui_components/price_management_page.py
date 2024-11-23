@@ -317,34 +317,22 @@ class PriceManagementPage:
 
         dlg_modal = ft.AlertDialog(
             modal=True,
-            title=ft.Container(
-                content=ft.Text(
-                    'Подтверждение удаления',
-                    text_align=ft.TextAlign.CENTER,
-                    size=16,
-                    weight=ft.FontWeight.BOLD,
-                ),
-                margin=ft.margin.only(bottom=7),
+            title=ft.Text(
+                'Подтверждение удаления',
+                text_align=ft.TextAlign.CENTER,
+                size=16,
+                weight=ft.FontWeight.BOLD,
             ),
-            content=ft.Container(
-                content=ft.Text(
-                    'Вы уверены, что хотите удалить эту цену?',
-                    text_align=ft.TextAlign.CENTER,
-                    size=14,
-                ),
-                alignment=ft.alignment.center,
+            content=ft.Text(
+                'Вы уверены, что хотите удалить эту цену?',
+                text_align=ft.TextAlign.CENTER,
+                size=14,
             ),
             actions=[
-                ft.TextButton(
-                    content=ft.Text('Да'),
-                    on_click=confirm_delete,
-                ),
-                ft.TextButton(
-                    content=ft.Text('Нет', color=ft.colors.RED),
-                    on_click=cancel_delete,
-                ),
+                ft.TextButton('Да', on_click=confirm_delete),
+                ft.TextButton('Нет', on_click=cancel_delete),
             ],
-            actions_alignment=ft.MainAxisAlignment.SPACE_EVENLY,
+            actions_alignment=ft.MainAxisAlignment.END,
         )
 
         self.page.open(dlg_modal)
