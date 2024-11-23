@@ -47,7 +47,6 @@ class AdminSelectCarPage:
             'Стоимость: ₸0',
             size=32,
             weight=ft.FontWeight.BOLD,
-            color=ft.colors.WHITE,
         )
 
         self.save_button = self.create_save_button()
