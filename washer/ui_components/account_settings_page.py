@@ -59,17 +59,15 @@ class AccountSettingsPage:
                 icon_color=ft.colors.WHITE,
                 padding=ft.padding.only(left=10),
             ),
+            title=ft.Text(
+                'Настройки аккаунта',
+                size=20,
+                weight=ft.FontWeight.BOLD,
+                color=ft.colors.WHITE,
+            ),
             center_title=True,
             bgcolor=ft.colors.BLUE,
             leading_width=40,
-        )
-
-        page_title = ft.Text(
-            'НАСТРОЙКИ АККАУНТА',
-            size=24,
-            weight=ft.FontWeight.BOLD,
-            color=ft.colors.BLUE_700,
-            text_align=ft.TextAlign.CENTER,
         )
 
         username_label = ft.Text(
@@ -169,7 +167,6 @@ class AccountSettingsPage:
             ft.Container(
                 content=ft.Column(
                     controls=[
-                        page_title,
                         username_label,
                         username_field,
                         first_name_label,
@@ -178,7 +175,7 @@ class AccountSettingsPage:
                         last_name_field,
                         password_label,
                         password_field,
-                        ft.Container(height=20),  # Отступ
+                        ft.Container(height=20),
                         save_button,
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
