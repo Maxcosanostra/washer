@@ -709,14 +709,18 @@ class SelectCarPage:
     def setup_snack_bar(self):
         """Инициализация SnackBar для показа сообщений."""
         self.snack_bar = ft.SnackBar(
-            content=ft.Text(''), bgcolor=ft.colors.GREEN, duration=3000
+            content=ft.Container(
+                content=ft.Text('', text_align=ft.TextAlign.CENTER),
+                alignment=ft.alignment.center,
+            ),
+            bgcolor=ft.colors.GREEN,
+            duration=3000,
         )
         self.page.overlay.append(self.snack_bar)
         self.page.update()
 
     def show_snack_bar(self, message: str, bgcolor: str = ft.colors.GREEN):
-        """Показ SnackBar с сообщением."""
-        self.snack_bar.content.value = message
+        self.snack_bar.content.content.value = message
         self.snack_bar.bgcolor = bgcolor
         self.snack_bar.open = True
         self.page.update()
