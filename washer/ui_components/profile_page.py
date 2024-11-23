@@ -490,17 +490,24 @@ class ProfilePage:
                     text_align=ft.TextAlign.CENTER,
                 ),
                 padding=ft.padding.only(top=20),
-                # Отступ между изображением и текстом
             )
             booking_content = [empty_image, empty_text]
 
-        toggle_button = ft.ElevatedButton(
-            text='Показать записи'
+            booking_content.append(
+                ft.ElevatedButton(
+                    text='Давайте запишемся!',
+                    on_click=self.redirect_to_booking_page,
+                    bgcolor=ft.colors.PURPLE,
+                    color=ft.colors.WHITE,
+                    width=400,
+                )
+            )
+
+        toggle_button = ft.TextButton(
+            text='Показать завершенные записи'
             if not self.completed_visible
-            else 'Скрыть записи',
+            else 'Скрыть завершенные записи',
             on_click=self.toggle_completed_visibility,
-            bgcolor=ft.colors.PURPLE,
-            color=ft.colors.WHITE,
         )
         booking_content.append(toggle_button)
 
@@ -522,6 +529,14 @@ class ProfilePage:
             ),
             padding=ft.padding.all(10),
         )
+
+    def redirect_to_booking_page(self, e):
+        self.page.appbar = None
+        self.page.clean()
+
+        from washer.ui_components.wash_selection_page import WashSelectionPage
+
+        WashSelectionPage(self.page, username=self.username)
 
     def return_to_profile(self, e):
         self.page.appbar = None
@@ -752,12 +767,15 @@ class ProfilePage:
         self.completed_visible = not self.completed_visible
 
         e.control.text = (
-            'Скрыть записи' if self.completed_visible else 'Показать записи'
+            'Скрыть завершенные'
+            if self.completed_visible
+            else 'Показать завершенные'
         )
 
         self.completed_bookings_container.visible = self.completed_visible
 
         e.control.update()
+        self.page.update()
         self.page.update()
 
     def create_booking_display(self, booking, active=True):
