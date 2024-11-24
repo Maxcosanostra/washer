@@ -418,6 +418,29 @@ class AdminBookingTable:
         car_name = booking.get('car_name', 'Неизвестно')
         price = booking.get('price', 'Не указана')
 
+        def confirm_delete(e):
+            self.page.close(confirm_dialog)
+            self.delete_booking(booking['id'])
+
+        def cancel_delete(e):
+            self.page.close(confirm_dialog)
+
+        def open_confirm_dialog(e):
+            self.page.dialog = confirm_dialog
+            confirm_dialog.open = True
+            self.page.update()
+
+        confirm_dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text('Подтверждение удаления'),
+            content=ft.Text('Вы уверены, что хотите удалить этот букинг?'),
+            actions=[
+                ft.TextButton('Да', on_click=confirm_delete),
+                ft.TextButton('Нет', on_click=cancel_delete),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
         details_dialog = ft.AlertDialog(
             title=ft.Text('Детали букинга'),
             content=ft.Column(
@@ -428,12 +451,71 @@ class AdminBookingTable:
             ),
             actions=[
                 ft.TextButton(
-                    'Закрыть', on_click=lambda e: self.close_details_dialog()
-                )
+                    'Удалить',
+                    on_click=open_confirm_dialog,
+                    style=ft.ButtonStyle(color=ft.colors.RED),
+                ),
+                ft.TextButton(
+                    'Закрыть',
+                    on_click=lambda e: self.page.close(details_dialog),
+                ),
             ],
+            actions_alignment=ft.MainAxisAlignment.END,
         )
         self.page.dialog = details_dialog
         details_dialog.open = True
+        self.page.update()
+
+    def delete_booking(self, booking_id: int):
+        """
+        Удаляет букинг и обновляет текущую вкладку.
+
+        :param booking_id: ID букинга
+        """
+        try:
+            response = self.api.delete_booking(booking_id)
+            if response.status_code == 200:
+                # Удаляем букинг из списка
+                self.bookings = [
+                    b for b in self.bookings if b['id'] != booking_id
+                ]
+                print(f'Букинг с ID {booking_id} успешно удалён.')
+
+                # Получаем активную вкладку
+                selected_index = self.page.controls[1].selected_index
+                selected_tab = self.page.controls[1].tabs[selected_index]
+                day_of_week = self.schedule_data[selected_index]['day_of_week']
+                schedule_date = self.dates_storage[day_of_week]
+
+                self.load_available_times(schedule_date)
+                self.load_bookings()
+
+                schedule = self.schedule_data[selected_index]
+                timeslots = self.generate_timeslots(
+                    schedule['start_time'], schedule['end_time']
+                )
+                selected_tab.content = self.create_booking_table(
+                    f"{self.get_day_name(day_of_week)} "
+                    f"({schedule_date.strftime('%d %B')})",
+                    schedule,
+                    timeslots,
+                )
+                self.page.update()
+            else:
+                print(f'Ошибка удаления букинга: {response.text}')
+                self.show_error_message('Ошибка при удалении букинга.')
+        except Exception as e:
+            print(f'Ошибка при удалении букинга: {e}')
+            self.show_error_message('Произошла ошибка при удалении букинга.')
+
+    def show_error_message(self, message: str):
+        error_snack_bar = ft.SnackBar(
+            content=ft.Text(message, color=ft.colors.WHITE),
+            bgcolor=ft.colors.RED,
+            duration=3000,
+        )
+        self.page.overlay.append(error_snack_bar)
+        error_snack_bar.open = True
         self.page.update()
 
     def close_details_dialog(self):
