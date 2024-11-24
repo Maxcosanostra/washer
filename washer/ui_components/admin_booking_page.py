@@ -1,4 +1,5 @@
 import datetime
+import locale
 
 import flet as ft
 import httpx
@@ -49,7 +50,7 @@ class AdminSelectCarPage:
             weight=ft.FontWeight.BOLD,
         )
 
-        self.save_button = self.create_save_button()
+        self.save_button = self.create_next_button()
         self.save_button.disabled = True
 
         self.confirm_button = ft.ElevatedButton(
@@ -207,23 +208,18 @@ class AdminSelectCarPage:
                         width=300,
                         margin=ft.margin.only(bottom=10),
                     ),
+                    ft.Divider(),
+                    ft.Container(
+                        content=self.price_text,
+                        alignment=ft.alignment.center,
+                        margin=ft.margin.only(bottom=10),
+                    ),
+                    ft.Divider(),
                     ft.Container(
                         content=self.save_button,
                         alignment=ft.alignment.center,
                         width=300,
                         margin=ft.margin.only(bottom=20),
-                    ),
-                    ft.Divider(),
-                    ft.Container(
-                        content=self.price_text,
-                        alignment=ft.alignment.center,
-                        margin=ft.margin.only(bottom=20),
-                    ),
-                    ft.Divider(),
-                    ft.Container(
-                        content=self.confirm_button,
-                        alignment=ft.alignment.center,
-                        width=300,
                     ),
                 ],
                 expand=True,
@@ -706,9 +702,9 @@ class AdminSelectCarPage:
             height=50,
         )
 
-    def create_save_button(self):
+    def create_next_button(self):
         return ft.ElevatedButton(
-            text='Сохранить',
+            text='Далее',
             width=300,
             bgcolor=ft.colors.PURPLE,
             color=ft.colors.WHITE,
@@ -803,21 +799,190 @@ class AdminSelectCarPage:
                 self.on_car_saved(response.json())
 
                 self.selected_car = response.json()
-                if (
-                    self.selected_car
-                    and self.car_price
-                    and self.box_id
-                    and self.date
-                    and self.time
-                ):
-                    self.confirm_button.disabled = False
-                self.page.update()
+
+                self.show_confirmation_page()
 
             else:
                 error_message = response.text or 'Неизвестная ошибка'
                 self.show_error_message(f'Ошибка: {error_message}')
         except Exception as e:
             self.show_error_message(f'Ошибка: {str(e)}')
+
+    def show_confirmation_page(self):
+        self.page.clean()
+
+        locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
+        date_obj = (
+            self.date
+            if isinstance(self.date, datetime.date)
+            else datetime.datetime.strptime(self.date, '%Y-%m-%d').date()
+        )
+        formatted_date = date_obj.strftime('%d %B')
+        day_of_week = date_obj.strftime('%a')
+        day_of_week_translated = {
+            'Mon': 'Пн',
+            'Tue': 'Вт',
+            'Wed': 'Ср',
+            'Thu': 'Чт',
+            'Fri': 'Пт',
+            'Sat': 'Сб',
+            'Sun': 'Вс',
+        }.get(day_of_week, day_of_week)
+        date_with_day = f'{formatted_date} ({day_of_week_translated})'
+
+        car_details = [
+            ('Бренд', self.selected_brand),
+            ('Модель', self.model_dropdown.value),
+            ('Поколение', self.selected_generation or 'Не указано'),
+            ('Тип кузова', self.body_type_dropdown.value),
+        ]
+
+        car_info_column = ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Text(label, weight=ft.FontWeight.BOLD, size=16),
+                        ft.Text(value, color=ft.colors.GREY_600, size=16),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                )
+                for label, value in car_details
+            ],
+            spacing=10,
+        )
+
+        car_info_card = ft.Container(
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Text(
+                                'Информация об автомобиле',
+                                size=18,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                            ft.Divider(),
+                            car_info_column,
+                        ],
+                        spacing=10,
+                    ),
+                    padding=ft.padding.all(20),
+                ),
+                elevation=3,
+            ),
+            width=370,
+            margin=ft.margin.only(bottom=20),
+        )
+
+        booking_info_column = ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Text('Дата', weight=ft.FontWeight.BOLD, size=16),
+                        ft.Text(
+                            date_with_day, color=ft.colors.GREY_600, size=16
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                ft.Row(
+                    [
+                        ft.Text(
+                            'Номер бокса', weight=ft.FontWeight.BOLD, size=16
+                        ),
+                        ft.Text(
+                            str(self.box_id), color=ft.colors.GREY_600, size=16
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                ft.Row(
+                    [
+                        ft.Text('Время', weight=ft.FontWeight.BOLD, size=16),
+                        ft.Text(
+                            self.time[:5], color=ft.colors.GREY_600, size=16
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                ft.Row(
+                    [
+                        ft.Text(
+                            'Стоимость', weight=ft.FontWeight.BOLD, size=16
+                        ),
+                        ft.Text(
+                            f'₸{int(self.car_price)}',
+                            color=ft.colors.GREY_600,
+                            size=16,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+            ],
+            spacing=10,
+        )
+
+        booking_info_card = ft.Container(
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Text(
+                                'Информация о букинге',
+                                size=18,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                            ft.Divider(),
+                            booking_info_column,
+                        ],
+                        spacing=10,
+                    ),
+                    padding=ft.padding.all(20),
+                ),
+                elevation=3,
+            ),
+            width=370,
+            margin=ft.margin.only(bottom=20),
+        )
+
+        confirm_button = ft.ElevatedButton(
+            text='Подтвердить букинг',
+            on_click=self.on_confirm_booking,
+            width=300,
+            bgcolor=ft.colors.BLUE,
+            color=ft.colors.WHITE,
+        )
+
+        back_button = ft.Container(
+            content=ft.Row(
+                [
+                    ft.IconButton(
+                        icon=ft.icons.ARROW_BACK,
+                        icon_size=30,
+                        on_click=lambda e: self.on_back_to_car_selection(),
+                    ),
+                    ft.Text('Назад', size=16),
+                ],
+                alignment=ft.MainAxisAlignment.START,
+            ),
+            margin=ft.margin.only(bottom=15),
+        )
+
+        self.page.add(
+            ft.Container(
+                content=ft.ListView(
+                    controls=[
+                        back_button,
+                        car_info_card,
+                        booking_info_card,
+                        confirm_button,
+                    ],
+                    spacing=20,
+                    padding=ft.padding.all(20),
+                ),
+                expand=True,
+            )
+        )
 
     def create_back_button(self):
         return ft.Container(
@@ -826,7 +991,7 @@ class AdminSelectCarPage:
                     ft.IconButton(
                         icon=ft.icons.ARROW_BACK,
                         icon_size=30,
-                        on_click=self.on_back_to_booking_page,
+                        on_click=self.on_back_to_car_selection,
                     ),
                     ft.Text('Назад', size=16),
                 ],
@@ -834,6 +999,10 @@ class AdminSelectCarPage:
             ),
             margin=ft.margin.only(bottom=15),
         )
+
+    def on_back_to_car_selection(self, e=None):
+        self.page.clean()
+        self.page.add(self.create_car_selection_page())
 
     def on_back_to_booking_page(self, e):
         from washer.ui_components.admin_booking_table import AdminBookingTable
