@@ -550,6 +550,7 @@ class AdminSelectCarPage:
             if len(unique_body_types) == 1:
                 body_type_id = configurations[0]['body_type_id']
                 body_type_name = self.get_body_type_name(body_type_id)
+                self.selected_body_type = body_type_name
                 print(f'Автоматически выбран тип кузова: {body_type_name}')
 
                 self.show_snack_bar(
@@ -830,11 +831,18 @@ class AdminSelectCarPage:
         }.get(day_of_week, day_of_week)
         date_with_day = f'{formatted_date} ({day_of_week_translated})'
 
+        generation_display = self.selected_generation
+        if not generation_display and self.generation_year_range:
+            generation_display = self.generation_year_range
+
         car_details = [
             ('Бренд', self.selected_brand),
             ('Модель', self.model_dropdown.value),
-            ('Поколение', self.selected_generation or 'Не указано'),
-            ('Тип кузова', self.body_type_dropdown.value),
+            ('Поколение', generation_display or 'Не указано'),
+            (
+                'Тип кузова',
+                self.selected_body_type or self.body_type_dropdown.value,
+            ),
         ]
 
         car_info_column = ft.Column(
