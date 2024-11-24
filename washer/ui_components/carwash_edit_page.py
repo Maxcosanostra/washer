@@ -21,7 +21,7 @@ class CarWashEditPage:
         self.api = BackendApi()
         self.api.set_access_token(self.page.client_storage.get('access_token'))
         self.api_url = api_url
-        self.locations = locations
+        self.locations = locations or self.fetch_locations()
         self.selected_image = None
         self.selected_image_bytes = None
         self.original_image = self.car_wash['image_link']
@@ -84,6 +84,18 @@ class CarWashEditPage:
     def hide_loading(self):
         self.loading_overlay.visible = False
         self.page.update()
+
+    def fetch_locations(self):
+        print('Загружаем данные о локациях через API...')
+        response = self.api.get_locations()
+
+        if response.status_code == 200:
+            locations = response.json().get('data', [])
+            print(f'Загруженные локации: {locations}')
+            return {loc['id']: loc for loc in locations}
+        else:
+            print(f'Ошибка загрузки локаций: {response.text}')
+            return {}
 
     def load_schedules(self):
         self.show_loading()
@@ -153,6 +165,12 @@ class CarWashEditPage:
         location = self.locations.get(location_id, {})
         city = location.get('city', 'Неизвестный город')
         address = location.get('address', 'Неизвестный адрес')
+
+        print(
+            f'Создаем страницу редактирования для города: '
+            f'{city}, адрес: {address}'
+        )
+
         location_display = f'{city}, {address}'
 
         self.avatar_container = ft.Container(
