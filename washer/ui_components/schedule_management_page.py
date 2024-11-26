@@ -89,14 +89,27 @@ class ScheduleManagementPage:
         self.page.update()
 
     def load_schedules(self):
+        self.schedule_list = []
+        self.dates_storage = {}
+        print(f'Загрузка расписаний для автомойки {self.car_wash["id"]}')
         self.show_loading()
         response = self.api.get_schedules(self.car_wash['id'])
         if response.status_code == 200:
-            self.schedule_list = response.json().get('data', [])
+            self.schedule_list = [
+                schedule
+                for schedule in response.json().get('data', [])
+                if schedule['car_wash_id'] == self.car_wash['id']
+            ]
             self.initialize_dates_for_schedule()
-            print(f'Загружено расписаний: {len(self.schedule_list)}')
+            print(
+                f'Загружено расписаний: {len(self.schedule_list)} '
+                f'для автомойки {self.car_wash["id"]}'
+            )
         else:
-            print(f'Ошибка загрузки расписаний: {response.text}')
+            print(
+                f'Ошибка загрузки расписаний для автомойки '
+                f'{self.car_wash["id"]}: {response.text}'
+            )
         self.hide_loading()
 
     def initialize_dates_for_schedule(self):
