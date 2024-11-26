@@ -60,10 +60,17 @@ class BoxManagementPage:
         try:
             response = self.api.get_boxes(self.car_wash['id'])
             if response.status_code == 200:
-                self.boxes_list = response.json().get('data', [])
+                self.boxes_list = [
+                    box
+                    for box in response.json().get('data', [])
+                    if box['car_wash_id'] == self.car_wash['id']
+                ]
                 print(f'Успешно загружены боксы: {self.boxes_list}')
             else:
-                print(f'Ошибка загрузки боксов: {response.text}')
+                print(
+                    f'Ошибка загрузки боксов для автомойки '
+                    f'{self.car_wash["id"]}: {response.text}'
+                )
         except Exception as e:
             print(f'Ошибка при загрузке боксов: {e}')
 
