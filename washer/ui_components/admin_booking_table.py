@@ -79,11 +79,18 @@ class AdminBookingTable:
 
             if response.status_code == 200:
                 bookings_data = response.json().get('data', [])
-                for booking in bookings_data:
+
+                self.bookings = bookings_data
+
+                for booking in self.bookings:
                     if 'user_car_id' in booking:
                         car_name = self.get_car_name(booking['user_car_id'])
                         booking['car_name'] = car_name
-                self.bookings = bookings_data
+
+                print(
+                    f"Загружено букингов: {len(self.bookings)} "
+                    f"для автомойки {self.car_wash['id']}"
+                )
             else:
                 print(
                     f'Ошибка загрузки букингов: '
@@ -118,15 +125,19 @@ class AdminBookingTable:
         )
         response = self.api.get_schedules(self.car_wash['id'])
         if response.status_code == 200:
-            self.schedule_data = response.json().get('data', [])
-            self.initialize_dates_for_schedule()
-            self.schedule_data.sort(
-                key=lambda x: self.dates_storage.get(x['day_of_week'])
-            )
-            print(f'Загружено расписаний: {len(self.schedule_data)}')
-            self.page.clean()
-            self.page.add(self.create_booking_page())
-            self.page.update()
+            self.schedule_data = [
+                schedule
+                for schedule in response.json().get('data', [])
+                if schedule['car_wash_id'] == self.car_wash['id']
+            ]
+            if not self.schedule_data:
+                print('Нет расписаний для данной автомойки.')
+            else:
+                self.initialize_dates_for_schedule()
+                self.schedule_data.sort(
+                    key=lambda x: self.dates_storage.get(x['day_of_week'])
+                )
+                print(f'Загружено расписаний: {len(self.schedule_data)}')
         else:
             print(f'Ошибка загрузки расписаний: {response.text}')
 
@@ -143,8 +154,16 @@ class AdminBookingTable:
         print(f"Загружаем боксы для автомойки с ID: {self.car_wash['id']}")
         response = self.api.get_boxes(self.car_wash['id'])
         if response.status_code == 200:
-            self.boxes_list = response.json().get('data', [])
-            print(f'Загружено боксов: {len(self.boxes_list)}')
+            # Фильтрация по текущей автомойке
+            self.boxes_list = [
+                box
+                for box in response.json().get('data', [])
+                if box['car_wash_id'] == self.car_wash['id']
+            ]
+            print(
+                f'Загружено боксов: {len(self.boxes_list)} '
+                f'для автомойки {self.car_wash["id"]}'
+            )
         else:
             print(f'Ошибка загрузки боксов: {response.text}')
 
@@ -160,11 +179,13 @@ class AdminBookingTable:
 
         if response.status_code == 200:
             daily_times = response.json().get('available_times', {})
+
             self.available_times[str(target_date)] = daily_times
             self.loaded_days.add(target_date)
+
             print(
                 f'Доступное время загружено для '
-                f'{target_date}: {daily_times}'
+                f'{target_date}: {self.available_times[str(target_date)]}'
             )
         else:
             print(
@@ -173,6 +194,14 @@ class AdminBookingTable:
             )
 
     def create_booking_page(self):
+        if not self.schedule_data:
+            print('Нет расписаний для отображения.')
+            return ft.Text(
+                'Нет доступных расписаний.',
+                size=18,
+                text_align=ft.TextAlign.CENTER,
+            )
+
         tabs = []
         selected_index = 0
 
@@ -200,19 +229,31 @@ class AdminBookingTable:
 
             tabs.append(ft.Tab(text=day_name, content=tab_content))
 
+        if not tabs:
+            print('Расписания есть, но вкладки не создались.')
+            return ft.Text(
+                'Ошибка создания вкладок.',
+                size=18,
+                text_align=ft.TextAlign.CENTER,
+            )
+
         booking_tabs = ft.Tabs(
             tabs=tabs,
             selected_index=selected_index,
             expand=True,
-            on_change=lambda e: self.on_tab_change(booking_tabs),
+            on_change=self.on_tab_change,
         )
-
-        self.on_tab_change(booking_tabs)
 
         return booking_tabs
 
-    def on_tab_change(self, booking_tabs):
+    def on_tab_change(self, e):
+        booking_tabs = e.control
         selected_index = booking_tabs.selected_index
+
+        if not booking_tabs.tabs or selected_index >= len(booking_tabs.tabs):
+            print('Ошибка: Некорректный индекс вкладки.')
+            return
+
         selected_tab = booking_tabs.tabs[selected_index]
         day_of_week = self.schedule_data[selected_index]['day_of_week']
         schedule_date = self.dates_storage[day_of_week]
@@ -237,7 +278,6 @@ class AdminBookingTable:
     def create_booking_table(self, day_with_date, schedule, timeslots):
         rows = []
 
-        # Заголовок с датой
         header = ft.Container(
             content=ft.Text(
                 day_with_date,
@@ -250,26 +290,6 @@ class AdminBookingTable:
             height=50,
         )
         rows.append(header)
-
-        box_header = ft.Row(
-            controls=[ft.Text('', width=100)]
-            + [
-                ft.Text(
-                    box['name'],
-                    weight='bold',
-                    text_align=ft.TextAlign.CENTER,
-                    expand=True,
-                )
-                for box in self.boxes_list
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            spacing=5,
-        )
-        rows.append(
-            ft.Container(
-                content=box_header, padding=ft.padding.all(5), height=50
-            )
-        )
 
         skip_slots = {}
         for time in timeslots:
