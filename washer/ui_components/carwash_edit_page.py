@@ -64,6 +64,8 @@ class CarWashEditPage:
         self.image_picker = ft.FilePicker(on_result=self.on_image_picked)
         self.page.overlay.append(self.image_picker)
 
+        self.reset_data()
+
         self.load_boxes()
         self.load_body_types()
         self.load_schedules()
@@ -76,6 +78,14 @@ class CarWashEditPage:
         page.add(app_bar)
         page.add(self.create_edit_page())
         page.overlay.append(self.loading_overlay)
+
+    def reset_data(self):
+        self.boxes_list = []
+        self.schedule_list = []
+        self.dates_storage = {}
+        self.today_bookings = []
+        self.total_revenue = 0
+        print(f'Данные сброшены для автомойки {self.car_wash["id"]}.')
 
     def show_loading(self):
         self.loading_overlay.visible = True
@@ -98,14 +108,27 @@ class CarWashEditPage:
             return {}
 
     def load_schedules(self):
+        self.schedule_list = []
+        self.dates_storage = {}
+        print(f'Загрузка расписаний для автомойки {self.car_wash["id"]}')
         self.show_loading()
         response = self.api.get_schedules(self.car_wash['id'])
         if response.status_code == 200:
-            self.schedule_list = response.json().get('data', [])
+            self.schedule_list = [
+                schedule
+                for schedule in response.json().get('data', [])
+                if schedule['car_wash_id'] == self.car_wash['id']
+            ]
             self.initialize_dates_for_schedule()
-            print(f'Загружено расписаний: {len(self.schedule_list)}')
+            print(
+                f'Загружено расписаний: {len(self.schedule_list)} '
+                f'для автомойки {self.car_wash["id"]}'
+            )
         else:
-            print(f'Ошибка загрузки расписаний: {response.text}')
+            print(
+                f'Ошибка загрузки расписаний для автомойки '
+                f'{self.car_wash["id"]}: {response.text}'
+            )
         self.hide_loading()
 
     def initialize_dates_for_schedule(self):
@@ -150,14 +173,21 @@ class CarWashEditPage:
                         total_revenue += price
 
                 self.total_revenue = total_revenue
+                print(
+                    f'Общая выручка для автомойки '
+                    f'{car_wash_id}: {self.total_revenue} ₸'
+                )
             else:
                 print(
-                    f'Ошибка загрузки букингов: '
+                    f'Ошибка загрузки букингов для автомойки {car_wash_id}: '
                     f'{response.status_code}, {response.text}'
                 )
                 self.total_revenue = 0
         except Exception as e:
-            print(f'Ошибка при загрузке букингов: {e}')
+            print(
+                f'Ошибка при загрузке букингов '
+                f'для автомойки {car_wash_id}: {e}'
+            )
             self.total_revenue = 0
 
     def create_edit_page(self):
@@ -352,21 +382,34 @@ class CarWashEditPage:
                 return today_bookings
             else:
                 print(
-                    f'Ошибка загрузки букингов: '
+                    f'Ошибка загрузки букингов для автомойки {car_wash_id}: '
                     f'{response.status_code}, {response.text}'
                 )
                 return []
         except Exception as e:
-            print(f'Ошибка при загрузке букингов: {e}')
+            print(
+                f'Ошибка при загрузке букингов '
+                f'для автомойки {car_wash_id}: {e}'
+            )
             return []
 
     def load_boxes(self):
+        self.boxes_list = []
         response = self.api.get_boxes(self.car_wash['id'])
         if response.status_code == 200:
-            self.boxes_list = response.json().get('data', [])
-            print('Боксы загружены успешно')
+            self.boxes_list = [
+                box
+                for box in response.json().get('data', [])
+                if box['car_wash_id'] == self.car_wash['id']
+            ]
+            print(
+                f'Боксы для автомойки {self.car_wash["id"]} успешно загружены.'
+            )
         else:
-            print(f'Ошибка загрузки боксов: {response.text}')
+            print(
+                f'Ошибка загрузки боксов для автомойки '
+                f'{self.car_wash["id"]}: {response.text}'
+            )
 
     def create_booking_status_dashboard(self):
         header = ft.Row(
@@ -412,14 +455,7 @@ class CarWashEditPage:
             )
             end_time = datetime.datetime.fromisoformat(booking['end_datetime'])
 
-            if current_time < start_time - datetime.timedelta(hours=1):
-                status = 'В ожидании'
-                color = '#FFD700'
-            elif (
-                start_time - datetime.timedelta(hours=1)
-                <= current_time
-                < start_time
-            ):
+            if current_time < start_time:
                 status = 'В ожидании'
                 color = '#FFD700'
             elif start_time <= current_time <= end_time:
@@ -847,4 +883,5 @@ class CarWashEditPage:
     def on_back_to_admin_page(self, e=None):
         from washer.ui_components.admin_page import AdminPage
 
+        AdminPage.car_washes_cache = None
         AdminPage(self.page)
