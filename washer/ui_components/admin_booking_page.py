@@ -32,6 +32,7 @@ class AdminSelectCarPage:
         self.generation_codes = None
         self.generations = []
         self.body_types_dict = {}
+        self.selected_body_type = None
         self.brand_button_text = 'Выберите марку автомобиля'
         self.selected_car = {}
         self.car_wash = car_wash
@@ -72,6 +73,7 @@ class AdminSelectCarPage:
         page.add(self.create_car_selection_page())
         page.add(self.price_text)
         page.add(self.confirm_button)
+
         self.load_brands()
         self.setup_snack_bar()
 
@@ -585,6 +587,9 @@ class AdminSelectCarPage:
                             None,
                         )
                         if selected_body_type_id:
+                            self.selected_body_type = (
+                                self.body_type_dropdown.value
+                            )
                             self.load_car_price(selected_body_type_id)
                         self.save_button.disabled = False
                         self.page.update()
