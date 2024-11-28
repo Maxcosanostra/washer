@@ -55,6 +55,13 @@ class AdminBookingTable:
         self.load_bookings()
         self.load_schedules()
 
+        if self.selected_date and self.selected_date not in self.loaded_days:
+            print(
+                f'Обновляем доступные слоты '
+                f'для выбранной даты {self.selected_date}'
+            )
+            self.load_available_times(self.selected_date)
+
         self.page.clean()
         self.page.add(app_bar)
         self.page.add(self.create_booking_page())
