@@ -73,12 +73,40 @@ class ScheduleManagementPage:
         )
 
         self.days_of_week_checkboxes = self.create_day_of_week_checkboxes()
+        self.setup_snack_bar()
         self.load_schedules()
 
         self.page.clean()
         self.page.add(app_bar)
         self.page.add(self.create_schedule_management_page())
         self.page.overlay.append(self.loading_overlay)
+        self.page.overlay.append(self.snack_bar)
+
+    def setup_snack_bar(self):
+        self.snack_bar = ft.SnackBar(
+            content=ft.Text(''),
+            bgcolor=ft.colors.GREEN,
+            duration=3000,
+        )
+
+    def show_snack_bar(
+        self,
+        message: str,
+        bgcolor: str = ft.colors.GREEN,
+        text_color: str = ft.colors.WHITE,
+    ):
+        print(f'Показываем сообщение: {message}')
+        self.snack_bar.content.value = message
+        self.snack_bar.content.color = text_color
+        self.snack_bar.bgcolor = bgcolor
+        self.snack_bar.open = True
+        self.page.update()
+
+    def show_success_message(self, message: str):
+        self.show_snack_bar(message, bgcolor=ft.colors.GREEN)
+
+    def show_error_message(self, message: str):
+        self.show_snack_bar(message, bgcolor=ft.colors.RED)
 
     def show_loading(self):
         self.loading_overlay.visible = True
@@ -350,16 +378,26 @@ class ScheduleManagementPage:
                 self.current_edit_schedule['id'], updated_schedule
             )
             if response.status_code == 200:
-                print(
-                    f"Расписание с ID "
-                    f"{self.current_edit_schedule['id']} успешно обновлено."
+                message = (
+                    f'Время расписания обновлено: '
+                    f'{self.current_start_time} - {self.current_end_time}.'
                 )
+                print(message)
+                self.show_success_message(message)
                 self.refresh_schedule_list()
             else:
-                print(f'Ошибка обновления расписания: {response.text}')
+                error_message = (
+                    f'Ошибка обновления расписания: {response.text}'
+                )
+                print(error_message)
+                self.show_error_message(error_message)
             self.hide_loading()
         except ValueError:
-            print('Ошибка: Неверный формат времени. Используйте ЧЧ:ММ.')
+            error_message = (
+                'Ошибка: Неверный формат времени. Используйте ЧЧ:ММ.'
+            )
+            print(error_message)
+            self.show_error_message(error_message)
 
     def close_modal(self):
         if self.page.dialog:
@@ -367,13 +405,46 @@ class ScheduleManagementPage:
             self.page.update()
 
     def on_delete_schedule(self, schedule_id):
+        confirmation_dialog = ft.AlertDialog(
+            title=ft.Text('Подтверждение удаления'),
+            content=ft.Text(
+                'Вы уверены, что хотите удалить этот день из расписания?'
+            ),
+            actions=[
+                ft.TextButton(
+                    text='Отмена',
+                    on_click=lambda e: self.close_modal(),
+                ),
+                ft.ElevatedButton(
+                    text='Подтвердить',
+                    on_click=lambda e: self.confirm_delete_schedule(
+                        schedule_id
+                    ),
+                    style=ft.ButtonStyle(
+                        bgcolor=ft.colors.RED,
+                        color=ft.colors.WHITE,
+                    ),
+                ),
+            ],
+            modal=True,
+        )
+        self.page.dialog = confirmation_dialog
+        self.page.dialog.open = True
+        self.page.update()
+
+    def confirm_delete_schedule(self, schedule_id):
+        self.close_modal()
         self.show_loading()
         response = self.api.delete_schedule(schedule_id)
         if response.status_code == 200:
-            print(f'Расписание с ID {schedule_id} успешно удалено.')
+            message = 'Расписание успешно удалено.'
+            print(message)
+            self.show_success_message(message)
             self.refresh_schedule_list()
         else:
-            print(f'Ошибка при удалении расписания: {response.text}')
+            error_message = f'Ошибка при удалении расписания: {response.text}'
+            print(error_message)
+            self.show_error_message(error_message)
         self.hide_loading()
 
     def create_day_of_week_checkboxes(self):
@@ -528,36 +599,20 @@ class ScheduleManagementPage:
 
     def create_week_schedule_for_all_boxes(self, e):
         today = datetime.datetime.today()
-
         start_time = self.schedule_start_time_picker.value.strftime('%H:%M:%S')
         end_time = self.schedule_end_time_picker.value.strftime('%H:%M:%S')
 
         if not start_time or not end_time:
-            print('Ошибка: Время начала или окончания не указано.')
+            error_message = 'Ошибка: Время начала или окончания не указано.'
+            print(error_message)
+            self.show_error_message(error_message)
             return
 
         self.show_loading()
-
-        existing_schedules = {
-            schedule['day_of_week']: schedule
-            for schedule in self.schedule_list
-        }
-
+        success_count = 0
         for i in range(7):
             schedule_date = today + datetime.timedelta(days=i)
             day_of_week = schedule_date.weekday()
-
-            if day_of_week in existing_schedules:
-                print(
-                    f'Расписание на день '
-                    f'{day_of_week} уже существует, пропускаем.'
-                )
-                continue
-
-            self.dates_storage[day_of_week] = schedule_date.strftime(
-                '%Y-%m-%d'
-            )
-
             new_schedule_data = {
                 'car_wash_id': self.car_wash['id'],
                 'day_of_week': day_of_week,
@@ -565,22 +620,25 @@ class ScheduleManagementPage:
                 'end_time': end_time,
                 'is_available': True,
             }
-
             response = self.api.create_schedule(new_schedule_data)
             if response.status_code == 200:
-                print(
-                    f"Создано расписание для "
-                    f"{schedule_date.strftime('%Y-%m-%d')} "
-                    f"на день {day_of_week}"
-                )
+                success_count += 1
             else:
                 print(
-                    f'Ошибка создания расписания для дня '
-                    f'{day_of_week}: {response.text}'
+                    f'Ошибка создания расписания для дня {day_of_week}: '
+                    f'{response.text}'
                 )
 
         self.hide_loading()
-        self.refresh_schedule_list()  # Обновляем только список расписаний
+        if success_count > 0:
+            message = f'Создано расписаний: {success_count} из 7.'
+            self.show_success_message(message)
+        else:
+            error_message = 'Ошибка создания недельного расписания.'
+            self.show_error_message(error_message)
+        self.refresh_schedule_list()
+
+    # Обновляем только список расписаний
 
     # def update_schedule_and_scroll(self):
     #     """Старый метод для обновления расписаний
@@ -613,7 +671,11 @@ class ScheduleManagementPage:
             self.schedule_start_time_picker_manual.value is None
             or self.schedule_end_time_picker_manual.value is None
         ):
-            print('Ошибка: Время начала и окончания должно быть выбрано.')
+            error_message = (
+                'Ошибка: Время начала и окончания должно быть выбрано.'
+            )
+            print(error_message)
+            self.show_error_message(error_message)
             return
 
         start_time = self.schedule_start_time_picker_manual.value.strftime(
@@ -622,8 +684,8 @@ class ScheduleManagementPage:
         end_time = self.schedule_end_time_picker_manual.value.strftime(
             '%H:%M:%S'
         )
-
         self.show_loading()
+        success_count = 0
 
         for day in self.selected_days:
             schedule_data = {
@@ -633,10 +695,9 @@ class ScheduleManagementPage:
                 'end_time': end_time,
                 'is_available': True,
             }
-
             response = self.api.create_schedule(schedule_data)
             if response.status_code == 200:
-                print(f'Расписание на день {day + 1} создано')
+                success_count += 1
             else:
                 print(
                     f'Ошибка создания расписания для дня {day + 1}: '
@@ -644,6 +705,15 @@ class ScheduleManagementPage:
                 )
 
         self.hide_loading()
+        if success_count > 0:
+            message = (
+                f'Создано расписаний: {success_count} из '
+                f'{len(self.selected_days)}.'
+            )
+            self.show_success_message(message)
+        else:
+            error_message = 'Ошибка создания механического расписания.'
+            self.show_error_message(error_message)
         self.refresh_schedule_list()
 
     def create_schedule_management_page(self):
