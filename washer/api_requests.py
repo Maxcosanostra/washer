@@ -271,3 +271,11 @@ class BackendApi:
         headers = self.get_headers()
         response = httpx.patch(api_url, json=new_values, headers=headers)
         return response
+
+    def update_schedule(
+        self, schedule_id: int, updated_data: dict
+    ) -> httpx.Response:
+        api_url = f"{self.url.rstrip('/')}/car_washes/schedules/{schedule_id}"
+        headers = self.get_headers()
+        response = httpx.patch(api_url, json=updated_data, headers=headers)
+        return response
