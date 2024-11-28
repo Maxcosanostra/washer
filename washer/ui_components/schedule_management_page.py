@@ -159,59 +159,106 @@ class ScheduleManagementPage:
             rows.append(
                 ft.Row(
                     controls=[
-                        ft.Text(
-                            f'{schedule_date}',
-                            expand=1,
-                            text_align=ft.TextAlign.LEFT,
-                        ),
-                        ft.Text(
-                            f'{day_name}',
+                        ft.Container(
+                            content=ft.Text(
+                                f'{schedule_date}',
+                                text_align=ft.TextAlign.CENTER,
+                            ),
                             expand=2,
-                            text_align=ft.TextAlign.LEFT,
+                            alignment=ft.alignment.center,
                         ),
-                        ft.Text(
-                            f'{start_time} - {end_time}',
-                            expand=2,
-                            text_align=ft.TextAlign.LEFT,
+                        ft.Container(
+                            content=ft.Text(
+                                f'{day_name}',
+                                text_align=ft.TextAlign.CENTER,
+                            ),
+                            expand=4,
+                            alignment=ft.alignment.center,
                         ),
-                        ft.IconButton(
-                            icon=ft.icons.DELETE,
-                            on_click=lambda e,
-                            s=schedule: self.on_delete_schedule(s['id']),
-                            icon_size=18,
-                            tooltip='Удалить расписание',
+                        ft.Container(
+                            content=ft.Text(
+                                f'{start_time} - {end_time}',
+                                text_align=ft.TextAlign.CENTER,
+                            ),
+                            expand=4,
+                            alignment=ft.alignment.center,
+                        ),
+                        ft.Row(
+                            controls=[
+                                ft.IconButton(
+                                    icon=ft.icons.EDIT,
+                                    on_click=lambda e,
+                                    s=schedule: self.on_edit_schedule(s),
+                                    icon_size=16,
+                                    tooltip='Редактировать расписание',
+                                    padding=ft.padding.all(0),
+                                ),
+                                ft.IconButton(
+                                    icon=ft.icons.DELETE,
+                                    on_click=lambda e,
+                                    s=schedule: self.on_delete_schedule(
+                                        s['id']
+                                    ),
+                                    icon_size=16,
+                                    tooltip='Удалить расписание',
+                                    padding=ft.padding.all(0),
+                                ),
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            spacing=0,
+                            width=60,
                         ),
                     ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    alignment=ft.MainAxisAlignment.CENTER,
                 )
             )
 
         return ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Text('Актуальное расписание', size=24),
                     ft.Row(
                         controls=[
-                            ft.Text(
-                                'Дата',
-                                weight=ft.FontWeight.BOLD,
-                                expand=1,
-                                text_align=ft.TextAlign.LEFT,
-                            ),
-                            ft.Text(
-                                'День недели',
-                                weight=ft.FontWeight.BOLD,
+                            ft.Container(
+                                content=ft.Text(
+                                    'Дата',
+                                    weight=ft.FontWeight.BOLD,
+                                    text_align=ft.TextAlign.CENTER,
+                                ),
                                 expand=2,
-                                text_align=ft.TextAlign.LEFT,
+                                alignment=ft.alignment.center,
                             ),
-                            ft.Text(
-                                'Время',
-                                weight=ft.FontWeight.BOLD,
-                                expand=2,
-                                text_align=ft.TextAlign.LEFT,
+                            ft.Container(
+                                content=ft.Text(
+                                    'День недели',
+                                    weight=ft.FontWeight.BOLD,
+                                    text_align=ft.TextAlign.CENTER,
+                                ),
+                                expand=4,
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(left=5),
+                            ),
+                            ft.Container(
+                                content=ft.Text(
+                                    'Время',
+                                    weight=ft.FontWeight.BOLD,
+                                    text_align=ft.TextAlign.CENTER,
+                                ),
+                                expand=4,
+                                alignment=ft.alignment.center,
+                                # padding=ft.padding.only(left=5),
+                            ),
+                            ft.Container(
+                                content=ft.Text(
+                                    'Опции',
+                                    weight=ft.FontWeight.BOLD,
+                                    text_align=ft.TextAlign.CENTER,
+                                ),
+                                width=60,
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(left=10),
                             ),
                         ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        alignment=ft.MainAxisAlignment.CENTER,
                     ),
                 ]
                 + rows,
@@ -219,6 +266,105 @@ class ScheduleManagementPage:
             ),
             key='schedule_list_section',
         )
+
+    def on_edit_schedule(self, schedule):
+        self.current_edit_schedule = schedule
+        self.show_start_time_modal()
+
+    def show_start_time_modal(self):
+        self.start_time_input = ft.TextField(
+            label='Введите время начала (формат ЧЧ:ММ)',
+            hint_text='Например: 08:00',
+            expand=True,
+        )
+
+        modal = ft.AlertDialog(
+            title=ft.Text('Редактировать время начала'),
+            content=self.start_time_input,
+            actions=[
+                ft.ElevatedButton(
+                    text='Подтвердить',
+                    on_click=self.on_confirm_start_time,
+                ),
+                ft.TextButton(
+                    text='Отмена',
+                    on_click=lambda e: self.close_modal(),
+                ),
+            ],
+            modal=True,
+        )
+        self.page.dialog = modal
+        self.page.dialog.open = True
+        self.page.update()
+
+    def on_confirm_start_time(self, e):
+        start_time = self.start_time_input.value.strip()
+        try:
+            datetime.datetime.strptime(start_time, '%H:%M')
+            self.current_start_time = start_time + ':00'
+            self.close_modal()
+            self.show_end_time_modal()
+        except ValueError:
+            print('Ошибка: Неверный формат времени. Используйте ЧЧ:ММ.')
+
+    def show_end_time_modal(self):
+        self.end_time_input = ft.TextField(
+            label='Введите время окончания (формат ЧЧ:ММ)',
+            hint_text='Например: 18:00',
+            expand=True,
+        )
+
+        modal = ft.AlertDialog(
+            title=ft.Text('Редактировать время окончания'),
+            content=self.end_time_input,
+            actions=[
+                ft.ElevatedButton(
+                    text='Подтвердить',
+                    on_click=self.on_confirm_end_time,
+                ),
+                ft.TextButton(
+                    text='Отмена',
+                    on_click=lambda e: self.close_modal(),
+                ),
+            ],
+            modal=True,
+        )
+        self.page.dialog = modal
+        self.page.dialog.open = True
+        self.page.update()
+
+    def on_confirm_end_time(self, e):
+        end_time = self.end_time_input.value.strip()
+        try:
+            datetime.datetime.strptime(end_time, '%H:%M')
+            self.current_end_time = end_time + ':00'
+            self.close_modal()
+
+            updated_schedule = {
+                'start_time': self.current_start_time,
+                'end_time': self.current_end_time,
+            }
+
+            self.show_loading()
+            response = self.api.update_schedule(
+                self.current_edit_schedule['id'], updated_schedule
+            )
+            if response.status_code == 200:
+                print(
+                    f"Расписание с ID "
+                    f"{self.current_edit_schedule['id']} успешно обновлено."
+                )
+                self.refresh_schedule_list()
+            else:
+                print(f'Ошибка обновления расписания: {response.text}')
+            self.hide_loading()
+        except ValueError:
+            print('Ошибка: Неверный формат времени. Используйте ЧЧ:ММ.')
+
+    def close_modal(self):
+        if self.page.dialog:
+            self.page.dialog.open = False
+            self.page.update()
 
     def on_delete_schedule(self, schedule_id):
         self.show_loading()
