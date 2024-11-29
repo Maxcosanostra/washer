@@ -640,27 +640,21 @@ class SelectCarPage:
             response = httpx.post(api_url, json=selected_car, headers=headers)
             if response.status_code == 200:
                 print('Автомобиль успешно сохранен на сервере.')
-                self.page.add(
-                    ft.Text(
-                        'Автомобиль успешно сохранен', color=ft.colors.GREEN
-                    )
+                self.show_snack_bar(
+                    'Автомобиль успешно сохранен', bgcolor=ft.colors.GREEN
                 )
-                from washer.ui_components.profile_page import ProfilePage
-
-                ProfilePage(self.page)
+                self.on_car_saved(response.json().get('data', selected_car))
             else:
                 error_message = response.text or 'Неизвестная ошибка'
                 print(f'Ошибка при сохранении автомобиля: {error_message}')
-                self.page.add(
-                    ft.Text(f'Ошибка: {error_message}', color=ft.colors.RED)
+                self.show_snack_bar(
+                    f'Ошибка: {error_message}', bgcolor=ft.colors.RED
                 )
         except Exception as e:
             print(f'Ошибка при сохранении автомобиля: {e}')
-            self.page.add(
-                ft.Text(
-                    f'Ошибка при сохранении автомобиля: {str(e)}',
-                    color=ft.colors.RED,
-                )
+            self.show_snack_bar(
+                f'Ошибка при сохранении автомобиля: {str(e)}',
+                bgcolor=ft.colors.RED,
             )
 
     def update_profile_page(self):
