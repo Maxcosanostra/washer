@@ -219,19 +219,12 @@ class ProfilePage:
             api_url=self.api_url,
             cars=self.cars,
             on_car_saved_callback=lambda car: cars_page.open(),
-            # Открываем страницу "Мои автомобили"
         )
         cars_page.open()
 
-    # def open_account_settings(self, e):
-    #     self.page.clean()
-    #     self.page.add(self.create_account_settings_page())
-    #     self.page.update()
-
     def open_account_settings(self, e):
-        """Открывает страницу,используя отдельный класс AccountSettingsPage."""
         self.page.clean()
-        AccountSettingsPage(self.page)  # Создаем экземпляр отдельного класса
+        AccountSettingsPage(self.page)
         self.page.update()
 
     def open_finances_page(self, e):
@@ -273,43 +266,6 @@ class ProfilePage:
             ),
             padding=ft.padding.all(20),
         )
-
-    # def open_account_settings(self, e):
-    #     self.page.clean()
-    #     self.page.add(self.create_account_settings_page())
-    #     self.page.update()
-    #
-    # def create_account_settings_page(self):
-    #     self.page.appbar = ft.AppBar(
-    #         leading=ft.IconButton(
-    #             icon=ft.icons.ARROW_BACK,
-    #             on_click=self.return_to_profile,
-    #             icon_color=ft.colors.WHITE,
-    #             padding=ft.padding.only(left=10),
-    #         ),
-    #         title=ft.Text(
-    #             'Учетная запись', size=20, weight=ft.FontWeight.BOLD
-    #         ),
-    #         center_title=True,
-    #         bgcolor=ft.colors.SURFACE_VARIANT,
-    #         leading_width=40,
-    #     )
-    #
-    #     return ft.Container(
-    #         content=ft.Column(
-    #             controls=[
-    #                 ft.Text(
-    #                     'Настройки аккаунта будут здесь',
-    #                     size=20,
-    #                     color=ft.colors.GREY_700,
-    #                 ),
-    #             ],
-    #             alignment=ft.MainAxisAlignment.CENTER,
-    #             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-    #             spacing=15,
-    #         ),
-    #         padding=ft.padding.all(20),
-    #     )
 
     def redirect_to_booking_page(self, e):
         self.page.appbar = None
