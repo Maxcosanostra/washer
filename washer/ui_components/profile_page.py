@@ -232,39 +232,11 @@ class ProfilePage:
         finance_page = MyFinancePage(self.page)
         finance_page.open()
 
-    def redirect_to_booking_page(self, e):
-        self.page.appbar = None
-        self.page.clean()
-
-        from washer.ui_components.wash_selection_page import WashSelectionPage
-
-        WashSelectionPage(self.page, username=self.username)
-
     def return_to_profile(self, e):
         self.page.appbar = None
         self.page.clean()
         self.page.add(self.create_profile_page())
         self.page.update()
-
-    def format_date(self, booking_date):
-        import datetime
-
-        months = {
-            1: 'января',
-            2: 'февраля',
-            3: 'марта',
-            4: 'апреля',
-            5: 'мая',
-            6: 'июня',
-            7: 'июля',
-            8: 'августа',
-            9: 'сентября',
-            10: 'октября',
-            11: 'ноября',
-            12: 'декабря',
-        }
-        date_obj = datetime.datetime.strptime(booking_date, '%Y-%m-%d')
-        return f'{date_obj.day} {months[date_obj.month]}'
 
     def create_avatar_container(self):
         return ft.Container(
