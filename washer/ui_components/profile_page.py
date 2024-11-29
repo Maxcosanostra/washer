@@ -7,6 +7,7 @@ from washer.config import config
 from washer.ui_components.account_settings_page import AccountSettingsPage
 from washer.ui_components.my_bookings_page import MyBookingsPage
 from washer.ui_components.my_cars_page import MyCarsPage
+from washer.ui_components.my_finance_page import MyFinancePage
 
 
 class ProfilePage:
@@ -228,44 +229,8 @@ class ProfilePage:
         self.page.update()
 
     def open_finances_page(self, e):
-        self.page.clean()
-        self.page.add(self.create_finances_page())
-        self.page.update()
-
-    def create_finances_page(self):
-        self.page.appbar = ft.AppBar(
-            leading=ft.IconButton(
-                icon=ft.icons.ARROW_BACK,
-                on_click=self.return_to_profile,
-                icon_color=ft.colors.WHITE,
-                padding=ft.padding.only(left=10),
-            ),
-            title=ft.Text(
-                'Финансы',
-                size=20,
-                weight=ft.FontWeight.BOLD,
-                color=ft.colors.WHITE,
-            ),
-            center_title=True,
-            bgcolor=ft.colors.BLUE,
-            leading_width=40,
-        )
-
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Text(
-                        'Финансовая информация будет здесь',
-                        size=20,
-                        color=ft.colors.GREY_700,
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing=15,
-            ),
-            padding=ft.padding.all(20),
-        )
+        finance_page = MyFinancePage(self.page)
+        finance_page.open()
 
     def redirect_to_booking_page(self, e):
         self.page.appbar = None
