@@ -27,6 +27,7 @@ class ProfilePage:
         self.cars = []
         self.bookings = []
         self.completed_visible = False
+        self.selected_image_bytes = None  # Добавлено инициализирующее значение
 
         self.completed_bookings_container = ft.Container(visible=False)
 
@@ -205,39 +206,6 @@ class ProfilePage:
             border_radius=ft.border_radius.all(12),
         )
 
-    def open_bookings_page(self, e):
-        bookings_page = MyBookingsPage(
-            page=self.page,
-            api_url=self.api_url,
-            car_wash=self.car_wash,
-            location_data=self.location_data,
-        )
-        bookings_page.open()
-
-    def open_cars_page(self, e):
-        cars_page = MyCarsPage(
-            page=self.page,
-            api_url=self.api_url,
-            cars=self.cars,
-            on_car_saved_callback=lambda car: cars_page.open(),
-        )
-        cars_page.open()
-
-    def open_account_settings(self, e):
-        self.page.clean()
-        AccountSettingsPage(self.page)
-        self.page.update()
-
-    def open_finances_page(self, e):
-        finance_page = MyFinancePage(self.page)
-        finance_page.open()
-
-    def return_to_profile(self, e):
-        self.page.appbar = None
-        self.page.clean()
-        self.page.add(self.create_profile_page())
-        self.page.update()
-
     def create_avatar_container(self):
         return ft.Container(
             content=ft.Icon(ft.icons.PERSON, size=100, color=ft.colors.GREY),
@@ -303,6 +271,39 @@ class ProfilePage:
                     border_radius=ft.border_radius.all(50),
                 )
                 self.page.update()
+
+    def open_bookings_page(self, e):
+        bookings_page = MyBookingsPage(
+            page=self.page,
+            api_url=self.api_url,
+            car_wash=self.car_wash,
+            location_data=self.location_data,
+        )
+        bookings_page.open()
+
+    def open_cars_page(self, e):
+        cars_page = MyCarsPage(
+            page=self.page,
+            api_url=self.api_url,
+            cars=self.cars,
+            on_car_saved_callback=lambda car: cars_page.open(),
+        )
+        cars_page.open()
+
+    def open_account_settings(self, e):
+        self.page.clean()
+        AccountSettingsPage(self.page)
+        self.page.update()
+
+    def open_finances_page(self, e):
+        finance_page = MyFinancePage(self.page)
+        finance_page.open()
+
+    def return_to_profile(self, e):
+        self.page.appbar = None
+        self.page.clean()
+        self.page.add(self.create_profile_page())
+        self.page.update()
 
     def on_back_click(self, e):
         from washer.ui_components.wash_selection_page import WashSelectionPage
