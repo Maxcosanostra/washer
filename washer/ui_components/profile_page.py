@@ -59,10 +59,6 @@ class ProfilePage:
                                         on_click=self.on_back_click,
                                     ),
                                     ft.Container(expand=1),
-                                    ft.IconButton(
-                                        icon=ft.icons.LOGOUT,
-                                        on_click=self.on_logout_click,
-                                    ),
                                 ],
                                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                             ),
@@ -118,7 +114,10 @@ class ProfilePage:
                                     color=ft.colors.WHITE,
                                 ),
                                 ft.Text(
-                                    'Мои автомобили', color=ft.colors.WHITE
+                                    'Мои автомобили',
+                                    color=ft.colors.WHITE,
+                                    size=16,
+                                    weight=ft.FontWeight.BOLD,
                                 ),
                             ],
                             alignment=ft.MainAxisAlignment.START,
@@ -138,7 +137,12 @@ class ProfilePage:
                                 ft.Icon(
                                     ft.icons.EVENT_NOTE, color=ft.colors.WHITE
                                 ),
-                                ft.Text('Мои записи', color=ft.colors.WHITE),
+                                ft.Text(
+                                    'Мои записи',
+                                    color=ft.colors.WHITE,
+                                    size=16,
+                                    weight=ft.FontWeight.BOLD,
+                                ),
                             ],
                             alignment=ft.MainAxisAlignment.START,
                             spacing=5,
@@ -160,7 +164,10 @@ class ProfilePage:
                                     color=ft.colors.WHITE,
                                 ),
                                 ft.Text(
-                                    'Учетная запись', color=ft.colors.WHITE
+                                    'Учетная запись',
+                                    color=ft.colors.WHITE,
+                                    size=16,
+                                    weight=ft.FontWeight.BOLD,
                                 ),
                             ],
                             alignment=ft.MainAxisAlignment.START,
@@ -181,7 +188,12 @@ class ProfilePage:
                                     ft.icons.ATTACH_MONEY,
                                     color=ft.colors.WHITE,
                                 ),
-                                ft.Text('Финансы', color=ft.colors.WHITE),
+                                ft.Text(
+                                    'Финансы',
+                                    color=ft.colors.WHITE,
+                                    size=16,
+                                    weight=ft.FontWeight.BOLD,
+                                ),
                             ],
                             alignment=ft.MainAxisAlignment.START,
                             spacing=5,
@@ -194,14 +206,26 @@ class ProfilePage:
                         ),
                         border_radius=ft.border_radius.all(8),
                     ),
+                    ft.Divider(height=1, color=ft.colors.GREY_400),
+                    ft.Container(
+                        content=ft.ElevatedButton(
+                            text='Выйти из профиля',
+                            bgcolor=ft.colors.RED,
+                            color=ft.colors.WHITE,
+                            on_click=self.on_logout_click,
+                            elevation=5,
+                        ),
+                        width=300,
+                        alignment=ft.alignment.center,
+                        margin=ft.margin.only(top=20, bottom=15),
+                    ),
                 ],
                 alignment=ft.MainAxisAlignment.START,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=15,
-                expand=True,
             ),
             width=350,
-            height=720,
+            expand=True,
             padding=ft.padding.all(20),
             border_radius=ft.border_radius.all(12),
         )
