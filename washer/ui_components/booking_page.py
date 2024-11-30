@@ -453,22 +453,25 @@ class BookingPage:
         )
 
     def load_schedules(self):
-        """Загрузка доступных расписаний с сервера"""
         response = self.api.get_schedules(self.car_wash['id'])
         if response.status_code == 200:
             data = response.json()
-            print(f'Ответ сервера: {data}')
+            print(
+                f'Расписания успешно загружены для автомойки '
+                f'{self.car_wash["name"]}: {data}'
+            )
             self.schedule_list = data.get('data', [])
             self.available_dates = [
-                datetime.datetime.strptime(
-                    schedule.get('date', ''), '%Y-%m-%d'
-                )
+                datetime.datetime.strptime(schedule['date'], '%Y-%m-%d')
                 for schedule in self.schedule_list
                 if 'date' in schedule
             ]
-            print(f'Доступные расписания: {self.available_dates}')
         else:
             print(f'Ошибка загрузки расписаний: {response.text}')
+            self.schedule_list = []
+            self.available_dates = []
+
+        self.page.update()
 
     def on_date_change(self, e):
         self.selected_date = e.control.value
@@ -487,91 +490,121 @@ class BookingPage:
 
     def load_available_times(self):
         if self.selected_box_id and self.selected_date:
-            response = self.api.get_available_times(
-                self.car_wash['id'], self.selected_date
-            )
-            if response.status_code == 200:
-                all_times = (
-                    response.json()
-                    .get('available_times', {})
-                    .get(str(self.selected_box_id), [])
+            self.show_loading()
+
+            try:
+                response = self.api.get_available_times(
+                    self.car_wash['id'], self.selected_date
                 )
-                print(f'Доступное время: {all_times}')
+                if response.status_code == 200:
+                    all_times = (
+                        response.json()
+                        .get('available_times', {})
+                        .get(str(self.selected_box_id), [])
+                    )
+                    print(
+                        f'Доступное время для бокса '
+                        f'{self.selected_box_id}: {all_times}'
+                    )
 
-                current_datetime = datetime.datetime.now()
-                selected_date_as_date = self.selected_date.date()
+                    current_datetime = datetime.datetime.now()
+                    selected_date_as_date = self.selected_date.date()
 
-                filtered_times = []
+                    filtered_times = []
 
-                for time_range in all_times:
-                    start_time = datetime.datetime.fromisoformat(time_range[0])
-                    end_time = datetime.datetime.fromisoformat(time_range[1])
-
-                    while start_time < end_time:
-                        potential_end_time = start_time + datetime.timedelta(
-                            hours=2
+                    for time_range in all_times:
+                        start_time = datetime.datetime.fromisoformat(
+                            time_range[0]
+                        )
+                        end_time = datetime.datetime.fromisoformat(
+                            time_range[1]
                         )
 
-                        if selected_date_as_date == current_datetime.date():
+                        while start_time < end_time:
+                            potential_end_time = (
+                                start_time + datetime.timedelta(hours=2)
+                            )
+
                             if (
-                                start_time > current_datetime
-                                and potential_end_time <= end_time
+                                selected_date_as_date
+                                == current_datetime.date()
                             ):
-                                filtered_times.append(
-                                    [
-                                        start_time.isoformat(),
-                                        (
-                                            start_time
-                                            + datetime.timedelta(hours=1)
-                                        ).isoformat(),
-                                    ]
-                                )
-                        elif selected_date_as_date > current_datetime.date():
-                            if potential_end_time <= end_time:
-                                filtered_times.append(
-                                    [
-                                        start_time.isoformat(),
-                                        (
-                                            start_time
-                                            + datetime.timedelta(hours=1)
-                                        ).isoformat(),
-                                    ]
-                                )
-                        start_time += datetime.timedelta(hours=1)
+                                if (
+                                    start_time > current_datetime
+                                    and potential_end_time <= end_time
+                                ):
+                                    filtered_times.append(
+                                        [
+                                            start_time.isoformat(),
+                                            (
+                                                start_time
+                                                + datetime.timedelta(hours=1)
+                                            ).isoformat(),
+                                        ]
+                                    )
+                            elif (
+                                selected_date_as_date > current_datetime.date()
+                            ):
+                                if potential_end_time <= end_time:
+                                    filtered_times.append(
+                                        [
+                                            start_time.isoformat(),
+                                            (
+                                                start_time
+                                                + datetime.timedelta(hours=1)
+                                            ).isoformat(),
+                                        ]
+                                    )
+                            start_time += datetime.timedelta(hours=1)
 
-                print(f'Отфильтрованные временные интервалы: {filtered_times}')
+                    print(
+                        f'Отфильтрованные временные интервалы: '
+                        f'{filtered_times}'
+                    )
 
-                self.available_times = self.parse_available_times(
-                    filtered_times
-                )
-                print(f'Доступные временные интервалы: {self.available_times}')
+                    self.available_times = self.parse_available_times(
+                        filtered_times
+                    )
+                    print(
+                        f'Доступные временные интервалы: '
+                        f'{self.available_times}'
+                    )
 
-                if not self.available_times:
-                    self.time_dropdown_container.controls = [
-                        ft.Text(
-                            'К сожалению, мест не осталось',
-                            color=ft.colors.RED,
-                            size=18,
-                            weight=ft.FontWeight.BOLD,
-                            text_align=ft.TextAlign.CENTER,
-                        )
-                    ]
+                    if not self.available_times:
+                        self.time_dropdown_container.controls = [
+                            ft.Text(
+                                'К сожалению, мест не осталось',
+                                color=ft.colors.RED,
+                                size=18,
+                                weight=ft.FontWeight.BOLD,
+                                text_align=ft.TextAlign.CENTER,
+                            )
+                        ]
+                    else:
+                        self.time_dropdown_container.controls = [
+                            ft.Dropdown(
+                                hint_text='Выберите доступное время',
+                                options=[
+                                    ft.dropdown.Option(
+                                        key=time_slot,
+                                        text=self.format_time(time_slot),
+                                    )
+                                    for time_slot in self.available_times
+                                ],
+                                on_change=self.on_time_select,
+                                disabled=False,
+                            )
+                        ]
+
+                    self.page.update()
                 else:
-                    self.time_dropdown_container.controls = [
-                        ft.Dropdown(
-                            hint_text='Выберите доступное время',
-                            options=[
-                                ft.dropdown.Option(self.format_time(time_slot))
-                                for time_slot in self.available_times
-                            ],
-                            on_change=self.on_time_select,
-                            disabled=False,
-                        )
-                    ]
-
-                self.page.update()
-            else:
-                print(f'Ошибка загрузки доступного времени: {response.text}')
+                    print(
+                        f'Ошибка загрузки доступного времени: {response.text}'
+                    )
+            except Exception as e:
+                print(f'Ошибка при загрузке доступного времени: {str(e)}')
+            finally:
+                self.hide_loading()
         else:
             print('Выберите бокс и дату.')
 
@@ -618,22 +651,30 @@ class BookingPage:
             and self.selected_time
             and self.selected_car_id
         ):
-            start_datetime = (
-                f'{self.selected_date.strftime("%Y-%m-%d")}'
-                f'T{self.selected_time}:00'
-            )
-
             try:
+                if 'T' in self.selected_time:
+                    start_datetime = self.selected_time
+                else:
+                    start_datetime = (
+                        f"{self.selected_date.strftime('%Y-%m-%d')}"
+                        f"T{self.selected_time}:00"
+                    )
+
+                end_datetime = (
+                    datetime.datetime.fromisoformat(start_datetime)
+                    + datetime.timedelta(hours=2)
+                ).isoformat()
+
                 booking_data = {
                     'box_id': self.selected_box_id,
                     'user_car_id': self.selected_car_id,
                     'is_exception': False,
                     'start_datetime': start_datetime,
-                    'end_datetime': (
-                        datetime.datetime.fromisoformat(start_datetime)
-                        + datetime.timedelta(hours=2)
-                    ).isoformat(),
+                    'end_datetime': end_datetime,
                 }
+
+                print(f'Данные для бронирования: {booking_data}')
+
                 response = self.api.create_booking(booking_data)
 
                 if response.status_code == 200:
@@ -660,21 +701,50 @@ class BookingPage:
         self.page.update()
 
     def load_boxes(self):
-        response = self.api.get_boxes(self.car_wash['id'])
-        if response.status_code == 200:
-            all_boxes = response.json().get('data', [])
-            if all_boxes:
-                print(f'Боксы успешно загружены: {all_boxes}')
-                box_options = [
-                    ft.dropdown.Option(str(box['id']), box['name'])
+        self.show_loading()
+
+        try:
+            response = self.api.get_boxes(self.car_wash['id'])
+            if response.status_code == 200:
+                all_boxes = response.json().get('data', [])
+                print(
+                    f'Боксы успешно загружены для автомойки '
+                    f'{self.car_wash["name"]}: {all_boxes}'
+                )
+
+                filtered_boxes = [
+                    box
                     for box in all_boxes
+                    if box['car_wash_id'] == self.car_wash['id']
                 ]
-                self.box_dropdown.options = box_options
-                self.page.update()
+
+                if filtered_boxes:
+                    box_options = [
+                        ft.dropdown.Option(
+                            key=str(box['id']), text=box['name']
+                        )
+                        for box in filtered_boxes
+                    ]
+                    self.box_dropdown.options = box_options
+                    self.box_dropdown.disabled = False
+                else:
+                    print(
+                        f'Нет доступных боксов для автомойки '
+                        f'{self.car_wash["name"]}.'
+                    )
+                    self.box_dropdown.options = []
+                    self.box_dropdown.disabled = True
             else:
-                print('Список боксов пуст.')
-        else:
-            print(f'Ошибка загрузки боксов: {response.text}')
+                print(f'Ошибка загрузки боксов: {response.text}')
+                self.box_dropdown.options = []
+                self.box_dropdown.disabled = True
+        except Exception as e:
+            print(f'Ошибка загрузки боксов: {str(e)}')
+            self.box_dropdown.options = []
+            self.box_dropdown.disabled = True
+        finally:
+            self.hide_loading()
+            self.page.update()
 
     def on_back_click(self, e):
         self.page.appbar = None
@@ -696,11 +766,19 @@ class BookingPage:
         city = self.location_data.get('city', 'Город не указан')
         full_address = f'{city}, {address}'
 
+        formatted_date = self.selected_date.strftime('%d.%m.%Y')
+        formatted_time = (
+            datetime.datetime.fromisoformat(self.selected_time).strftime(
+                '%H:%M'
+            )
+            if 'T' in self.selected_time
+            else self.selected_time
+        )
+
         booking_details = [
             (
                 'Дата и время',
-                f"{self.selected_date.strftime('%d.%m.%Y')} "
-                f"в {self.selected_time}",
+                f'{formatted_date} в {formatted_time}',
             ),
             ('Выбранный бокс', f'Бокс №{self.selected_box_id}'),
             ('Автомойка', self.car_wash.get('name', 'Неизвестная автомойка')),
