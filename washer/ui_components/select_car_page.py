@@ -60,12 +60,6 @@ class SelectCarPage:
             leading_width=40,
         )
 
-    def return_to_cars_page(self, e=None):
-        self.page.appbar = None
-        from washer.ui_components.profile_page import ProfilePage
-
-        ProfilePage(self.page)
-
     def create_car_selection_page(self):
         return ft.Container(
             content=ft.Container(
@@ -719,7 +713,13 @@ class SelectCarPage:
         self.snack_bar.open = True
         self.page.update()
 
-    def on_back_to_profile_click(self, _: ft.ControlEvent):
-        from washer.ui_components.profile_page import ProfilePage
+    def return_to_cars_page(self, e=None):
+        self.page.appbar = None
+        from washer.ui_components.my_cars_page import MyCarsPage
 
-        ProfilePage(self.page)
+        MyCarsPage(
+            page=self.page,
+            api_url=self.api_url,
+            cars=[],
+            on_car_saved_callback=self.on_car_saved,
+        ).open()
