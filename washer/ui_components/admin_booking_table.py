@@ -551,10 +551,32 @@ class AdminBookingTable:
             self.page.update()
 
     def open_booking_page(self, box_id, date, time):
-        from washer.ui_components.admin_booking_page import AdminSelectCarPage
+        from washer.ui_components.admin_car_selection_page import (
+            AdminCarSelectionPage,
+        )
 
-        AdminSelectCarPage(
-            self.page, self.on_car_saved, self.car_wash, box_id, date, time
+        def on_car_selected(selected_car, car_price):
+            from washer.ui_components.admin_booking_process_page import (
+                AdminBookingProcessPage,
+            )
+
+            AdminBookingProcessPage(
+                self.page,
+                self.car_wash,
+                box_id,
+                date,
+                time,
+                selected_car,
+                car_price,
+            )
+
+        AdminCarSelectionPage(
+            self.page,
+            on_car_selected,
+            self.car_wash,
+            box_id,
+            date,
+            time,
         )
 
     def get_day_name(self, day_of_week):
