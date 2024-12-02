@@ -279,3 +279,56 @@ class BackendApi:
         headers = self.get_headers()
         response = httpx.patch(api_url, json=updated_data, headers=headers)
         return response
+
+    def get_brands(self, limit=1000) -> httpx.Response:
+        api_url = f"{self.url.rstrip('/')}/cars/brands?limit={limit}"
+        headers = self.get_headers()
+        response = httpx.get(api_url, headers=headers)
+        return response
+
+    def get_models(self, brand_id: int, limit=100) -> httpx.Response:
+        api_url = (
+            f"{self.url.rstrip('/')}/cars/models"
+            f"?brand_id={brand_id}&limit={limit}"
+        )
+        headers = self.get_headers()
+        response = httpx.get(api_url, headers=headers)
+        return response
+
+    def get_generations(self, model_id: int, limit=100) -> httpx.Response:
+        api_url = (
+            f"{self.url.rstrip('/')}/cars/generations"
+            f"?model_id={model_id}&limit={limit}"
+        )
+        headers = self.get_headers()
+        response = httpx.get(api_url, headers=headers)
+        return response
+
+    def get_configurations(
+        self, generation_id: int, limit=100
+    ) -> httpx.Response:
+        api_url = (
+            f"{self.url.rstrip('/')}/cars/configurations"
+            f"?generation_id={generation_id}&limit={limit}"
+        )
+        headers = self.get_headers()
+        response = httpx.get(api_url, headers=headers)
+        return response
+
+    def refresh_token(self, refresh_token: str) -> dict:
+        if not refresh_token:
+            return {'error': 'Refresh token not found'}
+        response = httpx.post(
+            f'{self.url.rstrip("/")}/jwt/refresh',
+            json={'refresh_token': refresh_token},
+        )
+        if response.status_code == 200:
+            tokens = response.json()
+            self.access_token = tokens.get('access_token')
+            self.refresh_token = tokens.get('refresh_token')
+            return tokens
+        else:
+            return {
+                'error': 'Failed to refresh token',
+                'details': response.text,
+            }
