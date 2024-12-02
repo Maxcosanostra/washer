@@ -144,9 +144,11 @@ class BackendApi:
         response = httpx.post(api_url, json=car_data, headers=headers)
         return response
 
-    def get_user_cars(self) -> httpx.Response:
-        headers = {'Authorization': f'Bearer {self.access_token}'}
-        api_url = f'{self.url.rstrip("/")}/cars'
+    def get_user_cars(self, user_id: int, limit: int = 100) -> httpx.Response:
+        api_url = (
+            f"{self.url.rstrip('/')}/cars?user_id={user_id}&limit={limit}"
+        )
+        headers = self.get_headers()
         response = httpx.get(api_url, headers=headers)
         return response
 
@@ -332,3 +334,9 @@ class BackendApi:
                 'error': 'Failed to refresh token',
                 'details': response.text,
             }
+
+    def delete_user_car(self, car_id: int) -> httpx.Response:
+        api_url = f"{self.url.rstrip('/')}/cars/{car_id}"
+        headers = self.get_headers()
+        response = httpx.delete(api_url, headers=headers)
+        return response
