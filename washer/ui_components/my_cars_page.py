@@ -1,14 +1,16 @@
 import re
 
 import flet as ft
-import httpx
 
+from washer.api_requests import BackendApi
 from washer.ui_components.select_car_page import SelectCarPage
 
 
 class MyCarsPage:
     def __init__(self, page, api_url, cars, on_car_saved_callback):
         self.page = page
+        self.api = BackendApi()
+        self.api.set_access_token(page.client_storage.get('access_token'))
         self.api_url = api_url
         self.cars = cars
         self.on_car_saved_callback = on_car_saved_callback
@@ -268,32 +270,18 @@ class MyCarsPage:
 
     def load_user_cars_from_server(self):
         try:
-            access_token = self.page.client_storage.get('access_token')
             user_id = self.page.client_storage.get('user_id')
-
             if not user_id:
                 print('User ID not found!')
                 return
 
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Accept': 'application/json',
-            }
-
-            url = (
-                f'{self.api_url.rstrip("/")}/cars?user_id={user_id}&limit=100'
-            )
-            response = httpx.get(url, headers=headers)
-
+            response = self.api.get_user_cars(user_id=user_id)
             print(
                 f'Ответ от сервера при загрузке автомобилей: {response.text}'
             )
 
             if response.status_code == 200:
                 self.cars[:] = response.json().get('data', [])
-                print('Полученные автомобили:')
-                for car in self.cars:
-                    print(car)
             else:
                 print(
                     f'Ошибка при загрузке автомобилей с сервера: '
@@ -339,24 +327,19 @@ class MyCarsPage:
         self.page.update()
 
     def delete_car_from_server(self, car_id):
-        access_token = self.page.client_storage.get('access_token')
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-        url = f'{self.api_url.rstrip("/")}/cars/{car_id}'
-        print(f'Отправка DELETE запроса на {url}')
-
-        response = httpx.delete(url, headers=headers)
-
-        if response.status_code == 200:
-            self.cars[:] = [car for car in self.cars if car['id'] != car_id]
-            self.page.clean()
-            self.page.add(self.create_cars_page())
-            self.page.update()
-            print(f'Автомобиль с ID {car_id} успешно удалён.')
-        else:
-            print(f'Ошибка при удалении автомобиля: {response.text}')
+        try:
+            response = self.api.delete_user_car(car_id)
+            if response.status_code == 200:
+                self.cars[:] = [
+                    car for car in self.cars if car['id'] != car_id
+                ]
+                self.page.clean()
+                self.page.add(self.create_cars_page())
+                self.page.update()
+            else:
+                print(f'Ошибка при удалении автомобиля: {response.text}')
+        except Exception as e:
+            print(f'Ошибка при удалении автомобиля: {e}')
 
     def return_to_profile(self, e):
         self.page.appbar = None  # Сбрасываем AppBar
