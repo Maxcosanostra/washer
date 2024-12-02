@@ -1,5 +1,4 @@
 import flet as ft
-import httpx
 
 from washer.api_requests import BackendApi
 from washer.config import config
@@ -117,20 +116,7 @@ class AdminCarSelectionPage:
         )
 
     def load_brands(self):
-        access_token = self.page.client_storage.get('access_token')
-        if not access_token:
-            print('Access token not found, redirecting to login.')
-            return
-
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-
-        url = f'{self.api_url.rstrip("/")}/cars/brands?limit=1000'
-
-        response = httpx.get(url, headers=headers)
-
+        response = self.api.get_brands()
         if response.status_code == 401:
             if 'token has expired' in response.text.lower():
                 if self.refresh_token():
@@ -138,7 +124,7 @@ class AdminCarSelectionPage:
                 else:
                     self.page.add(
                         ft.Text(
-                            'Session expired, please login again.',
+                            'Сессия истекла, пожалуйста, войдите снова.',
                             color=ft.colors.RED,
                         )
                     )
@@ -217,17 +203,7 @@ class AdminCarSelectionPage:
             print('ID марки не найден.')
             return
 
-        access_token = self.page.client_storage.get('access_token')
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-
-        clean_url = self.api_url.rstrip('/')
-        url = f'{clean_url}/cars/models?brand_id={brand_id}&limit=100'
-
-        response = httpx.get(url, headers=headers)
-
+        response = self.api.get_models(brand_id)
         if response.status_code == 200:
             models = response.json().get('data', [])
             self.models_dict = {model['name']: model['id'] for model in models}
@@ -263,20 +239,7 @@ class AdminCarSelectionPage:
             print('ID модели не найден.')
             return
 
-        access_token = self.page.client_storage.get('access_token')
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-
-        clean_url = self.api_url.rstrip('/')
-        url = (
-            f'{clean_url}/cars/generations'
-            f'?model_id={self.selected_model_id}&limit=100'
-        )
-
-        response = httpx.get(url, headers=headers)
-
+        response = self.api.get_generations(self.selected_model_id)
         if response.status_code == 200:
             generations = response.json().get('data', [])
 
@@ -397,20 +360,7 @@ class AdminCarSelectionPage:
         self.get_body_type(self.selected_generation_id)
 
     def get_body_type(self, generation_id):
-        access_token = self.page.client_storage.get('access_token')
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-
-        clean_url = self.api_url.rstrip('/')
-        url = (
-            f'{clean_url}/cars/configurations'
-            f'?generation_id={generation_id}&limit=100'
-        )
-
-        response = httpx.get(url, headers=headers)
-
+        response = self.api.get_configurations(generation_id)
         if response.status_code == 200:
             configurations = response.json().get('data', [])
             unique_body_types = {
@@ -510,17 +460,7 @@ class AdminCarSelectionPage:
         self.page.update()
 
     def fetch_body_type_names(self, body_type_ids):
-        access_token = self.page.client_storage.get('access_token')
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-
-        clean_url = self.api_url.rstrip('/')
-        url = f'{clean_url}/cars/body_types?limit=100'
-
-        response = httpx.get(url, headers=headers)
-
+        response = self.api.get_body_types()
         if response.status_code == 200:
             body_types = response.json().get('data', [])
             return {
@@ -644,15 +584,8 @@ class AdminCarSelectionPage:
             'name': full_name,
         }
 
-        api_url = f"{self.api_url.rstrip('/')}/cars"
-
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-
         try:
-            response = httpx.post(api_url, json=selected_car, headers=headers)
+            response = self.api.create_user_car(selected_car)
 
             if response.status_code == 200:
                 self.show_success_message(
@@ -698,20 +631,17 @@ class AdminCarSelectionPage:
             print('Refresh token not found, redirecting to login.')
             return False
 
-        response = httpx.post(
-            f'{self.api_url}/jwt/refresh',
-            json={'refresh_token': refresh_token},
-        )
+        response = self.api.refresh_token(refresh_token)
 
-        if response.status_code == 200:
-            tokens = response.json()
+        if 'error' not in response:
             self.page.client_storage.set(
-                'access_token', tokens['access_token']
+                'access_token', response['access_token']
             )
             self.page.client_storage.set(
-                'refresh_token', tokens['refresh_token']
+                'refresh_token', response['refresh_token']
             )
+            self.api.set_access_token(response['access_token'])
             return True
         else:
-            print(f'Error refreshing token: {response.text}')
+            print(f'Ошибка обновления токена: {response["details"]}')
             return False
