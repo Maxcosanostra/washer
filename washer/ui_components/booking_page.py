@@ -19,7 +19,9 @@ class BookingPage:
         self.car_wash = car_wash
         self.username = username
         self.api = BackendApi()
-        self.location_data = location_data
+        self.location_data = (
+            location_data or {}
+        )  # Устанавливаем пустой словарь по умолчанию
         self.api.set_access_token(self.page.client_storage.get('access_token'))
 
         self.selected_car_id = None
@@ -693,7 +695,17 @@ class BookingPage:
     def on_add_car_click(self, e):
         from washer.ui_components.select_car_page import SelectCarPage
 
-        SelectCarPage(self.page, self.on_car_saved)
+        self.page.client_storage.set('redirect_to', 'booking_page')
+        self.page.client_storage.set('car_wash_data', self.car_wash)
+        self.page.client_storage.set('username', self.username)
+        self.page.client_storage.set('cars', self.cars)
+        self.page.client_storage.set('location_data', self.location_data)
+
+        SelectCarPage(
+            page=self.page,
+            on_car_saved=self.on_car_saved,
+            redirect_to='booking_page',
+        )
 
     def on_car_saved(self, car):
         if 'id' not in car and 'user_car_id' in car:
@@ -778,8 +790,16 @@ class BookingPage:
         self.page.clean()
         self.page.scroll = 'adaptive'
 
-        address = self.location_data.get('address', 'Адрес недоступен')
-        city = self.location_data.get('city', 'Город не указан')
+        address = (
+            self.location_data.get('address', 'Адрес недоступен')
+            if self.location_data
+            else 'Адрес недоступен'
+        )
+        city = (
+            self.location_data.get('city', 'Город не указан')
+            if self.location_data
+            else 'Город не указан'
+        )
         full_address = f'{city}, {address}'
 
         formatted_date = self.selected_date.strftime('%d.%m.%Y')
