@@ -5,10 +5,11 @@ from washer.config import config
 
 
 class SelectCarPage:
-    def __init__(self, page: ft.Page, on_car_saved):
+    def __init__(self, page: ft.Page, on_car_saved, redirect_to=None):
         self.page = page
         self.api_url = config.api_url
         self.on_car_saved = on_car_saved
+        self.redirect_to = redirect_to
         self.brands_dict = {}
         self.full_brands_list = []
         self.selected_brand = None
@@ -540,15 +541,39 @@ class SelectCarPage:
 
         try:
             response = self.api.create_user_car(selected_car)
-
             if response.status_code == 200:
                 self.show_success_message(
                     f'Автомобиль "{full_name}" успешно сохранен!'
                 )
                 self.selected_car = response.json()
                 self.selected_car.update(selected_car)
-                print(f'Данные сохраненного автомобиля: {self.selected_car}')
                 self.on_car_saved(self.selected_car)
+
+                redirect_to = self.page.client_storage.get('redirect_to')
+                if redirect_to == 'booking_page':
+                    from washer.ui_components.booking_page import BookingPage
+
+                    car_wash = self.page.client_storage.get('car_wash_data')
+                    username = self.page.client_storage.get('username')
+                    cars = self.page.client_storage.get('cars')
+
+                    if not car_wash or not username or not cars:
+                        self.show_error_message(
+                            'Ошибка: данные для редиректа не найдены'
+                        )
+                        return
+
+                    self.page.client_storage.remove('redirect_to')
+
+                    BookingPage(
+                        page=self.page,
+                        car_wash=car_wash,
+                        username=username,
+                        cars=cars,
+                    )
+                elif redirect_to == 'my_cars_page':
+                    self.page.client_storage.remove('redirect_to')
+                    self.return_to_cars_page()
             else:
                 error_message = response.text or 'Неизвестная ошибка'
                 self.show_error_message(f'Ошибка: {error_message}')
