@@ -77,13 +77,6 @@ class BookingPage:
         self.load_boxes()
 
     def create_elements(self):
-        self.car_dropdown = ft.Dropdown(
-            width=300,
-            hint_text='Выберите автомобиль',
-            options=self.load_user_cars(),
-            on_change=self.on_car_select,
-            disabled=self.car_dropdown_disabled,
-        )
         self.add_car_button = ft.ElevatedButton(
             text='Еще не добавили авто?',
             on_click=self.on_add_car_click,
@@ -91,6 +84,15 @@ class BookingPage:
             bgcolor=ft.colors.PURPLE,
             color=ft.colors.WHITE,
         )
+
+        self.car_dropdown = ft.Dropdown(
+            width=300,
+            hint_text='Выберите автомобиль',
+            options=self.load_user_cars(),
+            on_change=self.on_car_select,
+            disabled=self.car_dropdown_disabled,
+        )
+
         self.box_dropdown = ft.Dropdown(
             label='Выберите бокс',
             width=300,
@@ -98,6 +100,7 @@ class BookingPage:
             on_change=self.on_box_select,
             disabled=self.box_dropdown_disabled,
         )
+
         self.date_picker_button = ft.ElevatedButton(
             text='Выбрать дату',
             icon=ft.icons.CALENDAR_MONTH,
@@ -105,15 +108,18 @@ class BookingPage:
             width=300,
             disabled=self.date_picker_button_disabled,
         )
+
         self.time_dropdown_container = ft.Column(
             disabled=self.time_dropdown_container_disabled
         )
+
         self.price_text = ft.Text(
             'Стоимость: ₸0',
             size=32,
             weight=ft.FontWeight.BOLD,
             color=ft.colors.GREY,
         )
+
         self.book_button = ft.ElevatedButton(
             text='Забронировать',
             on_click=self.on_booking_click,
@@ -144,18 +150,9 @@ class BookingPage:
             content=ft.ListView(
                 controls=[
                     self.create_car_wash_card(),
-                    ft.Text(
-                        'Шаг 1: Выберите автомобиль',
-                        size=20,
-                        weight=ft.FontWeight.BOLD,
-                    ),
                     ft.Divider(),
                     self.car_dropdown,
                     self.add_car_button,
-                    ft.Container(
-                        content=self.step_2_text,
-                        margin=ft.margin.only(top=20),
-                    ),
                     ft.Divider(),
                     self.box_dropdown,
                     self.date_picker_button,
@@ -166,7 +163,7 @@ class BookingPage:
                 padding=ft.padding.all(20),
                 spacing=20,
             ),
-            margin=ft.margin.only(top=20),
+            margin=ft.margin.only(top=0),
             expand=True,
         )
 
@@ -220,6 +217,8 @@ class BookingPage:
 
         if not access_token or not user_id:
             print('Access token или user_id не найдены.')
+            self.cars = []
+            self.update_add_car_button()
             return []
 
         headers = {
@@ -238,12 +237,10 @@ class BookingPage:
                 cars = response.json().get('data', [])
                 print(f'Автомобили успешно загружены: {cars}')
 
-                if not cars:
-                    print('Список автомобилей пуст.')
-
                 self.cars = cars
+                self.update_add_car_button()
 
-                car_options = [
+                return [
                     ft.dropdown.Option(
                         text=car.get(
                             'name',
@@ -257,19 +254,26 @@ class BookingPage:
                     for car in cars
                     if car.get('id')
                 ]
-
-                return car_options
-
             else:
                 print(
-                    f'Ошибка при загрузке автомобилей: '
-                    f'{response.status_code} - {response.text}'
+                    f'Ошибка при загрузке автомобилей: {response.status_code}'
                 )
+                self.cars = []
+                self.update_add_car_button()
                 return []
 
         except httpx.RequestError as e:
             print(f'Произошла ошибка при попытке выполнить запрос: {str(e)}')
+            self.cars = []
+            self.update_add_car_button()
             return []
+
+    def update_add_car_button(self):
+        if not self.cars or len(self.cars) == 0:
+            self.add_car_button.text = 'Еще не добавили авто?'
+        else:
+            self.add_car_button.text = 'Добавить еще один автомобиль'
+        self.page.update()
 
     def on_car_select(self, e):
         self.selected_car_id = e.control.value
@@ -309,7 +313,6 @@ class BookingPage:
                 print('Configuration ID для автомобиля не определен.')
 
             self.box_dropdown.disabled = False
-            self.step_2_text.color = None
         else:
             print(
                 f'Автомобиль с ID {self.selected_car_id} не найден в списке.'
@@ -693,11 +696,24 @@ class BookingPage:
         SelectCarPage(self.page, self.on_car_saved)
 
     def on_car_saved(self, car):
+        if 'id' not in car and 'user_car_id' in car:
+            car['id'] = car['user_car_id']
+
         self.cars.append(car)
+
         self.car_dropdown.options.append(
-            ft.dropdown.Option(f"{car['brand']} {car['model']}", car['id'])
+            ft.dropdown.Option(
+                text=(
+                    f"{car.get('brand', 'Неизвестный бренд')} "
+                    f"{car.get('model', 'Неизвестная модель')}"
+                ),
+                key=str(car['id']),
+            )
         )
-        self.car_dropdown.value = car['id']
+
+        self.car_dropdown.value = str(car['id'])
+
+        self.update_add_car_button()
         self.page.update()
 
     def load_boxes(self):
