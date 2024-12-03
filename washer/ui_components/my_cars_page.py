@@ -3,7 +3,6 @@ import re
 import flet as ft
 
 from washer.api_requests import BackendApi
-from washer.ui_components.select_car_page import SelectCarPage
 
 
 class MyCarsPage:
@@ -291,7 +290,13 @@ class MyCarsPage:
             print(f'Ошибка при запросе автомобилей с сервера: {e}')
 
     def on_add_car_click(self, e):
-        SelectCarPage(self.page, self.on_car_saved)
+        from washer.ui_components.select_car_page import SelectCarPage
+
+        SelectCarPage(
+            page=self.page,
+            on_car_saved=self.on_car_saved,
+            redirect_to='my_cars_page',
+        )
 
     def on_car_saved(self, car):
         if 'id' not in car and 'user_car_id' in car:
