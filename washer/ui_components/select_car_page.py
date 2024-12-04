@@ -556,8 +556,16 @@ class SelectCarPage:
                     car_wash = self.page.client_storage.get('car_wash_data')
                     username = self.page.client_storage.get('username')
                     cars = self.page.client_storage.get('cars')
+                    location_data = self.page.client_storage.get(
+                        'location_data'
+                    )
 
-                    if not car_wash or not username or not cars:
+                    if (
+                        not car_wash
+                        or not username
+                        or not cars
+                        or not location_data
+                    ):
                         self.show_error_message(
                             'Ошибка: данные для редиректа не найдены'
                         )
@@ -570,6 +578,7 @@ class SelectCarPage:
                         car_wash=car_wash,
                         username=username,
                         cars=cars,
+                        location_data=location_data,
                     )
                 elif redirect_to == 'my_cars_page':
                     self.page.client_storage.remove('redirect_to')
