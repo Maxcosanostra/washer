@@ -184,7 +184,7 @@ class MyCarsPage:
         body_types.sort(key=lambda x: -len(x))
 
         numeric_generation_pattern = re.compile(
-            r'\b(\d{4}-\d{4})\b', re.IGNORECASE
+            r'\b(\d{4}-(?:\d{4}|present))\b', re.IGNORECASE
         )
 
         roman_generation_pattern = re.compile(
@@ -213,11 +213,7 @@ class MyCarsPage:
                 potential_generation = ' '.join(remaining_words[i:j])
                 if numeric_generation_pattern.fullmatch(potential_generation):
                     matches.append((j - i, i, potential_generation, 'numeric'))
-
-        for i in range(len(remaining_words)):
-            for j in range(i + 1, min(i + 6, len(remaining_words) + 1)):
-                potential_generation = ' '.join(remaining_words[i:j])
-                if roman_generation_pattern.fullmatch(potential_generation):
+                elif roman_generation_pattern.fullmatch(potential_generation):
                     matches.append((j - i, i, potential_generation, 'roman'))
 
         if matches:
