@@ -571,21 +571,56 @@ class BookingPage:
                             )
                         ]
                     else:
-                        grid = ft.GridView(
-                            expand=1,
-                            runs_count=3,
-                            max_extent=120,
-                            spacing=10,
-                            run_spacing=10,
-                            child_aspect_ratio=2.5,
-                        )
+                        morning_slots = [
+                            slot
+                            for slot in self.available_times
+                            if 6
+                            <= datetime.datetime.fromisoformat(slot).hour
+                            < 12
+                        ]
+                        day_slots = [
+                            slot
+                            for slot in self.available_times
+                            if 12
+                            <= datetime.datetime.fromisoformat(slot).hour
+                            < 18
+                        ]
+                        evening_slots = [
+                            slot
+                            for slot in self.available_times
+                            if 18
+                            <= datetime.datetime.fromisoformat(slot).hour
+                            <= 22
+                        ]
 
-                        for time_slot in self.available_times:
-                            grid.controls.append(
-                                self.create_time_button(time_slot)
+                        controls = []
+                        if morning_slots:
+                            controls.append(
+                                ft.Text(
+                                    'Утро', size=20, weight=ft.FontWeight.BOLD
+                                )
+                            )
+                            controls.append(
+                                self.create_time_grid(morning_slots)
+                            )
+                        if day_slots:
+                            controls.append(
+                                ft.Text(
+                                    'День', size=20, weight=ft.FontWeight.BOLD
+                                )
+                            )
+                            controls.append(self.create_time_grid(day_slots))
+                        if evening_slots:
+                            controls.append(
+                                ft.Text(
+                                    'Вечер', size=20, weight=ft.FontWeight.BOLD
+                                )
+                            )
+                            controls.append(
+                                self.create_time_grid(evening_slots)
                             )
 
-                        self.time_dropdown_container.controls = [grid]
+                        self.time_dropdown_container.controls = controls
 
                     self.page.update()
                 else:
@@ -596,6 +631,21 @@ class BookingPage:
                 self.hide_loading()
         else:
             print('Please select a box and a date.')
+
+    def create_time_grid(self, time_slots):
+        grid = ft.GridView(
+            expand=1,
+            runs_count=3,
+            max_extent=120,
+            spacing=10,
+            run_spacing=10,
+            child_aspect_ratio=2.5,
+        )
+
+        for time_slot in time_slots:
+            grid.controls.append(self.create_time_button(time_slot))
+
+        return grid
 
     def create_time_click_handler(self, time_slot):
         def on_time_click(e):
