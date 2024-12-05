@@ -582,25 +582,7 @@ class BookingPage:
 
                         for time_slot in self.available_times:
                             grid.controls.append(
-                                ft.ElevatedButton(
-                                    text=self.format_time(time_slot),
-                                    on_click=self.create_time_click_handler(
-                                        time_slot
-                                    ),
-                                    style=ft.ButtonStyle(
-                                        bgcolor=ft.colors.GREY_300,
-                                        color=ft.colors.BLACK,
-                                        shape=ft.RoundedRectangleBorder(
-                                            radius=20
-                                        ),
-                                        padding={
-                                            'top': 5,
-                                            'bottom': 5,
-                                            'left': 10,
-                                            'right': 10,
-                                        },
-                                    ),
-                                )
+                                self.create_time_button(time_slot)
                             )
 
                         self.time_dropdown_container.controls = [grid]
@@ -636,7 +618,21 @@ class BookingPage:
             self.book_button.disabled = False
             self.show_price()
 
+        self.load_available_times()
         self.page.update()
+
+    def create_time_button(self, time_slot):
+        is_selected = self.selected_time == time_slot
+        return ft.ElevatedButton(
+            text=self.format_time(time_slot),
+            on_click=lambda e: self.on_time_select_grid(time_slot),
+            style=ft.ButtonStyle(
+                bgcolor=ft.colors.BLUE if is_selected else ft.colors.GREY,
+                color=ft.colors.WHITE if is_selected else ft.colors.BLACK,
+                shape=ft.RoundedRectangleBorder(radius=20),
+                padding={'top': 5, 'bottom': 5, 'left': 10, 'right': 10},
+            ),
+        )
 
     def parse_available_times(self, times):
         parsed_times = []
