@@ -1,7 +1,6 @@
 import datetime
 
 import flet as ft
-import httpx
 
 from washer.api_requests import BackendApi
 
@@ -214,58 +213,40 @@ class BookingPage:
         )
 
     def load_user_cars(self):
-        access_token = self.page.client_storage.get('access_token')
         user_id = self.page.client_storage.get('user_id')
 
-        if not access_token or not user_id:
-            print('Access token или user_id не найдены.')
+        if not user_id:
+            print('User ID не найден.')
             self.cars = []
             self.update_add_car_button()
             return []
 
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
+        response = self.api.get_user_cars(user_id=user_id, limit=100)
 
-        url = f'{self.api.url.rstrip("/")}/cars?user_id={user_id}&limit=100'
-
-        print(f'Отправляем запрос на {url} с заголовками {headers}')
-
-        try:
-            response = httpx.get(url, headers=headers)
-
-            if response.status_code == 200:
-                cars = response.json().get('data', [])
-                print(f'Автомобили успешно загружены: {cars}')
-
-                self.cars = cars
-                self.update_add_car_button()
-
-                return [
-                    ft.dropdown.Option(
-                        text=car.get(
-                            'name',
-                            (
-                                f"{car.get('brand', 'Неизвестный бренд')} "
-                                f"{car.get('model', 'Неизвестная модель')}"
-                            ),
+        if response.status_code == 200:
+            cars = response.json().get('data', [])
+            print(f'Автомобили успешно загружены: {cars}')
+            self.cars = cars
+            self.update_add_car_button()
+            return [
+                ft.dropdown.Option(
+                    text=car.get(
+                        'name',
+                        (
+                            f"{car.get('brand', 'Неизвестный бренд')} "
+                            f"{car.get('model', 'Неизвестная модель')}"
                         ),
-                        key=str(car.get('id')),
-                    )
-                    for car in cars
-                    if car.get('id')
-                ]
-            else:
-                print(
-                    f'Ошибка при загрузке автомобилей: {response.status_code}'
+                    ),
+                    key=str(car.get('id')),
                 )
-                self.cars = []
-                self.update_add_car_button()
-                return []
-
-        except httpx.RequestError as e:
-            print(f'Произошла ошибка при попытке выполнить запрос: {str(e)}')
+                for car in cars
+                if car.get('id')
+            ]
+        else:
+            print(
+                f'Ошибка при загрузке автомобилей: '
+                f'{response.status_code}, {response.text}'
+            )
             self.cars = []
             self.update_add_car_button()
             return []
@@ -325,20 +306,9 @@ class BookingPage:
     def load_body_type_id(self, configuration_id, auto_update_price=False):
         self.show_loading()
 
-        url = (
-            f"{self.api.url.rstrip('/')}/cars/configurations"
-            f"?configuration_id={configuration_id}&limit=10000"
+        response = self.api.get_configuration_by_id(
+            configuration_id=configuration_id, limit=10000
         )
-
-        headers = {
-            'Authorization': (
-                f'Bearer {self.page.client_storage.get("access_token")}'
-            ),
-            'Accept': 'application/json',
-        }
-
-        print(f'Отправляем запрос на {url} с заголовками {headers}')
-        response = httpx.get(url, headers=headers)
 
         if response.status_code == 200:
             data = response.json().get('data', [])
@@ -372,7 +342,10 @@ class BookingPage:
                 print(f'Конфигурация с ID {configuration_id} не найдена.')
                 self.hide_loading()
         else:
-            print(f'Ошибка при запросе конфигурации: {response.text}')
+            print(
+                f'Ошибка при запросе конфигурации: '
+                f'{response.status_code}, {response.text}'
+            )
             self.hide_loading()
 
     def load_car_price(self, body_type_id, auto_update_price=False):
