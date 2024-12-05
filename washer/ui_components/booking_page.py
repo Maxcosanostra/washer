@@ -507,10 +507,7 @@ class BookingPage:
                         .get('available_times', {})
                         .get(str(self.selected_box_id), [])
                     )
-                    print(
-                        f'Доступное время для бокса '
-                        f'{self.selected_box_id}: {all_times}'
-                    )
+                    print(f'Raw available times: {all_times}')
 
                     current_datetime = datetime.datetime.now()
                     selected_date_as_date = self.selected_date.date()
@@ -518,62 +515,50 @@ class BookingPage:
                     filtered_times = []
 
                     for time_range in all_times:
-                        start_time = datetime.datetime.fromisoformat(
-                            time_range[0]
-                        )
-                        end_time = datetime.datetime.fromisoformat(
-                            time_range[1]
-                        )
-
-                        while start_time < end_time:
-                            potential_end_time = (
-                                start_time + datetime.timedelta(hours=2)
+                        try:
+                            start_time = datetime.datetime.fromisoformat(
+                                time_range[0]
+                            )
+                            end_time = datetime.datetime.fromisoformat(
+                                time_range[1]
                             )
 
-                            if (
-                                selected_date_as_date
-                                == current_datetime.date()
-                            ):
+                            while start_time < end_time:
+                                potential_end_time = (
+                                    start_time + datetime.timedelta(hours=2)
+                                )
+
                                 if (
-                                    start_time > current_datetime
-                                    and potential_end_time <= end_time
+                                    selected_date_as_date
+                                    == current_datetime.date()
                                 ):
-                                    filtered_times.append(
-                                        [
-                                            start_time.isoformat(),
-                                            (
-                                                start_time
-                                                + datetime.timedelta(hours=1)
-                                            ).isoformat(),
-                                        ]
-                                    )
-                            elif (
-                                selected_date_as_date > current_datetime.date()
-                            ):
-                                if potential_end_time <= end_time:
-                                    filtered_times.append(
-                                        [
-                                            start_time.isoformat(),
-                                            (
-                                                start_time
-                                                + datetime.timedelta(hours=1)
-                                            ).isoformat(),
-                                        ]
-                                    )
-                            start_time += datetime.timedelta(hours=1)
+                                    if (
+                                        start_time > current_datetime
+                                        and potential_end_time <= end_time
+                                    ):
+                                        filtered_times.append(
+                                            start_time.isoformat()
+                                        )
+                                elif (
+                                    selected_date_as_date
+                                    > current_datetime.date()
+                                ):
+                                    if potential_end_time <= end_time:
+                                        filtered_times.append(
+                                            start_time.isoformat()
+                                        )
+                                start_time += datetime.timedelta(hours=1)
+                        except ValueError as e:
+                            print(
+                                f'Invalid time range detected: '
+                                f'{time_range}, Error: {e}'
+                            )
+                            continue
 
-                    print(
-                        f'Отфильтрованные временные интервалы: '
-                        f'{filtered_times}'
-                    )
+                    print(f'Filtered time slots: {filtered_times}')
 
-                    self.available_times = self.parse_available_times(
-                        filtered_times
-                    )
-                    print(
-                        f'Доступные временные интервалы: '
-                        f'{self.available_times}'
-                    )
+                    self.available_times = filtered_times
+                    print(f'Available time intervals: {self.available_times}')
 
                     if not self.available_times:
                         self.time_dropdown_container.controls = [
@@ -586,32 +571,72 @@ class BookingPage:
                             )
                         ]
                     else:
-                        self.time_dropdown_container.controls = [
-                            ft.Dropdown(
-                                hint_text='Выберите доступное время',
-                                options=[
-                                    ft.dropdown.Option(
-                                        key=time_slot,
-                                        text=self.format_time(time_slot),
-                                    )
-                                    for time_slot in self.available_times
-                                ],
-                                on_change=self.on_time_select,
-                                disabled=False,
+                        grid = ft.GridView(
+                            expand=1,
+                            runs_count=3,
+                            max_extent=120,
+                            spacing=10,
+                            run_spacing=10,
+                            child_aspect_ratio=2.5,
+                        )
+
+                        for time_slot in self.available_times:
+                            grid.controls.append(
+                                ft.ElevatedButton(
+                                    text=self.format_time(time_slot),
+                                    on_click=self.create_time_click_handler(
+                                        time_slot
+                                    ),
+                                    style=ft.ButtonStyle(
+                                        bgcolor=ft.colors.GREY_300,
+                                        color=ft.colors.BLACK,
+                                        shape=ft.RoundedRectangleBorder(
+                                            radius=20
+                                        ),
+                                        padding={
+                                            'top': 5,
+                                            'bottom': 5,
+                                            'left': 10,
+                                            'right': 10,
+                                        },
+                                    ),
+                                )
                             )
-                        ]
+
+                        self.time_dropdown_container.controls = [grid]
 
                     self.page.update()
                 else:
-                    print(
-                        f'Ошибка загрузки доступного времени: {response.text}'
-                    )
+                    print(f'Error loading available times: {response.text}')
             except Exception as e:
-                print(f'Ошибка при загрузке доступного времени: {str(e)}')
+                print(f'Error while loading available times: {str(e)}')
             finally:
                 self.hide_loading()
         else:
-            print('Выберите бокс и дату.')
+            print('Please select a box and a date.')
+
+    def create_time_click_handler(self, time_slot):
+        def on_time_click(e):
+            self.selected_time = time_slot
+            print(f'Selected time: {self.selected_time}')
+
+            if self.selected_time:
+                self.book_button.disabled = False
+                self.show_price()
+
+            self.page.update()
+
+        return on_time_click
+
+    def on_time_select_grid(self, time_slot):
+        self.selected_time = time_slot
+        print(f'Selected time: {self.selected_time}')
+
+        if self.selected_time:
+            self.book_button.disabled = False
+            self.show_price()
+
+        self.page.update()
 
     def parse_available_times(self, times):
         parsed_times = []
