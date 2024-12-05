@@ -424,6 +424,8 @@ class BookingPage:
 
         self.page.update()
 
+        self.open_date_picker(e)
+
     def open_date_picker(self, e):
         print(f'Загруженные расписания: {self.schedule_list}')
 
