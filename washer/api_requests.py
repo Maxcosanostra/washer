@@ -340,3 +340,12 @@ class BackendApi:
         headers = self.get_headers()
         response = httpx.delete(api_url, headers=headers)
         return response
+
+    def get_configuration_by_id(
+        self, configuration_id: int, limit: int = 10000
+    ) -> httpx.Response:
+        api_url = f"{self.url.rstrip('/')}/cars/configurations"
+        headers = self.get_headers()
+        params = {'configuration_id': configuration_id, 'limit': limit}
+        response = httpx.get(api_url, headers=headers, params=params)
+        return response
