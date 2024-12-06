@@ -1,7 +1,6 @@
 import flet as ft
-import httpx
 
-from washer.config import config
+from washer.api_requests import BackendApi
 
 
 class WashSelectionPage:
@@ -9,7 +8,8 @@ class WashSelectionPage:
 
     def __init__(self, page: ft.Page, username: str = None):
         self.page = page
-        self.api_url = config.api_url
+        self.api = BackendApi()
+        self.api.set_access_token(self.page.client_storage.get('access_token'))
         self.username = username or self.page.client_storage.get('username')
         self.avatar_container = self.create_avatar_container()
         self.car_washes = []
@@ -60,24 +60,23 @@ class WashSelectionPage:
         )
 
     def get_avatar_from_server(self):
-        access_token = self.page.client_storage.get('access_token')
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-
-        url = f"{self.api_url.rstrip('/')}/users/me"
-
-        response = httpx.get(url, headers=headers)
+        response = self.api.get_user_avatar()
         if response.status_code == 200:
             user_data = response.json()
             return user_data.get('image_link')
         else:
-            print(f'Error fetching avatar: {response.status_code}')
+            print(
+                f'Error fetching avatar: {
+                response.status_code}, {response.text}'
+            )
             return None
 
     def on_avatar_click(self, e=None):
         from washer.ui_components.profile_page import ProfilePage
+
+        if not self.car_washes:
+            print('Car washes data is not loaded yet.')
+            return
 
         selected_car_wash = self.car_washes[0]
         location_data = self.load_location_data(
@@ -266,42 +265,29 @@ class WashSelectionPage:
             self.update_wash_list(self.car_washes)
             return
 
-        access_token = self.page.client_storage.get('access_token')
-        if not access_token:
-            print('Access token not found, redirecting to login.')
-            self.redirect_to_sign_in_page()
-            return
-
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-        url = f'{self.api_url.rstrip("/")}/car_washes?page=1&limit=10'
-
-        response = httpx.get(url, headers=headers)
+        response = self.api.get_car_washes(page=1)  # Убрали параметр limit
         if response.status_code == 200:
             self.car_washes = response.json().get('data', [])
             WashSelectionPage.car_washes_cache = self.car_washes
             self.update_wash_list(self.car_washes)
         else:
-            print(f'Error loading car washes: {response.text}')
+            print(
+                f'Error loading car washes: '
+                f'{response.status_code}, {response.text}'
+            )
 
     def load_location_data(self, location_id):
         """Загрузка данных о локации по её ID"""
-        access_token = self.page.client_storage.get('access_token')
-        url = f"{self.api_url.rstrip('/')}/car_washes/locations/{location_id}"
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-        response = httpx.get(url, headers=headers)
-
+        response = self.api.get_location_data(location_id)
         if response.status_code == 200:
             location = response.json()
             print(f'Location data for location_id {location_id}: {location}')
             return location
         else:
-            print(f'Failed to fetch location: {response.text}')
+            print(
+                f'Failed to fetch location: '
+                f'{response.status_code}, {response.text}'
+            )
             return None
 
     def redirect_to_sign_in_page(self):
