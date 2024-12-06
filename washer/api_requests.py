@@ -349,3 +349,22 @@ class BackendApi:
         params = {'configuration_id': configuration_id, 'limit': limit}
         response = httpx.get(api_url, headers=headers, params=params)
         return response
+
+    def get_user_avatar(self) -> httpx.Response:
+        api_url = f"{self.url.rstrip('/')}/users/me"
+        headers = self.get_headers()
+        response = httpx.get(api_url, headers=headers)
+        return response
+
+    def get_car_washes(self, page: int = 1) -> httpx.Response:
+        api_url = f"{self.url.rstrip('/')}/car_washes"
+        headers = self.get_headers()
+        params = {'page': page}
+        response = httpx.get(api_url, headers=headers, params=params)
+        return response
+
+    def get_location_data(self, location_id: int) -> httpx.Response:
+        api_url = f"{self.url.rstrip('/')}/car_washes/locations/{location_id}"
+        headers = self.get_headers()
+        response = httpx.get(api_url, headers=headers)
+        return response
