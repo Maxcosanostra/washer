@@ -70,6 +70,9 @@ class BookingPage:
             leading_width=40,
         )
 
+        self.page.floating_action_button = None
+        self.page.update()
+
         self.page.clean()
         self.page.add(self.create_booking_page())
         self.page.overlay.append(self.loading_overlay)
@@ -148,6 +151,8 @@ class BookingPage:
 
     def create_booking_page(self):
         return ft.Container(
+            width=730,
+            alignment=ft.alignment.center,
             content=ft.ListView(
                 controls=[
                     self.create_car_wash_card(),
@@ -161,10 +166,10 @@ class BookingPage:
                     self.price_text,
                     self.book_button,
                 ],
-                padding=ft.padding.all(20),
+                padding=ft.padding.all(0),
                 spacing=20,
             ),
-            margin=ft.margin.only(top=0),
+            margin=ft.margin.all(0),
             expand=True,
         )
 
@@ -187,24 +192,25 @@ class BookingPage:
                                     fit=ft.ImageFit.COVER,
                                     width=float('inf'),
                                 ),
-                                height=200,
+                                height=170,
                                 alignment=ft.alignment.center,
                             ),
                             ft.Text(
                                 f"{self.car_wash['name']}",
                                 weight=ft.FontWeight.BOLD,
-                                size=20,
-                                text_align=ft.TextAlign.LEFT,
+                                size=24,
+                                text_align=ft.TextAlign.CENTER,
                             ),
                             ft.Text(
                                 location_address,
-                                text_align=ft.TextAlign.LEFT,
+                                text_align=ft.TextAlign.CENTER,
                                 color=ft.colors.GREY,
+                                size=16,
                             ),
                         ],
-                        spacing=10,
+                        spacing=0,
                     ),
-                    padding=ft.padding.all(10),
+                    padding=ft.padding.all(8),
                 ),
                 elevation=3,
             ),
@@ -255,7 +261,7 @@ class BookingPage:
         if not self.cars or len(self.cars) == 0:
             self.add_car_button.text = 'Еще не добавили авто?'
         else:
-            self.add_car_button.text = 'Добавить еще один автомобиль'
+            self.add_car_button.text = 'Добавить еще автомобиль'
         self.page.update()
 
     def on_car_select(self, e):
