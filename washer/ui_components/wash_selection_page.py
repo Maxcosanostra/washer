@@ -25,9 +25,20 @@ class WashSelectionPage:
 
         self.car_washes_list = ft.ListView(controls=[], padding=0, spacing=0)
 
-        page.clean()
-        page.add(self.create_main_container())
+        self.search_bar = self.create_search_bar()
+        self.search_bar.visible = False
+
+        self.page.clean()
+        self.main_container = self.create_main_container()
+        self.page.add(self.main_container)
         self.load_car_washes()
+
+        self.page.floating_action_button = ft.FloatingActionButton(
+            icon=ft.icons.SEARCH,
+            tooltip='Поиск автомойки',
+            on_click=self.on_fab_click,
+        )
+        self.page.update()
 
     def create_avatar_container(self):
         avatar_url = self.get_avatar_from_server()
@@ -66,8 +77,8 @@ class WashSelectionPage:
             return user_data.get('image_link')
         else:
             print(
-                f'Error fetching avatar: {
-                response.status_code}, {response.text}'
+                f'Error fetching avatar: '
+                f'{response.status_code}, {response.text}'
             )
             return None
 
@@ -88,24 +99,39 @@ class WashSelectionPage:
         )
 
     def create_main_container(self):
-        self.car_washes_list = ft.ListView(
-            controls=self.create_wash_list(),
-            padding=0,
-            spacing=0,
+        search_and_list_container = ft.Container(
+            content=ft.Column(
+                controls=[
+                    self.search_bar,
+                    self.car_washes_list,
+                ],
+                spacing=10,
+            ),
+            expand=True,
         )
 
         return ft.Container(
             content=ft.ListView(
                 controls=[
                     self.create_welcome_card(),
-                    self.create_search_bar(),
-                    self.car_washes_list,
+                    ft.Container(
+                        content=ft.Text(
+                            'Автомойки',
+                            weight=ft.FontWeight.BOLD,
+                            size=24,
+                            text_align=ft.TextAlign.LEFT,
+                        ),
+                        margin=ft.margin.only(top=20),
+                    ),
+                    search_and_list_container,
                 ],
-                padding=ft.padding.symmetric(horizontal=20, vertical=10),
+                padding=ft.padding.only(top=10, bottom=10),
                 spacing=10,
             ),
             margin=ft.margin.only(top=20),
             expand=True,
+            width=730,
+            alignment=ft.alignment.center,
         )
 
     def create_welcome_card(self):
@@ -138,7 +164,6 @@ class WashSelectionPage:
         )
 
     def create_search_bar(self):
-        """Создает строку поиска для фильтрации автомоек по названию"""
         return ft.Container(
             content=ft.Card(
                 content=ft.Container(
@@ -146,11 +171,11 @@ class WashSelectionPage:
                         prefix=ft.Icon(
                             ft.icons.SEARCH, size=20, color=ft.colors.GREY
                         ),
-                        label='найти автомойку...',
+                        label='Найти автомойку...',
                         label_style=ft.TextStyle(
                             size=14, color=ft.colors.GREY
                         ),
-                        width=320,
+                        width=730,
                         height=50,
                         border=ft.InputBorder.NONE,
                         border_radius=ft.border_radius.all(15),
@@ -163,14 +188,18 @@ class WashSelectionPage:
                     padding=ft.padding.all(0),
                 ),
                 elevation=0,
-                width=320,
+                width=730,
             ),
             alignment=ft.alignment.center,
             padding=ft.padding.all(0),
+            width=730,
         )
 
+    def on_fab_click(self, e):
+        self.search_bar.visible = not self.search_bar.visible
+        self.page.update()
+
     def on_search_text_change(self, e):
-        """Обработчик изменения текста поиска для фильтрации автомоек"""
         search_text = e.control.value.lower()
         filtered_washes = [
             wash
@@ -186,7 +215,6 @@ class WashSelectionPage:
         self.car_washes_list.update()
 
     def create_wash_list(self):
-        """Создает список карточек автомоек на основе загруженных данных"""
         return [self.create_car_wash_card(wash) for wash in self.car_washes]
 
     def create_car_wash_card(self, car_wash):
@@ -212,7 +240,7 @@ class WashSelectionPage:
                                     fit=ft.ImageFit.COVER,
                                     width=float('inf'),
                                 ),
-                                height=200,
+                                height=170,
                                 alignment=ft.alignment.center,
                             ),
                             ft.Text(
@@ -228,15 +256,15 @@ class WashSelectionPage:
                                 size=16,
                             ),
                         ],
-                        spacing=10,
+                        spacing=0,
                     ),
-                    padding=ft.padding.all(10),
+                    padding=ft.padding.all(8),
                 ),
                 elevation=3,
             ),
             alignment=ft.alignment.center,
             width=400,
-            on_click=lambda e: self.on_booking_click(car_wash),
+            on_click=lambda e, wash=car_wash: self.on_booking_click(wash),
         )
 
     def on_booking_click(self, car_wash):
