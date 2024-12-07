@@ -38,6 +38,10 @@ class ProfilePage:
         self.get_user_data()
 
         page.clean()
+
+        self.page.floating_action_button = None
+        self.page.update()
+
         page.add(self.create_profile_page())
 
     def on_login_success(self):
@@ -48,6 +52,8 @@ class ProfilePage:
 
     def create_profile_card(self):
         return ft.Container(
+            width=730,
+            alignment=ft.alignment.center,
             content=ft.Card(
                 content=ft.Container(
                     content=ft.Column(
@@ -95,15 +101,16 @@ class ProfilePage:
                 ),
                 elevation=3,
             ),
-            width=370,
             margin=ft.margin.only(bottom=20),
         )
 
     def create_profile_page(self):
         return ft.Container(
-            content=ft.Column(
+            width=730,
+            alignment=ft.alignment.center,
+            content=ft.ListView(
                 controls=[
-                    ft.Container(height=20),
+                    ft.Container(height=40),
                     self.create_profile_card(),
                     ft.Container(height=10),
                     ft.Container(
@@ -220,14 +227,11 @@ class ProfilePage:
                         margin=ft.margin.only(top=20, bottom=15),
                     ),
                 ],
-                alignment=ft.MainAxisAlignment.START,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                padding=ft.padding.all(0),
                 spacing=15,
             ),
-            width=350,
+            margin=ft.margin.only(top=20),
             expand=True,
-            padding=ft.padding.all(20),
-            border_radius=ft.border_radius.all(12),
         )
 
     def create_avatar_container(self):
