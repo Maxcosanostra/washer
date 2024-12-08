@@ -6,13 +6,18 @@ from washer.api_requests import BackendApi
 
 
 class MyCarsPage:
-    def __init__(self, page, api_url, cars, on_car_saved_callback):
+    def __init__(self, page, api_url, cars, on_car_saved_callback=None):
         self.page = page
         self.api = BackendApi()
         self.api.set_access_token(page.client_storage.get('access_token'))
         self.api_url = api_url
         self.cars = cars
         self.on_car_saved_callback = on_car_saved_callback
+
+        self.page.floating_action_button = None
+        # self.page.update()
+        # При включении self.page.update() AppBar скидывается некрасиво
+        # Но за то FAB скрывается красиво до загрузки страницы
 
     def open(self):
         self.load_user_cars_from_server()
