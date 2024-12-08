@@ -1,6 +1,7 @@
 import flet as ft
 
 from washer.api_requests import BackendApi
+from washer.config import config
 
 
 class WashSelectionPage:
@@ -11,6 +12,7 @@ class WashSelectionPage:
         self.api = BackendApi()
         self.api.set_access_token(self.page.client_storage.get('access_token'))
         self.username = username or self.page.client_storage.get('username')
+        self.api_url = config.api_url
         self.avatar_container = self.create_avatar_container()
         self.car_washes = []
 
@@ -38,6 +40,26 @@ class WashSelectionPage:
             tooltip='Поиск автомойки',
             on_click=self.on_fab_click,
         )
+
+        self.page.navigation_bar = ft.NavigationBar(
+            destinations=[
+                ft.NavigationBarDestination(
+                    icon=ft.icons.EVENT_NOTE,
+                    label='Записи',
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.icons.HOME,
+                    label='Главная',
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.icons.CAR_REPAIR,
+                    label='Мои автомобили',
+                ),
+            ],
+            selected_index=1,
+            on_change=self.on_navigation_change,
+        )
+
         self.page.update()
 
     def create_avatar_container(self):
@@ -322,3 +344,62 @@ class WashSelectionPage:
         from washer.ui_components.sign_in_page import SignInPage
 
         SignInPage(self.page)
+
+    def on_navigation_change(self, e):
+        selected_index = e.control.selected_index
+        print(f'NavigationBar selected index: {selected_index}')
+
+        self.page.appbar = None
+
+        if selected_index == 0:
+            self.open_my_bookings_page()
+        elif selected_index == 1:
+            self.page.clean()
+            self.page.add(self.main_container)
+
+            self.page.floating_action_button = ft.FloatingActionButton(
+                icon=ft.icons.SEARCH,
+                tooltip='Поиск автомойки',
+                on_click=self.on_fab_click,
+            )
+        elif selected_index == 2:
+            self.open_my_cars_page()
+
+        self.page.update()
+
+    def open_my_bookings_page(self):
+        from washer.ui_components.my_bookings_page import MyBookingsPage
+
+        if not self.car_washes:
+            print('Car washes data is not loaded yet.')
+            return
+
+        selected_car_wash = self.car_washes[0]
+        location_data = self.load_location_data(
+            selected_car_wash.get('location_id')
+        )
+
+        my_bookings_page = MyBookingsPage(
+            page=self.page,
+            api_url=self.api_url,
+            car_wash=selected_car_wash,
+            location_data=location_data,
+        )
+        my_bookings_page.open()
+
+        self.page.navigation_bar.selected_index = 0
+        self.page.update()
+
+    def open_my_cars_page(self):
+        from washer.ui_components.my_cars_page import MyCarsPage
+
+        cars = self.page.client_storage.get('cars') or []
+        my_cars_page = MyCarsPage(
+            page=self.page,
+            api_url=self.api_url,
+            cars=cars,
+        )
+        my_cars_page.open()
+
+        self.page.navigation_bar.selected_index = 2
+        self.page.update()
