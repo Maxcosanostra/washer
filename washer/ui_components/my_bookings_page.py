@@ -13,6 +13,10 @@ class MyBookingsPage:
         self.bookings = []
         self.completed_visible = False
         self.completed_bookings_container = ft.Container(visible=False)
+        self.page.floating_action_button = None
+        # self.page.update()
+        # При включении self.page.update() AppBar скидывается некрасиво
+        # Но за то FAB скрывается красиво до загрузки страницы
 
     def open(self):
         self.load_user_bookings_from_server()
@@ -24,7 +28,7 @@ class MyBookingsPage:
         self.page.appbar = ft.AppBar(
             leading=ft.IconButton(
                 icon=ft.icons.ARROW_BACK,
-                on_click=self.return_to_profile,
+                on_click=self.return_to_wash_selection,
                 icon_color=ft.colors.WHITE,
                 padding=ft.padding.only(left=10),
             ),
@@ -286,8 +290,12 @@ class MyBookingsPage:
             self.page, username=self.page.client_storage.get('username')
         )
 
-    def return_to_profile(self, e):
-        from washer.ui_components.profile_page import ProfilePage
-
+    def return_to_wash_selection(self, e):
         self.page.appbar = None
-        ProfilePage(self.page)
+        self.page.clean()
+
+        from washer.ui_components.wash_selection_page import WashSelectionPage
+
+        WashSelectionPage(
+            self.page, username=self.page.client_storage.get('username')
+        )
