@@ -292,7 +292,7 @@ class MyBookingsPage:
 
     def return_to_wash_selection(self, e):
         self.page.appbar = None
-        self.page.clean()
+        # self.page.clean()
 
         from washer.ui_components.wash_selection_page import WashSelectionPage
 
