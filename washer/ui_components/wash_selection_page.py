@@ -27,6 +27,8 @@ class WashSelectionPage:
             self.redirect_to_sign_in_page()
             return
 
+        self.progress_bar = ft.ProgressBar(width=400, visible=False)
+
         self.car_washes_list = ft.ListView(controls=[], padding=0, spacing=0)
 
         self.search_bar = self.create_search_bar()
@@ -35,7 +37,16 @@ class WashSelectionPage:
         self.page.clean()
         self.main_container = self.create_main_container()
         self.page.add(self.main_container)
+        self.page.add(
+            ft.Container(self.progress_bar, alignment=ft.alignment.center)
+        )
+
+        self.progress_bar.visible = True
+        self.page.update()
+
         self.load_car_washes()
+
+        self.progress_bar.visible = False
 
         self.page.floating_action_button = ft.FloatingActionButton(
             icon=ft.icons.SEARCH,
@@ -444,6 +455,9 @@ class WashSelectionPage:
         elif selected_index == 1:
             self.page.clean()
             self.page.add(self.main_container)
+            self.page.add(
+                ft.Container(self.progress_bar, alignment=ft.alignment.center)
+            )  # Добавляем ProgressBar снова
 
             self.page.floating_action_button = ft.FloatingActionButton(
                 icon=ft.icons.SEARCH,
