@@ -12,6 +12,9 @@ class SignInPage:
         self.password_field = self.create_password_field()
 
         page.clean()
+
+        self.page.navigation_bar = None
+
         page.add(self.create_sign_in_container())
 
     def create_username_field(self):
