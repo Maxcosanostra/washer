@@ -5,8 +5,6 @@ import httpx
 
 from washer.config import config
 from washer.ui_components.account_settings_page import AccountSettingsPage
-from washer.ui_components.my_bookings_page import MyBookingsPage
-from washer.ui_components.my_cars_page import MyCarsPage
 from washer.ui_components.my_finance_page import MyFinancePage
 
 
@@ -113,56 +111,6 @@ class ProfilePage:
                     ft.Container(height=40),
                     self.create_profile_card(),
                     ft.Container(height=10),
-                    ft.Container(
-                        content=ft.Row(
-                            controls=[
-                                ft.Icon(
-                                    ft.icons.DIRECTIONS_CAR,
-                                    color=ft.colors.WHITE,
-                                ),
-                                ft.Text(
-                                    'Мои автомобили',
-                                    color=ft.colors.WHITE,
-                                    size=16,
-                                    weight=ft.FontWeight.BOLD,
-                                ),
-                            ],
-                            alignment=ft.MainAxisAlignment.START,
-                            spacing=5,
-                        ),
-                        on_click=self.open_cars_page,
-                        width=300,
-                        bgcolor=ft.colors.BLUE,
-                        padding=ft.padding.symmetric(
-                            vertical=10, horizontal=15
-                        ),
-                        border_radius=ft.border_radius.all(8),
-                    ),
-                    ft.Container(
-                        content=ft.Row(
-                            controls=[
-                                ft.Icon(
-                                    ft.icons.EVENT_NOTE, color=ft.colors.WHITE
-                                ),
-                                ft.Text(
-                                    'Мои записи',
-                                    color=ft.colors.WHITE,
-                                    size=16,
-                                    weight=ft.FontWeight.BOLD,
-                                ),
-                            ],
-                            alignment=ft.MainAxisAlignment.START,
-                            spacing=5,
-                        ),
-                        on_click=self.open_bookings_page,
-                        width=300,
-                        bgcolor=ft.colors.BLUE,
-                        padding=ft.padding.symmetric(
-                            vertical=10, horizontal=15
-                        ),
-                        border_radius=ft.border_radius.all(8),
-                    ),
-                    ft.Divider(height=1, color=ft.colors.GREY_400),
                     ft.Container(
                         content=ft.Row(
                             controls=[
@@ -299,24 +247,6 @@ class ProfilePage:
                     border_radius=ft.border_radius.all(50),
                 )
                 self.page.update()
-
-    def open_bookings_page(self, e):
-        bookings_page = MyBookingsPage(
-            page=self.page,
-            api_url=self.api_url,
-            car_wash=self.car_wash,
-            location_data=self.location_data,
-        )
-        bookings_page.open()
-
-    def open_cars_page(self, e):
-        cars_page = MyCarsPage(
-            page=self.page,
-            api_url=self.api_url,
-            cars=self.cars,
-            on_car_saved_callback=lambda car: cars_page.open(),
-        )
-        cars_page.open()
 
     def open_account_settings(self, e):
         self.page.clean()
