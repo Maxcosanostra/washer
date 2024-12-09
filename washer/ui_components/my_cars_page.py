@@ -29,7 +29,7 @@ class MyCarsPage:
         self.page.appbar = ft.AppBar(
             leading=ft.IconButton(
                 icon=ft.icons.ARROW_BACK,
-                on_click=self.return_to_profile,
+                on_click=self.return_to_wash_selection,
                 icon_color=ft.colors.WHITE,
                 padding=ft.padding.only(left=10),
             ),
@@ -347,9 +347,11 @@ class MyCarsPage:
         except Exception as e:
             print(f'Ошибка при удалении автомобиля: {e}')
 
-    def return_to_profile(self, e):
-        self.page.appbar = None  # Сбрасываем AppBar
-        from washer.ui_components.profile_page import ProfilePage
+    def return_to_wash_selection(self, e):
+        self.page.appbar = None
 
-        profile_page = ProfilePage(self.page)
-        profile_page.return_to_profile(e)
+        from washer.ui_components.wash_selection_page import WashSelectionPage
+
+        WashSelectionPage(
+            self.page, username=self.page.client_storage.get('username')
+        )
