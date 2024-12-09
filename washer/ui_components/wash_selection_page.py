@@ -1,3 +1,5 @@
+import datetime
+
 import flet as ft
 
 from washer.api_requests import BackendApi
@@ -251,10 +253,12 @@ class WashSelectionPage:
             else 'Адрес недоступен'
         )
 
+        available_slots = self.get_available_slots(car_wash['id'])
+
         return ft.Container(
             content=ft.Card(
                 content=ft.Container(
-                    content=ft.Column(
+                    content=ft.Stack(
                         [
                             ft.Container(
                                 content=ft.Image(
@@ -265,21 +269,52 @@ class WashSelectionPage:
                                 height=170,
                                 alignment=ft.alignment.center,
                             ),
+                            ft.Container(
+                                content=ft.Text(
+                                    f'Свободно мест: {available_slots}',
+                                    size=14,
+                                    weight=ft.FontWeight.BOLD,
+                                    color=ft.colors.BLACK,
+                                ),
+                                border=ft.Border(
+                                    left=ft.BorderSide(
+                                        color=ft.colors.GREY, width=2
+                                    ),
+                                    right=ft.BorderSide(
+                                        color=ft.colors.GREY, width=2
+                                    ),
+                                    top=ft.BorderSide(
+                                        color=ft.colors.GREY, width=2
+                                    ),
+                                    bottom=ft.BorderSide(
+                                        color=ft.colors.GREY, width=2
+                                    ),
+                                ),
+                                border_radius=ft.border_radius.all(10),
+                                padding=ft.padding.symmetric(
+                                    horizontal=6, vertical=2
+                                ),
+                                right=10,
+                                top=10,
+                                bgcolor='#80E0E0E0',
+                            ),
                             ft.Text(
                                 f"{car_wash['name']}",
                                 weight=ft.FontWeight.BOLD,
                                 size=24,
                                 text_align=ft.TextAlign.CENTER,
+                                top=170,
                             ),
                             ft.Text(
                                 location_address,
                                 text_align=ft.TextAlign.CENTER,
                                 color=ft.colors.GREY,
                                 size=16,
+                                top=203,
                             ),
-                        ],
-                        spacing=0,
+                        ]
                     ),
+                    height=240,
                     padding=ft.padding.all(8),
                 ),
                 elevation=3,
@@ -312,19 +347,67 @@ class WashSelectionPage:
         if WashSelectionPage.car_washes_cache:
             print('Using cached car washes data')
             self.car_washes = WashSelectionPage.car_washes_cache
-            self.update_wash_list(self.car_washes)
+            self.update_wash_list_with_slots(self.car_washes)
             return
 
-        response = self.api.get_car_washes(page=1)  # Убрали параметр limit
+        response = self.api.get_car_washes(page=1)
         if response.status_code == 200:
             self.car_washes = response.json().get('data', [])
             WashSelectionPage.car_washes_cache = self.car_washes
-            self.update_wash_list(self.car_washes)
+            self.update_wash_list_with_slots(self.car_washes)
         else:
             print(
                 f'Error loading car washes: '
                 f'{response.status_code}, {response.text}'
             )
+
+    def update_wash_list_with_slots(self, washes):
+        self.car_washes_list.controls = [
+            self.create_car_wash_card(wash) for wash in washes
+        ]
+        self.car_washes_list.update()
+
+    def get_available_slots(self, car_wash_id, date=None):
+        if date is None:
+            date = datetime.datetime.today().date()
+        total_available = 0
+
+        try:
+            response = self.api.get_available_times(
+                car_wash_id, date.isoformat()
+            )
+            if response and response.status_code == 200:
+                all_available_times = response.json().get(
+                    'available_times', {}
+                )
+                for _box_id, time_ranges in all_available_times.items():
+                    for time_range in time_ranges:
+                        try:
+                            start_time = datetime.datetime.fromisoformat(
+                                time_range[0]
+                            )
+                            end_time = datetime.datetime.fromisoformat(
+                                time_range[1]
+                            )
+
+                            while start_time < end_time:
+                                potential_end_time = (
+                                    start_time + datetime.timedelta(hours=2)
+                                )
+
+                                if (
+                                    start_time.date() == date
+                                    and start_time > datetime.datetime.now()
+                                    and potential_end_time <= end_time
+                                ):
+                                    total_available += 1
+                                start_time += datetime.timedelta(hours=1)
+                        except ValueError:
+                            continue
+        except Exception as e:
+            print(f'Ошибка при обновлении доступных мест: {str(e)}')
+
+        return total_available
 
     def load_location_data(self, location_id):
         """Загрузка данных о локации по её ID"""
