@@ -255,6 +255,11 @@ class WashSelectionPage:
 
         available_slots = self.get_available_slots(car_wash['id'])
 
+        if available_slots > 0:
+            slots_text = f'Свободно мест: {available_slots}'
+        else:
+            slots_text = 'Свободных мест на сегодня нет'
+
         return ft.Container(
             content=ft.Card(
                 content=ft.Container(
@@ -271,7 +276,7 @@ class WashSelectionPage:
                             ),
                             ft.Container(
                                 content=ft.Text(
-                                    f'Свободно мест: {available_slots}',
+                                    slots_text,
                                     size=14,
                                     weight=ft.FontWeight.BOLD,
                                     color=ft.colors.BLACK,
