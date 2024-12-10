@@ -77,6 +77,17 @@ class BookingPage:
         self.page.add(self.create_booking_page())
         self.page.overlay.append(self.loading_overlay)
 
+        self.snack_bar = ft.SnackBar(
+            content=ft.Text(
+                '',
+                text_align=ft.TextAlign.CENTER,
+            ),
+            bgcolor=ft.colors.RED,
+            duration=3000,
+        )
+        self.page.overlay.append(self.snack_bar)
+        self.page.update()
+
         self.load_schedules()
         self.load_boxes()
 
@@ -738,11 +749,27 @@ class BookingPage:
                     print('Букинг успешно создан!')
                     self.show_confirmation_page()
                 else:
+                    error_detail = response.json().get('detail', '')
                     print(f'Ошибка создания букинга: {response.text}')
+
+                    if error_detail == (
+                        'Booking for these start_datetime and '
+                        'end_datetime is not available'
+                    ):
+                        self.show_snack_bar('Упс.. Вас кто-то опередил')
+                    else:
+                        self.show_snack_bar(
+                            'Произошла ошибка при бронировании. '
+                            'Попробуйте позже.'
+                        )
             except ValueError as ve:
                 print(f'Ошибка при создании букинга: {ve}')
+                self.show_snack_bar('Произошла ошибка при обработке данных.')
         else:
             print('Выберите бокс, автомобиль и время для букинга.')
+            self.show_snack_bar(
+                'Пожалуйста, выберите бокс, автомобиль и время.'
+            )
 
     def on_add_car_click(self, e):
         from washer.ui_components.select_car_page import SelectCarPage
@@ -935,3 +962,15 @@ class BookingPage:
         from washer.ui_components.wash_selection_page import WashSelectionPage
 
         WashSelectionPage(self.page)
+
+    def show_snack_bar(self, message: str, bgcolor: str = ft.colors.RED):
+        """
+        Отображает SnackBar с заданным сообщением и цветом фона.
+        """
+        print(f'Показываем сообщение: {message}')
+
+        self.snack_bar.content.value = message
+        self.snack_bar.bgcolor = bgcolor
+        self.snack_bar.open = True
+
+        self.page.update()
