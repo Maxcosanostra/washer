@@ -15,6 +15,19 @@ class SignInPage:
 
         self.page.navigation_bar = None
 
+        self.snack_bar = ft.SnackBar(
+            content=ft.Text(
+                '',
+                text_align=ft.TextAlign.CENTER,
+                size=16,
+                color=ft.colors.WHITE,
+            ),
+            bgcolor=ft.colors.RED,
+            duration=3000,
+        )
+        self.page.overlay.append(self.snack_bar)
+        self.page.update()
+
         page.add(self.create_sign_in_container())
 
     def create_username_field(self):
@@ -60,6 +73,8 @@ class SignInPage:
                     ft.Container(
                         content=ft.Image(
                             src='https://drive.google.com/uc?export=view&id=1NTTrkC4QdWS_BhsuHpxYs2ZErCMp2c2f',
+                            # src='images/sign_in_pana.png',
+                            # # Обновленный путь к изображению перед сборкой
                             width=300,
                             height=300,
                         ),
@@ -125,7 +140,7 @@ class SignInPage:
         password = self.password_field.value
 
         if not username or not password:
-            self.page.add(ft.Text('Заполните все поля!', color=ft.colors.RED))
+            self.show_snack_bar('Заполните все поля!')
             return
 
         print(f'Пытаемся войти с пользователем: {username}')
@@ -149,7 +164,16 @@ class SignInPage:
             else:
                 self.open_wash_selection_page()
         else:
-            self.page.add(ft.Text('Ошибка авторизации!', color=ft.colors.RED))
+            self.show_snack_bar('Неверный логин или пароль!')
+
+    def show_snack_bar(self, message: str, bgcolor: str = ft.colors.RED):
+        print(f'Показываем сообщение: {message}')
+
+        self.snack_bar.content.value = message
+        self.snack_bar.bgcolor = bgcolor
+        self.snack_bar.open = True
+
+        self.page.update()
 
     def on_forgot_password_click(self, e):
         print('Переход на страницу восстановления пароля.')
