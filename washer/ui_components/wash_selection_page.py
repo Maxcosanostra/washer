@@ -120,18 +120,7 @@ class WashSelectionPage:
     def on_avatar_click(self, e=None):
         from washer.ui_components.profile_page import ProfilePage
 
-        if not self.car_washes:
-            print('Car washes data is not loaded yet.')
-            return
-
-        selected_car_wash = self.car_washes[0]
-        location_data = self.load_location_data(
-            selected_car_wash.get('location_id')
-        )
-
-        ProfilePage(
-            self.page, car_wash=selected_car_wash, location_data=location_data
-        )
+        ProfilePage(self.page)
 
     def create_main_container(self):
         search_and_list_container = ft.Container(
