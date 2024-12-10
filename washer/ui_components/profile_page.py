@@ -9,18 +9,10 @@ from washer.ui_components.my_finance_page import MyFinancePage
 
 
 class ProfilePage:
-    def __init__(self, page: ft.Page, car_wash=None, location_data=None):
+    def __init__(self, page: ft.Page):
         self.page = page
         self.api_url = config.api_url
         self.username = self.page.client_storage.get('username')
-
-        self.car_wash = car_wash or {}
-        self.location_data = location_data or {}
-
-        print(f'Инициализация ProfilePage - car_wash: {self.car_wash}')
-        print(
-            f'Инициализация ProfilePage - location_data: {self.location_data}'
-        )
 
         self.cars = []
         self.bookings = []
