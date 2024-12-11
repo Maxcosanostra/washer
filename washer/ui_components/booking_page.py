@@ -1037,7 +1037,7 @@ class BookingPage:
 
         confirm_button = ft.ElevatedButton(
             text='Принято',
-            on_click=self.redirect_to_wash_selection,
+            on_click=self.redirect_to_my_bookings_page,
             bgcolor=ft.colors.BLUE,
             color=ft.colors.WHITE,
             width=200,
@@ -1066,10 +1066,17 @@ class BookingPage:
 
         self.page.update()
 
-    def redirect_to_wash_selection(self, e):
-        from washer.ui_components.wash_selection_page import WashSelectionPage
+    def redirect_to_my_bookings_page(self, e):
+        from washer.config import config
+        from washer.ui_components.my_bookings_page import MyBookingsPage
 
-        WashSelectionPage(self.page)
+        my_bookings_page = MyBookingsPage(
+            page=self.page,
+            api_url=config.api_url,
+            car_wash=self.car_wash,
+            location_data=self.location_data,
+        )
+        my_bookings_page.open()
 
     def on_back_to_booking_page(self, e):
         self.page.appbar = ft.AppBar(
