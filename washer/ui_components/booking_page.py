@@ -18,9 +18,7 @@ class BookingPage:
         self.car_wash = car_wash
         self.username = username
         self.api = BackendApi()
-        self.location_data = (
-            location_data or {}
-        )  # Устанавливаем пустой словарь по умолчанию
+        self.location_data = location_data or {}
         self.api.set_access_token(self.page.client_storage.get('access_token'))
 
         self.selected_car_id = None
@@ -137,7 +135,7 @@ class BookingPage:
 
         self.book_button = ft.ElevatedButton(
             text='Забронировать',
-            on_click=self.on_booking_click,
+            on_click=self.on_book_click,
             width=300,
             bgcolor=ft.colors.BLUE,
             color=ft.colors.WHITE,
@@ -713,11 +711,26 @@ class BookingPage:
 
         self.page.update()
 
-    def on_booking_click(self, e):
+    def on_book_click(self, e):
         if (
             self.selected_box_id
             and self.selected_time
             and self.selected_car_id
+            and self.selected_date
+        ):
+            self.show_confirmation_page()
+        else:
+            print('Выберите бокс, автомобиль, дату и время для букинга.')
+            self.show_snack_bar(
+                'Пожалуйста, выберите бокс, автомобиль, дату и время.'
+            )
+
+    def on_confirm_booking(self, e):
+        if (
+            self.selected_box_id
+            and self.selected_time
+            and self.selected_car_id
+            and self.selected_date
         ):
             try:
                 if 'T' in self.selected_time:
@@ -743,11 +756,13 @@ class BookingPage:
 
                 print(f'Данные для бронирования: {booking_data}')
 
+                self.show_loading()
                 response = self.api.create_booking(booking_data)
+                self.hide_loading()
 
                 if response.status_code == 200:
                     print('Букинг успешно создан!')
-                    self.show_confirmation_page()
+                    self.show_success_page()
                 else:
                     error_detail = response.json().get('detail', '')
                     print(f'Ошибка создания букинга: {response.text}')
@@ -766,9 +781,9 @@ class BookingPage:
                 print(f'Ошибка при создании букинга: {ve}')
                 self.show_snack_bar('Произошла ошибка при обработке данных.')
         else:
-            print('Выберите бокс, автомобиль и время для букинга.')
+            print('Выберите бокс, автомобиль, дату и время для букинга.')
             self.show_snack_bar(
-                'Пожалуйста, выберите бокс, автомобиль и время.'
+                'Пожалуйста, выберите бокс, автомобиль, дату и время.'
             )
 
     def on_add_car_click(self, e):
@@ -864,87 +879,130 @@ class BookingPage:
         self.page.update()
 
     def show_confirmation_page(self):
-        self.page.appbar = None
+        # selected_car = next(
+        #     (
+        #         car
+        #         for car in self.cars
+        #         if str(car['id']) == self.selected_car_id
+        #     ),
+        #     None,
+        # )
 
-        self.page.clean()
-        self.page.scroll = 'adaptive'
+        if self.box_dropdown.value:
+            selected_box_option = next(
+                (
+                    option
+                    for option in self.box_dropdown.options
+                    if option.key == self.box_dropdown.value
+                ),
+                None,
+            )
+            box_name = (
+                selected_box_option.text
+                if selected_box_option
+                else 'Не выбран'
+            )
+        else:
+            box_name = 'Не выбран'
 
-        address = (
-            self.location_data.get('address', 'Адрес недоступен')
-            if self.location_data
-            else 'Адрес недоступен'
+        formatted_date = (
+            self.selected_date.strftime('%d.%m.%Y')
+            if self.selected_date
+            else 'Не выбрана'
         )
-        city = (
-            self.location_data.get('city', 'Город не указан')
-            if self.location_data
-            else 'Город не указан'
-        )
-        full_address = f'{city}, {address}'
-
-        formatted_date = self.selected_date.strftime('%d.%m.%Y')
         formatted_time = (
             datetime.datetime.fromisoformat(self.selected_time).strftime(
                 '%H:%M'
             )
-            if 'T' in self.selected_time
-            else self.selected_time
+            if self.selected_time and 'T' in self.selected_time
+            else self.selected_time or 'Не выбрано'
         )
+        price = f'₸{int(self.car_price)}'
 
         booking_details = [
-            (
-                'Дата и время',
-                f'{formatted_date} в {formatted_time}',
-            ),
-            ('Выбранный бокс', f'Бокс №{self.selected_box_id}'),
-            ('Автомойка', self.car_wash.get('name', 'Неизвестная автомойка')),
-            ('Адрес', full_address),
-            ('Цена', f'₸{self.car_price}'),
+            ('Бокс', box_name),
+            ('Дата', formatted_date),
+            ('Время', formatted_time),
+            ('Цена', price),
         ]
 
         booking_info_column = ft.Column(
             [
                 ft.Row(
                     [
-                        ft.Text(label, weight=ft.FontWeight.BOLD),
-                        ft.Text(value, color=ft.colors.GREY_600),
+                        ft.Text(label, weight=ft.FontWeight.BOLD, size=16),
+                        ft.Text(value, color=ft.colors.GREY_600, size=16),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 )
                 for label, value in booking_details
             ],
             spacing=10,
-            expand=True,
         )
 
+        car_info_card = ft.Card(
+            content=ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text(
+                            'Информация о записи',
+                            size=18,
+                            weight=ft.FontWeight.BOLD,
+                        ),
+                        ft.Divider(),
+                        booking_info_column,
+                    ],
+                    spacing=10,
+                ),
+                padding=ft.padding.all(20),
+            ),
+            elevation=3,
+            margin=ft.margin.only(bottom=20),
+        )
+
+        confirm_button = ft.ElevatedButton(
+            text='Подтвердить букинг',
+            on_click=self.on_confirm_booking,
+            width=300,
+            bgcolor=ft.colors.GREEN,
+            color=ft.colors.WHITE,
+        )
+
+        back_button = ft.ElevatedButton(
+            text='Изменить',
+            on_click=self.on_back_to_booking_page,
+            width=300,
+            bgcolor=ft.colors.GREY_700,
+            color=ft.colors.WHITE,
+        )
+
+        self.page.appbar = ft.AppBar(
+            leading=ft.IconButton(
+                icon=ft.icons.ARROW_BACK,
+                on_click=self.on_back_to_booking_page,
+                icon_color=ft.colors.WHITE,
+                padding=ft.padding.only(left=10),
+            ),
+            title=None,
+            center_title=True,
+            bgcolor=ft.colors.SURFACE_VARIANT,
+            leading_width=40,
+        )
+
+        self.page.clean()
         self.page.add(
             ft.Container(
                 content=ft.Column(
                     [
                         ft.Text(
-                            'Ваше бронирование успешно!',
+                            'Пожалуйста, подтвердите свои данные',
                             size=24,
                             weight=ft.FontWeight.BOLD,
                             text_align=ft.TextAlign.CENTER,
                         ),
-                        booking_info_column,
-                        ft.Image(
-                            src='https://drive.google.com/uc?export=view&id=1H-VOxdvmqgxK5J1Dv8jX_4Mc62XnSByy',
-                            width=300,
-                            height=300,
-                        ),
-                        ft.Text(
-                            'Будем рады видеть вас!',
-                            size=16,
-                            color=ft.colors.GREY_500,
-                            text_align=ft.TextAlign.CENTER,
-                        ),
-                        ft.ElevatedButton(
-                            text='Принято',
-                            on_click=self.redirect_to_wash_selection,
-                            bgcolor=ft.colors.BLUE,
-                            color=ft.colors.WHITE,
-                            width=300,
-                        ),
+                        car_info_card,
+                        confirm_button,
+                        back_button,
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -952,7 +1010,57 @@ class BookingPage:
                 ),
                 alignment=ft.alignment.center,
                 expand=True,
-                padding=ft.padding.only(top=100, left=20, right=20),
+                padding=ft.padding.all(20),
+            )
+        )
+
+        self.page.update()
+
+    def show_success_page(self):
+        self.page.appbar = None
+
+        self.page.clean()
+        self.page.scroll = 'adaptive'
+
+        success_icon = ft.Icon(
+            ft.icons.CHECK_CIRCLE,
+            color=ft.colors.GREEN,
+            size=100,
+        )
+
+        success_message = ft.Text(
+            'Букинг успешно совершен!',
+            size=24,
+            weight=ft.FontWeight.BOLD,
+            text_align=ft.TextAlign.CENTER,
+        )
+
+        confirm_button = ft.ElevatedButton(
+            text='Принято',
+            on_click=self.redirect_to_wash_selection,
+            bgcolor=ft.colors.BLUE,
+            color=ft.colors.WHITE,
+            width=200,
+        )
+
+        self.page.add(
+            ft.Container(
+                content=ft.Column(
+                    [
+                        success_icon,
+                        ft.Container(height=20),
+                        success_message,
+                        ft.Container(height=40),
+                        confirm_button,
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=10,
+                ),
+                alignment=ft.alignment.top_center,
+                expand=True,
+                padding=ft.padding.all(20),
+                margin=ft.margin.only(top=200),
             )
         )
 
@@ -962,6 +1070,26 @@ class BookingPage:
         from washer.ui_components.wash_selection_page import WashSelectionPage
 
         WashSelectionPage(self.page)
+
+    def on_back_to_booking_page(self, e):
+        self.page.appbar = ft.AppBar(
+            leading=ft.IconButton(
+                icon=ft.icons.ARROW_BACK,
+                on_click=self.on_back_click,
+                icon_color=ft.colors.WHITE,
+                padding=ft.padding.only(left=10),
+            ),
+            title=ft.Text('Бронирование', size=20, weight=ft.FontWeight.BOLD),
+            center_title=True,
+            bgcolor=ft.colors.SURFACE_VARIANT,
+            leading_width=40,
+        )
+
+        self.page.clean()
+        self.page.add(self.create_booking_page())
+        self.page.overlay.append(self.loading_overlay)
+        self.page.overlay.append(self.snack_bar)
+        self.page.update()
 
     def show_snack_bar(self, message: str, bgcolor: str = ft.colors.RED):
         """
@@ -974,3 +1102,6 @@ class BookingPage:
         self.snack_bar.open = True
 
         self.page.update()
+
+    def show_success_message(self, message: str):
+        self.show_snack_bar(message, bgcolor=ft.colors.GREEN)
