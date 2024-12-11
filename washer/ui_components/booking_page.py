@@ -819,6 +819,8 @@ class BookingPage:
 
         self.car_dropdown.value = str(car['id'])
 
+        self.page.client_storage.set('cars', self.cars)
+
         self.update_add_car_button()
         self.page.update()
 
