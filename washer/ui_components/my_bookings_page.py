@@ -1,18 +1,22 @@
 from datetime import datetime
 
 import flet as ft
-import httpx
+
+from washer.api_requests import BackendApi
 
 
 class MyBookingsPage:
     def __init__(self, page, api_url, car_wash, location_data):
         self.page = page
+        self.api = BackendApi()
+        self.api.set_access_token(page.client_storage.get('access_token'))
         self.api_url = api_url
         self.car_wash = car_wash
         self.location_data = location_data
         self.bookings = []
         self.completed_visible = False
         self.completed_bookings_container = ft.Container(visible=False)
+
         self.page.floating_action_button = None
         # self.page.update()
         # При включении self.page.update() AppBar скидывается некрасиво
@@ -199,9 +203,9 @@ class MyBookingsPage:
         self.completed_visible = not self.completed_visible
 
         e.control.text = (
-            'Скрыть завершенные'
+            'Скрыть завершенные записи'
             if self.completed_visible
-            else 'Показать завершенные'
+            else 'Показать завершенные записи'
         )
 
         self.completed_bookings_container.visible = self.completed_visible
@@ -211,29 +215,23 @@ class MyBookingsPage:
 
     def load_user_bookings_from_server(self):
         try:
-            access_token = self.page.client_storage.get('access_token')
             user_id = self.page.client_storage.get('user_id')
-
             if not user_id:
-                print('User ID not found!')
+                print('User ID не найден!')
                 return
 
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Accept': 'application/json',
-            }
+            response = self.api.get_user_bookings(user_id=user_id, limit=100)
+            if response is None:
+                print('Не удалось получить ответ от сервера.')
+                return
 
-            url = (
-                f"{self.api_url.rstrip('/')}/car_washes/bookings"
-                f"?user_id={user_id}&limit=100"
-            )
-            response = httpx.get(url, headers=headers)
+            print(f'Ответ от сервера при загрузке букингов: {response.text}')
 
             if response.status_code == 200:
                 self.bookings = response.json().get('data', [])
             else:
                 print(
-                    f'Ошибка при загрузке букингов: '
+                    f'Ошибка при загрузке букингов с сервера: '
                     f'{response.status_code} - {response.text}'
                 )
         except Exception as e:
@@ -241,11 +239,13 @@ class MyBookingsPage:
 
     def on_delete_booking(self, booking_id):
         def confirm_delete(e):
-            self.page.close(dlg_modal)
+            self.page.dialog.open = False
+            self.page.update()
             self.delete_booking_from_server(booking_id)
 
         def cancel_delete(e):
-            self.page.close(dlg_modal)
+            self.page.dialog.open = False
+            self.page.update()
 
         dlg_modal = ft.AlertDialog(
             modal=True,
@@ -258,27 +258,29 @@ class MyBookingsPage:
             actions_alignment=ft.MainAxisAlignment.END,
         )
 
-        self.page.open(dlg_modal)
+        self.page.dialog = dlg_modal
+        dlg_modal.open = True
+        self.page.update()
 
     def delete_booking_from_server(self, booking_id):
-        access_token = self.page.client_storage.get('access_token')
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-        url = f"{self.api_url.rstrip('/')}/car_washes/bookings/{booking_id}"
-        print(f'Отправка DELETE запроса на {url}')
+        try:
+            response = self.api.delete_booking(booking_id)
+            if response is None:
+                print('Не удалось получить ответ от сервера.')
+                return
 
-        response = httpx.delete(url, headers=headers)
-
-        if response.status_code == 200:
-            self.bookings = [b for b in self.bookings if b['id'] != booking_id]
-            self.page.clean()
-            self.page.add(self.create_bookings_page())
-            self.page.update()
-            print(f'Букинг с ID {booking_id} успешно удален.')
-        else:
-            print(f'Ошибка при удалении букинга: {response.text}')
+            if response.status_code == 200:
+                self.bookings = [
+                    b for b in self.bookings if b['id'] != booking_id
+                ]
+                self.page.clean()
+                self.page.add(self.create_bookings_page())
+                self.page.update()
+                print(f'Букинг с ID {booking_id} успешно удален.')
+            else:
+                print(f'Ошибка при удалении букинга: {response.text}')
+        except Exception as e:
+            print(f'Ошибка при удалении букинга: {e}')
 
     def redirect_to_booking_page(self, e):
         self.page.appbar = None
@@ -292,7 +294,6 @@ class MyBookingsPage:
 
     def return_to_wash_selection(self, e):
         self.page.appbar = None
-        # self.page.clean()
 
         from washer.ui_components.wash_selection_page import WashSelectionPage
 
