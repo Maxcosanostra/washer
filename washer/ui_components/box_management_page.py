@@ -1,15 +1,16 @@
 import datetime
 
 import flet as ft
-import httpx
+
+from washer.api_requests import BackendApi
 
 
 class BoxManagementPage:
-    def __init__(self, page: ft.Page, car_wash, api_url, api, locations):
+    def __init__(self, page: ft.Page, car_wash, locations):
         self.page = page
         self.car_wash = car_wash
-        self.api_url = api_url
-        self.api = api
+        self.api = BackendApi()
+        self.api.set_access_token(self.page.client_storage.get('access_token'))
         self.locations = locations
         self.boxes_list = []
         self.current_tab_index = 0
@@ -85,17 +86,7 @@ class BoxManagementPage:
 
     def load_bookings(self, box):
         try:
-            access_token = self.page.client_storage.get('access_token')
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Accept': 'application/json',
-            }
-            url = (
-                f"{self.api_url.rstrip('/')}/car_washes/bookings"
-                f"?car_wash_id={self.car_wash['id']}&limit=1000"
-            )
-            response = httpx.get(url, headers=headers)
-
+            response = self.api.get_bookings(self.car_wash['id'])
             if response.status_code == 200:
                 bookings_data = response.json().get('data', [])
                 current_date = datetime.date.today()
@@ -555,4 +546,4 @@ class BoxManagementPage:
     def on_back_to_edit_page(self, e=None):
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, self.car_wash, self.api_url, self.locations)
+        CarWashEditPage(self.page, self.car_wash, self.api.url, self.locations)
