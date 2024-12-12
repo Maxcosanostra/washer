@@ -1,9 +1,6 @@
-import io
-
 import flet as ft
-import httpx
 
-from washer.config import config
+from washer.api_requests import BackendApi
 from washer.ui_components.account_settings_page import AccountSettingsPage
 from washer.ui_components.my_finance_page import MyFinancePage
 
@@ -11,13 +8,15 @@ from washer.ui_components.my_finance_page import MyFinancePage
 class ProfilePage:
     def __init__(self, page: ft.Page):
         self.page = page
-        self.api_url = config.api_url
+        self.api = BackendApi()
+        self.api.set_access_token(page.client_storage.get('access_token'))
+        self.api_url = self.api.url
         self.username = self.page.client_storage.get('username')
 
         self.cars = []
         self.bookings = []
         self.completed_visible = False
-        self.selected_image_bytes = None  # Добавлено инициализирующее значение
+        self.selected_image_bytes = None
 
         self.completed_bookings_container = ft.Container(visible=False)
 
@@ -204,31 +203,42 @@ class ProfilePage:
 
     def upload_avatar_to_server(self):
         user_id = self.page.client_storage.get('user_id')
-        access_token = self.page.client_storage.get('access_token')
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-        files = {
-            'image': ('avatar.png', io.BytesIO(self.selected_image_bytes))
-        }
-        url = f"{self.api_url.rstrip('/')}/users/{user_id}"
-        response = httpx.patch(
-            url, files=files, data={'username': self.username}, headers=headers
+        username = self.username
+        if not user_id or not self.selected_image_bytes:
+            print('Необходимые данные отсутствуют для обновления аватара.')
+            self.show_snackbar(
+                'Необходимые данные отсутствуют для обновления аватара.',
+                color=ft.colors.RED,
+            )
+            return
+
+        new_values = {'username': username}
+        response = self.api.update_user_with_avatar(
+            user_id=user_id,
+            new_values=new_values,
+            image_bytes=self.selected_image_bytes,
         )
-        if response.status_code == 200:
+        if response and response.status_code == 200:
+            print('Аватар успешно обновлен.')
             self.get_user_data()
+            self.show_snackbar(
+                'Аватар успешно обновлен!', color=ft.colors.GREEN
+            )
+        else:
+            error_text = (
+                response.text
+                if response
+                else 'Неизвестная ошибка при обновлении аватара.'
+            )
+            print(f'Ошибка при обновлении аватара: {error_text}')
+            self.show_snackbar(
+                f'Ошибка при обновлении аватара: {error_text}',
+                color=ft.colors.RED,
+            )
 
     def get_user_data(self):
-        access_token = self.page.client_storage.get('access_token')
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-        url = f"{self.api_url.rstrip('/')}/users/me"
-        response = httpx.get(url, headers=headers)
-        if response.status_code == 200:
-            user_data = response.json()
+        user_data = self.api.get_logged_user()
+        if user_data and 'error' not in user_data:
             avatar_url = user_data.get('image_link')
             if avatar_url:
                 self.avatar_container.content = ft.Image(
@@ -239,6 +249,16 @@ class ProfilePage:
                     border_radius=ft.border_radius.all(50),
                 )
                 self.page.update()
+        else:
+            error_message = user_data.get(
+                'error',
+                'Неизвестная ошибка при получении данных пользователя.',
+            )
+            print(error_message)
+            self.show_snackbar(
+                f'Ошибка при получении данных: {error_message}',
+                color=ft.colors.RED,
+            )
 
     def open_account_settings(self, e):
         self.page.clean()
@@ -267,3 +287,12 @@ class ProfilePage:
         from washer.ui_components.sign_in_page import SignInPage
 
         SignInPage(self.page)
+
+    def show_snackbar(self, message: str, color: str = ft.colors.RED):
+        snackbar = ft.SnackBar(
+            content=ft.Text(message),
+            bgcolor=color,
+        )
+        self.page.snack_bar = snackbar
+        snackbar.open = True
+        self.page.update()
