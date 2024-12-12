@@ -695,9 +695,7 @@ class CarWashEditPage:
     def on_boxes_button_click(self, e):
         from washer.ui_components.box_management_page import BoxManagementPage
 
-        BoxManagementPage(
-            self.page, self.car_wash, self.api_url, self.api, self.locations
-        )
+        BoxManagementPage(self.page, self.car_wash, self.locations)
 
     def create_prices_button(self):
         return ft.Container(
