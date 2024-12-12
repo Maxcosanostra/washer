@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 
@@ -10,6 +11,9 @@ class BackendApi:
         self.url = config.api_url
         self.access_token = None
         self.refresh_token = None
+        self.executor = ThreadPoolExecutor(
+            max_workers=10
+        )  # Добавлен ThreadPoolExecutor
 
     def set_access_token(self, token: str):
         self.access_token = token
@@ -208,6 +212,21 @@ class BackendApi:
         response = httpx.get(api_url, headers=headers)
         return response
 
+    def get_available_times_async(
+        self, car_wash_id: int, box_id: int, date: str, callback
+    ) -> None:
+        """
+        Асинхронный метод для получения доступных временных слотов.
+        Выполняет запрос в отдельном потоке и вызывает callback с ответом
+        и box_id.
+        """
+
+        def task():
+            response = self.get_available_times(car_wash_id, date)
+            callback(response, box_id)
+
+        self.executor.submit(task)
+
     def get_locations(self) -> httpx.Response:
         api_url = (
             f"{self.url.rstrip('/')}/car_washes/locations?page=1&limit=10"
@@ -307,7 +326,7 @@ class BackendApi:
         return response
 
     def get_configurations(
-        self, generation_id: int, limit=100
+        self, generation_id: int, limit: int = 100
     ) -> httpx.Response:
         api_url = (
             f"{self.url.rstrip('/')}/cars/configurations"
@@ -368,3 +387,37 @@ class BackendApi:
         headers = self.get_headers()
         response = httpx.get(api_url, headers=headers)
         return response
+
+    def get_box_by_id(self, box_id: int) -> httpx.Response:
+        api_url = f"{self.url.rstrip('/')}/car_washes/boxes/{box_id}"
+        headers = self.get_headers()
+        response = httpx.get(api_url, headers=headers)
+        return response
+
+    def get_car_wash_by_id(self, car_wash_id: int) -> httpx.Response:
+        api_url = f"{self.url.rstrip('/')}/car_washes/{car_wash_id}"
+        headers = self.get_headers()
+        response = httpx.get(api_url, headers=headers)
+        return response
+
+    def get_location_by_id(self, location_id: int) -> httpx.Response:
+        api_url = f"{self.url.rstrip('/')}/car_washes/locations/{location_id}"
+        headers = self.get_headers()
+        response = httpx.get(api_url, headers=headers)
+        return response
+
+    def get_user_bookings(
+        self, user_id: int, limit: int = 100
+    ) -> httpx.Response:
+        """
+        Получение букингов пользователя по user_id.
+        """
+        api_url = f"{self.url.rstrip('/')}/car_washes/bookings"
+        headers = self.get_headers()
+        params = {'user_id': user_id, 'limit': limit}
+        try:
+            response = httpx.get(api_url, headers=headers, params=params)
+            return response
+        except httpx.RequestError as e:
+            print(f'Ошибка запроса при получении букингов: {e}')
+            return None
