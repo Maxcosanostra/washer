@@ -1,3 +1,4 @@
+import io
 import json
 from concurrent.futures import ThreadPoolExecutor
 
@@ -119,19 +120,29 @@ class BackendApi:
 
     def get_logged_user(self) -> dict:
         if not self.access_token:
-            return {'error': 'Access token not found'}
+            print('Access token not set!')
+            return {'error': 'Access token not set!'}
 
         headers = {
             'Authorization': f'Bearer {self.access_token}',
             'Accept': 'application/json',
         }
-        response = httpx.get(
-            f'{self.url.rstrip("/")}/users/me', headers=headers
-        )
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {'error': 'Failed to fetch user information'}
+        api_url = f"{self.url.rstrip('/')}/users/me"
+        try:
+            response = httpx.get(api_url, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(
+                    f'Ошибка при получении данных пользователя: '
+                    f'{response.status_code} - {response.text}'
+                )
+                return {
+                    'error': f'Error {response.status_code}: {response.text}'
+                }
+        except httpx.RequestError as e:
+            print(f'Ошибка запроса при получении данных пользователя: {e}')
+            return {'error': 'Request failed'}
 
     def create_user_car(self, car_data: dict) -> httpx.Response:
         if not self.access_token:
@@ -420,4 +431,33 @@ class BackendApi:
             return response
         except httpx.RequestError as e:
             print(f'Ошибка запроса при получении букингов: {e}')
+            return None
+
+    def update_user_with_avatar(
+        self, user_id: int, new_values: dict, image_bytes: bytes
+    ) -> httpx.Response:
+        """
+        Обновление данных пользователя с загрузкой аватара.
+
+        :param user_id: Идентификатор пользователя.
+        :param new_values: Словарь с обновляемыми полями пользователя.
+        :param image_bytes: Байтовые данные изображения аватара.
+        :return: Объект httpx.Response или None в случае ошибки.
+        """
+        api_url = f"{self.url.rstrip('/')}/users/{user_id}"
+        headers = {
+            'Authorization': f'Bearer {self.access_token}',
+            'Accept': 'application/json',
+        }
+        files = {'image': ('avatar.png', io.BytesIO(image_bytes))}
+        data = {
+            'new_values': json.dumps(new_values)
+        }  # Добавлено поле 'new_values'
+        try:
+            response = httpx.patch(
+                api_url, files=files, data=data, headers=headers
+            )
+            return response
+        except httpx.RequestError as e:
+            print(f'Ошибка запроса при обновлении пользователя: {e}')
             return None
