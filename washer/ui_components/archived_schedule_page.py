@@ -1,18 +1,16 @@
 import datetime
 
 import flet as ft
-import httpx
 
 from washer.api_requests import BackendApi
 
 
 class ArchivedSchedulePage:
-    def __init__(self, page: ft.Page, car_wash, api_url, locations):
+    def __init__(self, page: ft.Page, car_wash, locations):
         self.page = page
         self.car_wash = car_wash
         self.api = BackendApi()
         self.api.set_access_token(self.page.client_storage.get('access_token'))
-        self.api_url = api_url
         self.locations = locations
         self.schedule_data = []
         self.boxes_list = []
@@ -53,15 +51,7 @@ class ArchivedSchedulePage:
     def load_bookings(self):
         try:
             car_wash_id = self.car_wash['id']
-            headers = {
-                'Authorization': f'Bearer {self.api.access_token}',
-                'Accept': 'application/json',
-            }
-            url = (
-                f"{self.api_url.rstrip('/')}/car_washes/bookings"
-                f"?car_wash_id={car_wash_id}&limit=1000"
-            )
-            response = httpx.get(url, headers=headers)
+            response = self.api.get_bookings(car_wash_id)
 
             if response.status_code == 200:
                 all_bookings = response.json().get('data', [])
@@ -271,4 +261,4 @@ class ArchivedSchedulePage:
     def on_back_click(self, e):
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, self.car_wash, self.api_url, self.locations)
+        CarWashEditPage(self.page, self.car_wash, self.locations)
