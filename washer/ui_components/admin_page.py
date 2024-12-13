@@ -1,8 +1,8 @@
 import time
 
 import flet as ft
-import httpx
 
+from washer.api_requests import BackendApi
 from washer.config import config
 
 
@@ -15,6 +15,12 @@ class AdminPage:
         self.locations = {}
         self.selected_image = None
         self.current_car_wash_id = None
+
+        self.api = BackendApi()
+
+        access_token = self.page.client_storage.get('access_token')
+        if access_token:
+            self.api.set_access_token(access_token)
 
         self.page.adaptive = True
 
@@ -97,14 +103,7 @@ class AdminPage:
             self.hide_loading()
             return
 
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-
-        url = f'{self.api_url.rstrip("/")}/car_washes?page=1&limit=10'
-        response = httpx.get(url, headers=headers)
-
+        response = self.api.get_car_washes()
         if response.status_code == 200:
             self.car_washes = response.json().get('data', [])
             AdminPage.car_washes_cache = self.car_washes
@@ -120,23 +119,17 @@ class AdminPage:
             print('Access token not found, redirecting to login.')
             return
 
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-
-        url = (
-            f'{self.api_url.rstrip("/")}/car_washes/locations?page=1&limit=100'
-        )
-        response = httpx.get(url, headers=headers)
-
-        if response.status_code == 200:
+        response = self.api.get_locations()
+        if response is not None and response.status_code == 200:
             self.locations = {
                 loc['id']: loc for loc in response.json().get('data', [])
             }
             print(f'Загруженные локации: {self.locations}')
         else:
-            print(f'Ошибка загрузки локаций: {response.text}')
+            print(
+                f'Ошибка загрузки локаций: '
+                f'{response.text if response else "No Response"}'
+            )
 
     def update_car_washes_list(self):
         if self.car_washes_list_view:
@@ -199,7 +192,7 @@ class AdminPage:
 
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, car_wash, self.api_url, self.locations)
+        CarWashEditPage(self.page, car_wash, self.locations)
         load_edit_page(None)
 
     def on_logout_click(self, _):
