@@ -1,7 +1,6 @@
 import flet as ft
 
 from washer.api_requests import BackendApi
-from washer.config import config
 
 
 class AdminCarSelectionPage:
@@ -9,7 +8,6 @@ class AdminCarSelectionPage:
         self, page: ft.Page, on_car_selected, car_wash, box_id, date, time
     ):
         self.page = page
-        self.api_url = config.api_url
         self.on_car_selected = on_car_selected
         self.car_wash = car_wash
         self.box_id = box_id
@@ -30,7 +28,9 @@ class AdminCarSelectionPage:
         self.selected_car = {}
         self.snack_bar = None
         self.api = BackendApi()
-        self.api.set_access_token(self.page.client_storage.get('access_token'))
+        access_token = self.page.client_storage.get('access_token')
+        if access_token:
+            self.api.set_access_token(access_token)
 
         self.car_price = 0
         self.price_text = ft.Text(
@@ -118,21 +118,23 @@ class AdminCarSelectionPage:
     def load_brands(self):
         response = self.api.get_brands()
         if response.status_code == 401:
-            if 'token has expired' in response.text.lower():
-                if self.refresh_token():
-                    self.load_brands()
-                else:
-                    self.page.add(
-                        ft.Text(
-                            'Сессия истекла, пожалуйста, войдите снова.',
-                            color=ft.colors.RED,
-                        )
+            # Проверяем просроченность токена
+            if self.refresh_token():
+                self.load_brands()
+            else:
+                self.page.add(
+                    ft.Text(
+                        'Сессия истекла, пожалуйста, войдите снова.',
+                        color=ft.colors.RED,
                     )
+                )
         elif response.status_code == 200:
             brands = response.json().get('data', [])
             self.full_brands_list = brands
             self.brands_dict = {brand['name']: brand['id'] for brand in brands}
             self.update_brands_list(brands)
+        else:
+            print(f'Ошибка загрузки брендов: {response.text}')
 
     def update_brands_list(self, brands):
         self.brands_list.controls.clear()
@@ -188,9 +190,9 @@ class AdminCarSelectionPage:
             filtered_brands = self.full_brands_list
         else:
             filtered_brands = [
-                {'name': name}
-                for name in self.brands_dict
-                if search_query in name.lower()
+                brand
+                for brand in self.full_brands_list
+                if search_query in brand['name'].lower()
             ]
 
         self.update_brands_list(filtered_brands)
@@ -246,6 +248,7 @@ class AdminCarSelectionPage:
             if not generations:
                 print('Поколения для выбранной модели не найдены.')
                 self.generation_dropdown.visible = False
+                self.page.update()
                 return
 
             self.generations = generations
@@ -255,12 +258,11 @@ class AdminCarSelectionPage:
             self.save_button.disabled = True
 
             if len(generations) == 1:
-                self.selected_generation = generations[0]['name']
-                self.selected_generation_id = generations[0]['id']
-                self.generation_year_range = generations[0].get(
-                    'year_range', ''
-                )
-                self.generation_codes = generations[0].get('codes', '')
+                gen = generations[0]
+                self.selected_generation = gen['name']
+                self.selected_generation_id = gen['id']
+                self.generation_year_range = gen.get('year_range', '')
+                self.generation_codes = gen.get('codes', '')
 
                 if not self.selected_generation and self.generation_year_range:
                     self.selected_generation = self.generation_year_range
@@ -300,7 +302,7 @@ class AdminCarSelectionPage:
                         self.body_type_dropdown.value = None
                         self.body_type_dropdown.visible = False
                         self.save_button.disabled = True
-                        self.get_body_type(self.selected_generation_id)
+                        self.page.update()
 
                         selected_gen = next(
                             gen
@@ -312,6 +314,8 @@ class AdminCarSelectionPage:
                             'year_range', ''
                         )
                         self.generation_codes = selected_gen.get('codes', '')
+
+                        self.get_body_type(self.selected_generation_id)
 
                 self.generation_dropdown.on_change = on_generation_select
                 self.page.update()
@@ -334,7 +338,6 @@ class AdminCarSelectionPage:
             print('ID поколения не найден.')
             return
 
-        self.selected_generation = selected_generation
         generation_info = next(
             (
                 gen
@@ -468,9 +471,16 @@ class AdminCarSelectionPage:
                 for bt in body_types
                 if bt['id'] in body_type_ids
             }
+        else:
+            print(
+                f'Ошибка загрузки типов кузовов: '
+                f'{response.status_code}, {response.text}'
+            )
+            return {}
 
     def get_body_type_name(self, body_type_id):
-        return self.fetch_body_type_names([body_type_id]).get(body_type_id)
+        names = self.fetch_body_type_names([body_type_id])
+        return names.get(body_type_id, 'Неизвестно')
 
     def create_model_dropdown(self):
         return ft.Dropdown(
@@ -584,30 +594,26 @@ class AdminCarSelectionPage:
             'name': full_name,
         }
 
-        try:
-            response = self.api.create_user_car(selected_car)
-
-            if response.status_code == 200:
-                self.show_success_message(
-                    f'Автомобиль "{full_name}" успешно сохранен!'
-                )
-                self.selected_car = response.json()
-                self.selected_car.update(
-                    {
-                        'brand': self.selected_brand,
-                        'model': self.model_dropdown.value,
-                        'generation': generation_display or 'Не указано',
-                        'body_type': self.body_type_dropdown.value
-                        or self.selected_body_type,
-                        'full_name': full_name,
-                    }
-                )
-                self.on_car_selected(self.selected_car, self.car_price)
-            else:
-                error_message = response.text or 'Неизвестная ошибка'
-                self.show_error_message(f'Ошибка: {error_message}')
-        except Exception as e:
-            self.show_error_message(f'Ошибка: {str(e)}')
+        response = self.api.create_user_car(selected_car)
+        if response and response.status_code == 200:
+            self.show_success_message(
+                f'Автомобиль "{full_name}" успешно сохранен!'
+            )
+            self.selected_car = response.json()
+            self.selected_car.update(
+                {
+                    'brand': self.selected_brand,
+                    'model': self.model_dropdown.value,
+                    'generation': generation_display or 'Не указано',
+                    'body_type': self.body_type_dropdown.value
+                    or self.selected_body_type,
+                    'full_name': full_name,
+                }
+            )
+            self.on_car_selected(self.selected_car, self.car_price)
+        else:
+            error_message = response.text if response else 'Неизвестная ошибка'
+            self.show_error_message(f'Ошибка: {error_message}')
 
     def create_back_button(self):
         return ft.Container(
