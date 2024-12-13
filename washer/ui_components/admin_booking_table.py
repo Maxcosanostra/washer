@@ -2,7 +2,6 @@ import datetime
 import locale
 
 import flet as ft
-import httpx
 
 from washer.api_requests import BackendApi
 
@@ -12,7 +11,6 @@ class AdminBookingTable:
         self,
         page: ft.Page,
         car_wash,
-        api_url,
         date,
         selected_date=None,
         locations=None,
@@ -21,7 +19,6 @@ class AdminBookingTable:
         self.car_wash = car_wash
         self.api = BackendApi()
         self.api.set_access_token(self.page.client_storage.get('access_token'))
-        self.api_url = api_url
         self.date = date
         self.selected_date = selected_date
         self.locations = locations
@@ -71,20 +68,9 @@ class AdminBookingTable:
 
     def load_bookings(self):
         try:
-            access_token = self.page.client_storage.get('access_token')
             car_wash_id = self.car_wash['id']
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Accept': 'application/json',
-            }
-            url = (
-                f"{self.api_url.rstrip('/')}/car_washes/bookings"
-                f"?car_wash_id={car_wash_id}&limit=1000"
-            )
-
-            response = httpx.get(url, headers=headers)
-
-            if response.status_code == 200:
+            response = self.api.get_bookings(car_wash_id)
+            if response and response.status_code == 200:
                 bookings_data = response.json().get('data', [])
 
                 self.bookings = bookings_data
@@ -101,7 +87,8 @@ class AdminBookingTable:
             else:
                 print(
                     f'Ошибка загрузки букингов: '
-                    f'{response.status_code}, {response.text}'
+                    f'{response.status_code if response else "No response"}, '
+                    f'{response.text if response else ""}'
                 )
         except Exception as e:
             print(f'Ошибка при загрузке букингов: {e}')
@@ -338,13 +325,16 @@ class AdminBookingTable:
                     color = ft.colors.GREY_500
                     text = 'Занято'
 
-                    start_time = datetime.datetime.strptime(
-                        booking['start_datetime'], '%Y-%m-%dT%H:%M:%S'
+                    start_time = datetime.datetime.fromisoformat(
+                        booking['start_datetime']
                     ).time()
-                    end_time = datetime.datetime.strptime(
-                        booking['end_datetime'], '%Y-%m-%dT%H:%M:%S'
+                    end_time = datetime.datetime.fromisoformat(
+                        booking['end_datetime']
                     ).time()
-
+                    # в новом используется более удобный и "автоматический"
+                    # метод datetime.datetime.fromisoformat, который позволяет
+                    # обойтись без явного указания формата, если строка
+                    # соответствует стандартному ISO-формату даты и времени.
                     duration_slots = int(
                         (
                             datetime.datetime.combine(
@@ -494,23 +484,21 @@ class AdminBookingTable:
         self.page.update()
 
     def delete_booking(self, booking_id: int):
-        """
-        Удаляет букинг и обновляет текущую вкладку.
-
-        :param booking_id: ID букинга
-        """
         try:
             response = self.api.delete_booking(booking_id)
             if response.status_code == 200:
-                # Удаляем букинг из списка
                 self.bookings = [
                     b for b in self.bookings if b['id'] != booking_id
                 ]
                 print(f'Букинг с ID {booking_id} успешно удалён.')
 
                 # Получаем активную вкладку
-                selected_index = self.page.controls[1].selected_index
-                selected_tab = self.page.controls[1].tabs[selected_index]
+                booking_tabs = self.page.controls[
+                    1
+                ]  # Предполагается, что Tabs на позиции 1
+                selected_index = booking_tabs.selected_index
+                selected_tab = booking_tabs.tabs[selected_index]
+
                 day_of_week = self.schedule_data[selected_index]['day_of_week']
                 schedule_date = self.dates_storage[day_of_week]
 
@@ -594,4 +582,4 @@ class AdminBookingTable:
     def on_back_click(self, e):
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, self.car_wash, self.api_url, self.locations)
+        CarWashEditPage(self.page, self.car_wash, self.locations)
