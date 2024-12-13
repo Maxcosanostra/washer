@@ -8,21 +8,20 @@ class PriceManagementPage:
         self,
         page: ft.Page,
         car_wash,
-        api_url,
         body_type_dict,
         prices,
         locations,
     ):
         self.page = page
         self.car_wash = car_wash
-        self.api_url = api_url
         self.body_type_dict = body_type_dict
         self.price_list = prices
         self.locations = locations
 
         self.api = BackendApi()
         access_token = self.page.client_storage.get('access_token')
-        self.api.set_access_token(access_token)
+        if access_token:
+            self.api.set_access_token(access_token)
 
         self.load_prices_from_server()
 
@@ -294,7 +293,6 @@ class PriceManagementPage:
         self.page.open(dlg_modal)
 
     def refresh_price_list(self):
-        """Обновляет список цен без полной перезагрузки страницы."""
         self.price_list_container.content = ft.ListView(
             controls=[
                 *[
@@ -350,4 +348,4 @@ class PriceManagementPage:
     def on_back_to_edit_page(self, e=None):
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, self.car_wash, self.api_url, self.locations)
+        CarWashEditPage(self.page, self.car_wash, self.locations)
