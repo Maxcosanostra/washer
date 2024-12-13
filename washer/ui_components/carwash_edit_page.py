@@ -1,26 +1,22 @@
 import datetime
 import io
-import json
 from datetime import date
 
 import flet as ft
-import httpx
 
 from washer.api_requests import BackendApi
 from washer.ui_components.archived_schedule_page import ArchivedSchedulePage
-from washer.ui_components.box_revenue_page import BoxRevenuePage
 from washer.ui_components.schedule_management_page import (
     ScheduleManagementPage,
 )
 
 
 class CarWashEditPage:
-    def __init__(self, page: ft.Page, car_wash, api_url, locations):
+    def __init__(self, page: ft.Page, car_wash, locations):
         self.page = page
         self.car_wash = car_wash
         self.api = BackendApi()
         self.api.set_access_token(self.page.client_storage.get('access_token'))
-        self.api_url = api_url
         self.locations = locations or self.fetch_locations()
         self.selected_image = None
         self.selected_image_bytes = None
@@ -142,19 +138,9 @@ class CarWashEditPage:
 
     def load_total_revenue(self):
         try:
-            access_token = self.page.client_storage.get('access_token')
             car_wash_id = self.car_wash['id']
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Accept': 'application/json',
-            }
-            url = (
-                f"{self.api_url.rstrip('/')}/car_washes/bookings"
-                f"?car_wash_id={car_wash_id}&limit=1000"
-            )
-            response = httpx.get(url, headers=headers)
-
-            if response.status_code == 200:
+            response = self.api.get_bookings(car_wash_id)
+            if response and response.status_code == 200:
                 bookings_data = response.json().get('data', [])
                 current_date_str = datetime.date.today().strftime('%Y-%m-%d')
                 total_revenue = 0
@@ -162,15 +148,17 @@ class CarWashEditPage:
 
                 for booking in bookings_data:
                     booking_date = booking.get('start_datetime', '')
-                    end_time = datetime.datetime.fromisoformat(
-                        booking.get('end_datetime', '')
-                    )
-                    if (
-                        booking_date.startswith(current_date_str)
-                        and end_time < current_time
-                    ):
-                        price = float(booking.get('price', 0))
-                        total_revenue += price
+                    end_time_str = booking.get('end_datetime', '')
+                    if end_time_str:
+                        end_time = datetime.datetime.fromisoformat(
+                            end_time_str
+                        )
+                        if (
+                            booking_date.startswith(current_date_str)
+                            and end_time < current_time
+                        ):
+                            price = float(booking.get('price', 0))
+                            total_revenue += price
 
                 self.total_revenue = total_revenue
                 print(
@@ -180,7 +168,8 @@ class CarWashEditPage:
             else:
                 print(
                     f'Ошибка загрузки букингов для автомойки {car_wash_id}: '
-                    f'{response.status_code}, {response.text}'
+                    f'{response.status_code if response else "No response"}, '
+                    f'{response.text if response else ""}'
                 )
                 self.total_revenue = 0
         except Exception as e:
@@ -343,17 +332,8 @@ class CarWashEditPage:
     def load_today_bookings(self):
         try:
             car_wash_id = self.car_wash['id']
-            headers = {
-                'Authorization': f'Bearer {self.api.access_token}',
-                'Accept': 'application/json',
-            }
-            url = (
-                f"{self.api_url.rstrip('/')}/car_washes/bookings"
-                f"?car_wash_id={car_wash_id}&limit=1000"
-            )
-            response = httpx.get(url, headers=headers)
-
-            if response.status_code == 200:
+            response = self.api.get_bookings(car_wash_id)
+            if response and response.status_code == 200:
                 all_bookings = response.json().get('data', [])
                 today = datetime.date.today().strftime('%Y-%m-%d')
                 today_bookings = [
@@ -383,7 +363,8 @@ class CarWashEditPage:
             else:
                 print(
                     f'Ошибка загрузки букингов для автомойки {car_wash_id}: '
-                    f'{response.status_code}, {response.text}'
+                    f'{response.status_code if response else "No response"}, '
+                    f'{response.text if response else ""}'
                 )
                 return []
         except Exception as e:
@@ -509,9 +490,7 @@ class CarWashEditPage:
         )
 
     def on_view_archived_schedule_click(self, e):
-        ArchivedSchedulePage(
-            self.page, self.car_wash, self.api_url, self.locations
-        )
+        ArchivedSchedulePage(self.page, self.car_wash, self.locations)
 
     def create_booking_button(self):
         return ft.Container(
@@ -543,7 +522,6 @@ class CarWashEditPage:
         AdminBookingTable(
             self.page,
             self.car_wash,
-            self.api_url,
             current_date,
             locations=self.locations,
         )
@@ -665,9 +643,7 @@ class CarWashEditPage:
         )
 
     def on_schedule_button_click(self, e):
-        ScheduleManagementPage(
-            self.page, self.car_wash, self.api_url, self.locations
-        )
+        ScheduleManagementPage(self.page, self.car_wash, self.locations)
 
     def create_boxes_button(self):
         return ft.Container(
@@ -737,15 +713,9 @@ class CarWashEditPage:
         PriceManagementPage(
             self.page,
             self.car_wash,
-            self.api_url,
             self.body_type_dict,
             prices,
             self.locations,
-        )
-
-    def open_box_revenue_page(self, box):
-        BoxRevenuePage(
-            self.page, box, self.car_wash, self.api_url, self.locations
         )
 
     def on_avatar_click(self, e):
@@ -832,24 +802,13 @@ class CarWashEditPage:
             'location_id': self.car_wash['location_id'],
         }
 
-        access_token = self.page.client_storage.get('access_token')
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Accept': 'application/json',
-        }
-
-        api_url = (
-            f"{self.api_url.rstrip('/')}/car_washes/{self.car_wash['id']}"
-        )
-
-        response = httpx.patch(
-            api_url,
+        response = self.api.update_car_wash(
+            self.car_wash['id'],
+            new_values=new_values,
             files=files,
-            data={'new_values': json.dumps(new_values)},
-            headers=headers,
         )
 
-        if response.status_code == 200:
+        if response and response.status_code == 200:
             self.car_wash['image_link'] = response.json().get(
                 'image_link', self.car_wash['image_link']
             )
@@ -862,7 +821,10 @@ class CarWashEditPage:
             )
             self.page.update()
         else:
-            print(f'Ошибка при загрузке изображения: {response.text}')
+            print(
+                f'Ошибка при загрузке изображения: '
+                f'{response.text if response else "No response"}'
+            )
 
         self.hide_loading()
 
