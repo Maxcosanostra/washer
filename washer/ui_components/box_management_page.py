@@ -546,4 +546,4 @@ class BoxManagementPage:
     def on_back_to_edit_page(self, e=None):
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, self.car_wash, self.api.url, self.locations)
+        CarWashEditPage(self.page, self.car_wash, self.locations)
