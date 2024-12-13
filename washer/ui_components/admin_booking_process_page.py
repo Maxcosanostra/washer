@@ -4,7 +4,6 @@ import locale
 import flet as ft
 
 from washer.api_requests import BackendApi
-from washer.config import config
 from washer.ui_components.admin_car_selection_page import AdminCarSelectionPage
 
 
@@ -20,15 +19,18 @@ class AdminBookingProcessPage:
         car_price,
     ):
         self.page = page
-        self.api_url = config.api_url
         self.car_wash = car_wash
         self.box_id = box_id
         self.date = date
         self.time = time
         self.selected_car = selected_car
         self.car_price = car_price
+
         self.api = BackendApi()
-        self.api.set_access_token(self.page.client_storage.get('access_token'))
+        access_token = self.page.client_storage.get('access_token')
+        if access_token:
+            self.api.set_access_token(access_token)
+
         self.snack_bar = None
 
         self.confirm_button = ft.ElevatedButton(
@@ -142,7 +144,6 @@ class AdminBookingProcessPage:
                 AdminBookingTable(
                     self.page,
                     self.car_wash,
-                    self.api_url,
                     self.date,
                     selected_date=self.date,
                 )
