@@ -6,12 +6,11 @@ from washer.api_requests import BackendApi
 
 
 class ScheduleManagementPage:
-    def __init__(self, page: ft.Page, car_wash, api_url, locations):
+    def __init__(self, page: ft.Page, car_wash, locations):
         self.page = page
         self.car_wash = car_wash
         self.api = BackendApi()
         self.api.set_access_token(self.page.client_storage.get('access_token'))
-        self.api_url = api_url
         self.locations = locations
 
         self.schedule_list = []
@@ -598,15 +597,18 @@ class ScheduleManagementPage:
             self.page.update()
 
     def create_week_schedule_for_all_boxes(self, e):
-        today = datetime.datetime.today()
-        start_time = self.schedule_start_time_picker.value.strftime('%H:%M:%S')
-        end_time = self.schedule_end_time_picker.value.strftime('%H:%M:%S')
-
-        if not start_time or not end_time:
+        if (
+            self.schedule_start_time_picker.value is None
+            or self.schedule_end_time_picker.value is None
+        ):
             error_message = 'Ошибка: Время начала или окончания не указано.'
             print(error_message)
             self.show_error_message(error_message)
             return
+
+        today = datetime.datetime.today()
+        start_time = self.schedule_start_time_picker.value.strftime('%H:%M:%S')
+        end_time = self.schedule_end_time_picker.value.strftime('%H:%M:%S')
 
         self.show_loading()
         success_count = 0
@@ -638,28 +640,11 @@ class ScheduleManagementPage:
             self.show_error_message(error_message)
         self.refresh_schedule_list()
 
-    # Обновляем только список расписаний
-
-    # def update_schedule_and_scroll(self):
-    #     """Старый метод для обновления расписаний
-    #     с полной перезагрузкой страницы."""
-    #     self.show_loading()
-    #
-    #     response = self.api.get_schedules(self.car_wash['id'])
-    #     if response.status_code == 200:
-    #         self.schedule_list = response.json().get('data', [])
-    #         print(f'Загружено расписаний: {len(self.schedule_list)}')
-    #
-    #     self.page.controls.clear()
-    #     self.page.add(self.create_schedule_management_page())
-    #     self.page.update()
-    #
-    #     self.hide_loading()
+    # В новом варианте сначала проверяется, не является ли value у пикеров None
+    # Если value None, сразу выводится ошибка, и strftime даже не вызывается.
+    # Это предотвращает возможную ошибку при вызове strftime на None.
 
     def refresh_schedule_list(self):
-        """Метод для обновления секции расписания
-        без полной перезагрузки страницы
-        """
         self.load_schedules()
         self.schedule_list_container.content = (
             self.create_schedule_list_section()
@@ -737,4 +722,4 @@ class ScheduleManagementPage:
     def on_back_to_edit_page(self, e=None):
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
-        CarWashEditPage(self.page, self.car_wash, self.api_url, self.locations)
+        CarWashEditPage(self.page, self.car_wash, self.locations)
