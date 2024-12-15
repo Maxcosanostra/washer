@@ -1,7 +1,4 @@
-import json
-
 import flet as ft
-import httpx
 
 from washer.api_requests import BackendApi
 from washer.ui_components.sign_in_page import SignInPage
@@ -12,6 +9,8 @@ class AccountSettingsPage:
         self.page = page
         self.api = BackendApi()
         self.user_data = {}
+
+        self.setup_snack_bar()
 
         self.access_token = self.page.client_storage.get('access_token')
         if not self.access_token:
@@ -131,7 +130,7 @@ class AccountSettingsPage:
             color=ft.colors.GREY_800,
         )
         password_field = ft.TextField(
-            value=self.user_data.get('password', ''),
+            value='',
             label='Пароль',
             password=True,
             can_reveal_password=True,
@@ -194,34 +193,32 @@ class AccountSettingsPage:
             'username': username or self.user_data.get('username'),
             'first_name': first_name or self.user_data.get('first_name'),
             'last_name': last_name or self.user_data.get('last_name'),
-            'password': password if password else None,
             'role_id': 2,
         }
 
-        if new_values['password'] is None:
-            del new_values['password']
+        if password:
+            new_values['password'] = password
 
-        api_url = f"{self.api.url.rstrip('/')}/users/{self.user_data['id']}"
-        headers = {
-            'Authorization': f'Bearer {self.access_token}',
-            'Accept': 'application/json',
-            'Content-Type': 'application/x-www-form-urlencoded',
-        }
+        try:
+            response = self.api.update_user_data(
+                self.user_data['id'], new_values
+            )
+        except Exception as e:
+            error_message = f'Ошибка при обновлении данных: {str(e)}'
+            print(error_message)
+            self.show_error_message(error_message)
+            return
 
-        response = httpx.patch(
-            api_url,
-            data={'new_values': json.dumps(new_values)},
-            headers=headers,
-        )
-
-        if response.status_code == 200:
+        if response and response.get('status_code') == 200:
             print('Данные успешно обновлены')
+            self.show_success_message('Данные успешно обновлены')
             self.load_user_data()
         else:
-            error_message = f'Ошибка при обновлении данных: {response.text}'
-            print(error_message)
-            self.page.add(ft.Text(error_message, color=ft.colors.RED))
-            self.page.update()
+            error_message = response.get('error', 'Неизвестная ошибка')
+            print(f'Ошибка при обновлении данных: {error_message}')
+            self.show_error_message(
+                f'Ошибка при обновлении данных: {error_message}'
+            )
 
     def return_to_profile(self, e):
         self.page.appbar = None
@@ -231,3 +228,34 @@ class AccountSettingsPage:
 
     def redirect_to_sign_in_page(self):
         SignInPage(self.page)
+
+    def setup_snack_bar(self):
+        self.snack_bar = ft.SnackBar(
+            content=ft.Text(''),
+            bgcolor=ft.colors.GREEN,
+            duration=3000,
+        )
+        self.page.overlay.append(self.snack_bar)
+        self.page.update()
+
+    def show_snack_bar(
+        self,
+        message: str,
+        bgcolor: str = ft.colors.GREEN,
+        text_color: str = ft.colors.WHITE,
+    ):
+        print(f'Показываем сообщение: {message}')
+
+        self.snack_bar.content.value = message
+        self.snack_bar.content.color = text_color
+
+        self.snack_bar.bgcolor = bgcolor
+        self.snack_bar.open = True
+
+        self.page.update()
+
+    def show_success_message(self, message: str):
+        self.show_snack_bar(message, bgcolor=ft.colors.GREEN)
+
+    def show_error_message(self, message: str):
+        self.show_snack_bar(message, bgcolor=ft.colors.RED)
