@@ -9,7 +9,8 @@ readme = "README.md"
 python = "^3.11"
 flet = "^0.24.0"
 httpx = "^0.27.2"
-pydantic = "1.10.18"
+pydantic = {extras = ["email"], version = "^2.10.3"}
+pydantic-settings = "^2.7.0"
 
 
 [tool.poetry.group.dev.dependencies]
