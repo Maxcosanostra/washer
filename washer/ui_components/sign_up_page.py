@@ -1,12 +1,20 @@
+from typing import Optional
+
 import flet as ft
+from pydantic import ValidationError
 
 from washer.api_requests import BackendApi
+from washer.models.user import UserBasicInfo, UserPassword, UserRegistration
 
 
 class SignUpPage:
     def __init__(self, page: ft.Page):
         self.page = page
         self.api = BackendApi()
+
+        self.user_basic_info: Optional[UserBasicInfo] = None
+        self.user_password: Optional[UserPassword] = None
+        self.user_registration: Optional[UserRegistration] = None
 
         self.first_name_field = self.create_first_name_field()
         self.last_name_field = self.create_last_name_field()
@@ -18,6 +26,19 @@ class SignUpPage:
         self.image_picker = ft.FilePicker(on_result=self.on_file_picked)
         self.page.overlay.append(self.image_picker)
         self.selected_image = None
+
+        self.snack_bar = ft.SnackBar(
+            content=ft.Text(
+                '',
+                text_align=ft.TextAlign.CENTER,
+                size=16,
+                color=ft.colors.WHITE,
+            ),
+            bgcolor=ft.colors.RED,
+            duration=3000,
+        )
+        self.page.overlay.append(self.snack_bar)
+        self.page.update()
 
         self.show_welcome_page()
 
@@ -223,9 +244,18 @@ class SignUpPage:
         )
 
     def save_step_1(self, e=None):
-        self.first_name = self.first_name_field.value
-        self.last_name = self.last_name_field.value
-        self.username = self.username_field.value
+        first_name = self.first_name_field.value.strip()
+        last_name = self.last_name_field.value.strip()
+        username = self.username_field.value.strip()
+
+        try:
+            self.user_basic_info = UserBasicInfo(
+                username=username, first_name=first_name, last_name=last_name
+            )
+        except ValidationError as ve:
+            self.display_validation_errors(ve)
+            return
+
         self.show_step_2()
 
     def show_step_2(self, e=None):
@@ -292,11 +322,24 @@ class SignUpPage:
     def save_step_2(self, e=None):
         password = self.password_field.value
         confirm_password = self.confirm_password_field.value
-        if password != confirm_password:
-            self.page.add(ft.Text('Пароли не совпадают!', color=ft.colors.RED))
-        else:
-            self.password = password
-            self.show_step_3()
+
+        try:
+            self.user_password = UserPassword(
+                password=password, confirm_password=confirm_password
+            )
+        except ValidationError as ve:
+            error_messages = []
+            for error in ve.errors():
+                msg = error['msg']
+                prefix = 'Value error, '
+                if msg.startswith(prefix):
+                    msg = msg[len(prefix) :]
+                error_messages.append(msg)
+            error_text = '\n'.join(error_messages)
+            self.show_snack_bar(error_text, bgcolor=ft.colors.RED)
+            return
+
+        self.show_step_3()
 
     def show_step_3(self, e=None):
         self.page.clean()
@@ -386,50 +429,106 @@ class SignUpPage:
             print(f'Выбрано изображение: {self.selected_image}')
 
     def on_sign_up_click(self, e=None):
-        if (
-            not self.first_name
-            or not self.last_name
-            or not self.username
-            or not self.password
-        ):
-            self.page.add(ft.Text('Заполните все поля!', color=ft.colors.RED))
+        if not self.user_basic_info or not self.user_password:
+            self.show_snack_bar(
+                'Пожалуйста, завершите все шаги регистрации!',
+                bgcolor=ft.colors.RED,
+            )
             return
 
-        data = {
-            'username': self.username,
-            'password': self.password,
-            'first_name': self.first_name,
-            'last_name': self.last_name,
-        }
+        try:
+            self.user_registration = UserRegistration(
+                username=self.user_basic_info.username,
+                first_name=self.user_basic_info.first_name,
+                last_name=self.user_basic_info.last_name,
+                password=self.user_password.password,
+                image=None,  # По умолчанию без изображения
+            )
+        except ValidationError as ve:
+            error_messages = []
+            for error in ve.errors():
+                msg = error['msg']
+                prefix = 'Value error, '
+                if msg.startswith(prefix):
+                    msg = msg[len(prefix) :]
+                error_messages.append(msg)
+            error_text = '\n'.join(error_messages)
+            self.show_snack_bar(error_text, bgcolor=ft.colors.RED)
+            return
 
-        files = None
         if self.selected_image:
-            files = {'image': open(self.selected_image, 'rb')}
+            try:
+                with open(self.selected_image, 'rb') as img_file:
+                    image_bytes = img_file.read()
+                self.user_registration.image = image_bytes
+            except Exception as ex:
+                self.show_snack_bar(
+                    f'Ошибка при чтении изображения: {ex}',
+                    bgcolor=ft.colors.RED,
+                )
+                return
 
-        response = self.api.register_user(data, files)
+        response = self.api.register_user(user=self.user_registration)
 
         if response.status_code == 200:
             tokens = response.json()
+            self.api.set_access_token(tokens['access_token'])
+            self.api.refresh_token = tokens['refresh_token']  # Если необходимо
+
+            print(f'Access token после установки: {self.api.access_token}')
+            print(f'Refresh token после установки: {self.api.refresh_token}')
+
             self.page.client_storage.set(
                 'access_token', tokens['access_token']
             )
             self.page.client_storage.set(
                 'refresh_token', tokens['refresh_token']
             )
-            self.page.client_storage.set('username', self.username)
+            self.page.client_storage.set(
+                'username', self.user_basic_info.username
+            )
+
             user_info = self.api.get_logged_user()
             if 'id' in user_info:
                 self.page.client_storage.set('user_id', user_info['id'])
             self.open_wash_selection_page()
         else:
-            self.page.add(
-                ft.Text(f'Ошибка: {response.text}', color=ft.colors.RED)
+            try:
+                error_detail = response.json().get('detail', response.text)
+            except ValueError:
+                error_detail = response.text
+            self.show_snack_bar(
+                f'Ошибка: {error_detail}', bgcolor=ft.colors.RED
             )
+
+    def display_validation_errors(self, ve: ValidationError):
+        """
+        Отображает ошибки валидации на странице с использованием SnackBar.
+        """
+        error_messages = []
+        for error in ve.errors():
+            msg = error['msg']
+            print(f'Error message before processing: {msg}')  # Отладка
+            prefix = 'Value error, '
+            if msg.startswith(prefix):
+                msg = msg[len(prefix) :]
+            error_messages.append(msg)
+        error_text = '\n'.join(error_messages)
+        self.show_snack_bar(error_text, bgcolor=ft.colors.RED)
+
+    def show_snack_bar(self, message: str, bgcolor: str = ft.colors.RED):
+        print(f'Показываем сообщение: {message}')
+
+        self.snack_bar.content.value = message
+        self.snack_bar.bgcolor = bgcolor
+        self.snack_bar.open = True
+
+        self.page.update()
 
     def open_wash_selection_page(self):
         from washer.ui_components.wash_selection_page import WashSelectionPage
 
-        WashSelectionPage(self.page, self.username)
+        WashSelectionPage(self.page, self.user_basic_info.username)
 
     def open_sign_in_page(self, e=None):
         from washer.ui_components.sign_in_page import SignInPage
