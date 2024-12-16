@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import httpx
 
 from washer.config import config
+from washer.models.user import UserRegistration
 
 
 class BackendApi:
@@ -20,20 +21,19 @@ class BackendApi:
         self.access_token = token
 
     def get_headers(self):
-        return {
+        headers = {
             'Authorization': f'Bearer {self.access_token}',
             'Accept': 'application/json',
-            'Content-Type': 'application/json',
         }
+        return headers
 
     def create_box(self, box_data: dict) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/boxes"
+        api_url = f"{str(self.url).rstrip('/')}/car_washes/boxes"
         headers = self.get_headers()
-        response = httpx.post(api_url, json=box_data, headers=headers)
-        return response
+        return httpx.post(api_url, json=box_data, headers=headers)
 
     def create_schedule(self, schedule_data):
-        url = f"{self.url.rstrip('/')}/car_washes/schedules"
+        url = f"{str(self.url).rstrip('/')}/car_washes/schedules"
         print(f'Отправляем запрос на URL: {url}')
         response = httpx.post(
             url, json=schedule_data, headers=self.get_headers()
@@ -42,72 +42,52 @@ class BackendApi:
 
     def get_boxes(self, car_wash_id: int) -> httpx.Response:
         api_url = (
-            f"{self.url.rstrip('/')}/car_washes/boxes"
+            f"{str(self.url).rstrip('/')}/car_washes/boxes"
             f"?car_wash_id={car_wash_id}"
         )
+
         headers = self.get_headers()
-        response = httpx.get(api_url, headers=headers)
-
-        print(f'Отправляем запрос на {api_url} с заголовками {headers}')
-        print(f'Ответ сервера: {response.status_code}, {response.text}')
-
-        return response
+        return httpx.get(api_url, headers=headers)
 
     def get_schedules(self, car_wash_id: int) -> httpx.Response:
         api_url = (
-            f"{self.url.rstrip('/')}/car_washes/schedules"
+            f"{str(self.url).rstrip('/')}/car_washes/schedules"
             f"?car_wash_id={car_wash_id}&limit=1000"
         )
+
         headers = self.get_headers()
-        response = httpx.get(api_url, headers=headers)
-        return response
+        return httpx.get(api_url, headers=headers)
 
     def delete_schedule(self, schedule_id: int) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/schedules/{schedule_id}"
-        headers = self.get_headers()
-        response = httpx.delete(api_url, headers=headers)
-        return response
-
-    def register_user(self, data: dict, files: dict = None) -> httpx.Response:
-        api_url = self.url.rstrip('/')
-
-        form_data = {
-            'new_user': (
-                None,
-                json.dumps(
-                    {
-                        'username': data['username'],
-                        'password': data['password'],
-                        'first_name': data['first_name'],
-                        'last_name': data['last_name'],
-                    }
-                ),
-                'application/json',
-            )
-        }
-
-        if files:
-            form_data.update(files)
-
-        print(
-            f'Отправка запроса на {api_url}/jwt/register с данными '
-            f'{form_data} и файлами {files}'
+        api_url = (
+            f"{str(self.url).rstrip('/')}/car_washes/schedules/{schedule_id}"
         )
+        headers = self.get_headers()
+        return httpx.delete(api_url, headers=headers)
 
-        response = httpx.post(f'{api_url}/jwt/register', files=form_data)
+    def register_user(self, user: UserRegistration) -> httpx.Response:
+        api_url = f"{str(self.url).rstrip('/')}/jwt/register"
 
-        print(f'Ответ сервера: {response.status_code}, {response.text}')
+        user_data = user.model_dump(exclude={'image'}, exclude_unset=True)
+        user_json = json.dumps(user_data)
 
-        if response.status_code == 200:
-            tokens = response.json()
-            self.access_token = tokens.get('access_token')
-            self.refresh_token = tokens.get('refresh_token')
+        files = {'new_user': (None, user_json, 'application/json')}
 
+        if user.image:
+            files['image'] = (
+                'avatar.png',
+                io.BytesIO(user.image),
+                'image/png',
+            )
+
+        print(f'Отправка запроса на {api_url} с данными {files}')
+        response = httpx.post(api_url, files=files, headers=self.get_headers())
+        print(f'Получен ответ: {response.status_code} - {response.text}')
         return response
 
     def login(self, username: str, password: str) -> dict:
         response = httpx.post(
-            f'{self.url.rstrip("/")}/jwt/token',
+            f'{str(self.url).rstrip("/")}/jwt/token',
             data={'username': username, 'password': password},
         )
         if response.status_code == 200:
@@ -127,7 +107,7 @@ class BackendApi:
             'Authorization': f'Bearer {self.access_token}',
             'Accept': 'application/json',
         }
-        api_url = f"{self.url.rstrip('/')}/users/me"
+        api_url = f"{str(self.url).rstrip('/')}/users/me"
         try:
             response = httpx.get(api_url, headers=headers)
             if response.status_code == 200:
@@ -149,7 +129,7 @@ class BackendApi:
             print('Токен доступа отсутствует!')
             return None
 
-        api_url = f'{self.url.rstrip("/")}/cars'
+        api_url = f"{str(self.url).rstrip('/')}/cars"
         headers = {
             'Authorization': f'Bearer {self.access_token}',
             'Accept': 'application/json',
@@ -161,7 +141,7 @@ class BackendApi:
 
     def get_user_cars(self, user_id: int, limit: int = 100) -> httpx.Response:
         api_url = (
-            f"{self.url.rstrip('/')}/cars?user_id={user_id}&limit={limit}"
+            f"{str(self.url).rstrip('/')}/cars?user_id={user_id}&limit={limit}"
         )
         headers = self.get_headers()
         response = httpx.get(api_url, headers=headers)
@@ -169,12 +149,12 @@ class BackendApi:
 
     def get_car_by_id(self, car_id: int) -> httpx.Response:
         headers = {'Authorization': f'Bearer {self.access_token}'}
-        api_url = f'{self.url.rstrip("/")}/cars/{car_id}'
+        api_url = f'{str(self.url).rstrip('/')}/cars/{car_id}'
         response = httpx.get(api_url, headers=headers)
         return response
 
     def upload_car_wash_image(self, data: dict, files: dict) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/upload_image"
+        api_url = f"{str(self.url).rstrip('/')}/car_washes/upload_image"
 
         headers = {
             'Authorization': f'Bearer {self.access_token}',
@@ -185,27 +165,24 @@ class BackendApi:
         return response
 
     def update_box(self, box_id: int, new_name: str) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/boxes/{box_id}"
+        api_url = f"{str(self.url).rstrip('/')}/car_washes/boxes/{box_id}"
         headers = self.get_headers()
-        data = {'name': new_name}
-        response = httpx.patch(api_url, json=data, headers=headers)
-        return response
+        return httpx.patch(api_url, json={'name': new_name}, headers=headers)
 
     def delete_box(self, box_id: int) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/boxes/{box_id}"
+        api_url = f"{str(self.url).rstrip('/')}/car_washes/boxes/{box_id}"
         headers = self.get_headers()
-        response = httpx.delete(api_url, headers=headers)
-        return response
+        return httpx.delete(api_url, headers=headers)
 
     def create_booking(self, booking_data: dict) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/bookings"
+        api_url = f"{str(self.url).rstrip('/')}/car_washes/bookings"
         headers = self.get_headers()
         response = httpx.post(api_url, json=booking_data, headers=headers)
         return response
 
     def get_bookings(self, car_wash_id: int) -> httpx.Response:
         api_url = (
-            f"{self.url.rstrip('/')}/car_washes/bookings"
+            f"{str(self.url).rstrip('/')}/car_washes/bookings"
             f"?car_wash_id={car_wash_id}&limit=1000"
         )
         headers = self.get_headers()
@@ -216,9 +193,10 @@ class BackendApi:
         self, car_wash_id: int, date: str
     ) -> httpx.Response:
         api_url = (
-            f"{self.url.rstrip('/')}/car_washes/{car_wash_id}/available_times"
-            f"?date={date}"
+            f"{str(self.url).rstrip('/')}/car_washes/{car_wash_id}/"
+            f"available_times?date={date}"
         )
+
         headers = self.get_headers()
         response = httpx.get(api_url, headers=headers)
         return response
@@ -240,21 +218,21 @@ class BackendApi:
 
     def get_locations(self) -> httpx.Response:
         api_url = (
-            f"{self.url.rstrip('/')}/car_washes/locations?page=1&limit=10"
+            f"{str(self.url).rstrip('/')}/car_washes/locations?page=1&limit=10"
         )
         headers = self.get_headers()
         response = httpx.get(api_url, headers=headers)
         return response
 
     def create_price(self, price_data: dict) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/prices"
+        api_url = f"{str(self.url).rstrip('/')}/car_washes/prices"
         headers = self.get_headers()
         response = httpx.post(api_url, json=price_data, headers=headers)
         return response
 
     def get_prices(self, car_wash_id: int) -> httpx.Response:
         api_url = (
-            f"{self.url.rstrip('/')}/car_washes/prices"
+            f"{str(self.url).rstrip('/')}/car_washes/prices"
             f"?car_wash_id={car_wash_id}"
         )
         headers = self.get_headers()
@@ -262,26 +240,26 @@ class BackendApi:
         return response
 
     def update_price(self, price_id: int, price_data: dict) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/prices/{price_id}"
+        api_url = f"{str(self.url).rstrip('/')}/car_washes/prices/{price_id}"
         headers = self.get_headers()
         response = httpx.patch(api_url, json=price_data, headers=headers)
         return response
 
     def delete_price(self, price_id: int) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/prices/{price_id}"
+        api_url = f"{str(self.url).rstrip('/')}/car_washes/prices/{price_id}"
         headers = self.get_headers()
         response = httpx.delete(api_url, headers=headers)
         return response
 
     def get_body_types(self, limit=100) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/cars/body_types?limit={limit}"
+        api_url = f"{str(self.url).rstrip('/')}/cars/body_types?limit={limit}"
         headers = self.get_headers()
         response = httpx.get(api_url, headers=headers)
         return response
 
     def get_car_price(self, car_wash_id: int) -> httpx.Response:
         api_url = (
-            f"{self.url.rstrip('/')}/car_washes/prices"
+            f"{str(self.url).rstrip('/')}/car_washes/prices"
             f"?page=1&limit=100&order_by=id&car_wash_id={car_wash_id}"
         )
         headers = self.get_headers()
@@ -293,65 +271,89 @@ class BackendApi:
         return response
 
     def delete_booking(self, booking_id: int) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/bookings/{booking_id}"
+        api_url = (
+            f"{str(self.url).rstrip('/')}/car_washes/bookings/{booking_id}"
+        )
         headers = self.get_headers()
         response = httpx.delete(api_url, headers=headers)
         return response
 
-    def update_user(self, user_id: int, new_values: dict) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/users/{user_id}"
+    def update_user_data(self, user_id: int, new_values: dict) -> dict:
+        """
+        Обновление данных пользователя.
+
+        :param user_id: Идентификатор пользователя.
+        :param new_values: Словарь с обновляемыми полями пользователя.
+        :return: Словарь с 'status_code' и 'data' при успехе
+        или 'error' при ошибке.
+        """
+        url = f"{str(self.url).rstrip('/')}/users/{user_id}"
         headers = self.get_headers()
-        response = httpx.patch(api_url, json=new_values, headers=headers)
-        return response
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        try:
+            response = httpx.patch(
+                url,
+                data={'new_values': json.dumps(new_values)},
+                headers=headers,
+            )
+            if response.status_code == 200:
+                return {
+                    'status_code': response.status_code,
+                    'data': response.json(),
+                }
+            else:
+                return {'error': response.text}
+        except httpx.RequestError as e:
+            print(f'Ошибка запроса при обновлении пользователя: {e}')
+            return {'error': str(e)}
 
     def update_schedule(
         self, schedule_id: int, updated_data: dict
     ) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/schedules/{schedule_id}"
+        api_url = (
+            f"{str(self.url).rstrip('/')}/car_washes/schedules/{schedule_id}"
+        )
         headers = self.get_headers()
         response = httpx.patch(api_url, json=updated_data, headers=headers)
         return response
 
     def get_brands(self, limit=1000) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/cars/brands?limit={limit}"
+        api_url = f"{str(self.url).rstrip('/')}/cars/brands?limit={limit}"
         headers = self.get_headers()
-        response = httpx.get(api_url, headers=headers)
-        return response
+        return httpx.get(api_url, headers=headers)
 
     def get_models(self, brand_id: int, limit=100) -> httpx.Response:
         api_url = (
-            f"{self.url.rstrip('/')}/cars/models"
+            f"{str(self.url).rstrip('/')}/cars/models"
             f"?brand_id={brand_id}&limit={limit}"
         )
+
         headers = self.get_headers()
-        response = httpx.get(api_url, headers=headers)
-        return response
+        return httpx.get(api_url, headers=headers)
 
     def get_generations(self, model_id: int, limit=100) -> httpx.Response:
         api_url = (
-            f"{self.url.rstrip('/')}/cars/generations"
+            f"{str(self.url).rstrip('/')}/cars/generations"
             f"?model_id={model_id}&limit={limit}"
         )
+
         headers = self.get_headers()
-        response = httpx.get(api_url, headers=headers)
-        return response
+        return httpx.get(api_url, headers=headers)
 
     def get_configurations(
         self, generation_id: int, limit: int = 100
     ) -> httpx.Response:
         api_url = (
-            f"{self.url.rstrip('/')}/cars/configurations"
+            f"{str(self.url).rstrip('/')}/cars/configurations"
             f"?generation_id={generation_id}&limit={limit}"
         )
+
         headers = self.get_headers()
-        response = httpx.get(api_url, headers=headers)
-        return response
+        return httpx.get(api_url, headers=headers)
 
     def refresh_token(self, refresh_token: str) -> dict:
-        if not refresh_token:
-            return {'error': 'Refresh token not found'}
         response = httpx.post(
-            f'{self.url.rstrip("/")}/jwt/refresh',
+            f'{str(self.url).rstrip("/")}/jwt/refresh',
             json={'refresh_token': refresh_token},
         )
         if response.status_code == 200:
@@ -366,7 +368,7 @@ class BackendApi:
             }
 
     def delete_user_car(self, car_id: int) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/cars/{car_id}"
+        api_url = f"{str(self.url).rstrip('/')}/cars/{car_id}"
         headers = self.get_headers()
         response = httpx.delete(api_url, headers=headers)
         return response
@@ -374,45 +376,48 @@ class BackendApi:
     def get_configuration_by_id(
         self, configuration_id: int, limit: int = 10000
     ) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/cars/configurations"
+        api_url = f"{str(self.url).rstrip('/')}/cars/configurations"
         headers = self.get_headers()
         params = {'configuration_id': configuration_id, 'limit': limit}
         response = httpx.get(api_url, headers=headers, params=params)
         return response
 
     def get_user_avatar(self) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/users/me"
+        api_url = f"{str(self.url).rstrip('/')}/users/me"
         headers = self.get_headers()
-        response = httpx.get(api_url, headers=headers)
-        return response
+        return httpx.get(api_url, headers=headers)
 
     def get_car_washes(self, page: int = 1) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes"
+        api_url = f"{str(self.url).rstrip('/')}/car_washes"
         headers = self.get_headers()
         params = {'page': page}
         response = httpx.get(api_url, headers=headers, params=params)
         return response
 
     def get_location_data(self, location_id: int) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/locations/{location_id}"
+        api_url = (
+            f"{str(self.url).rstrip('/')}/car_washes/locations/{location_id}"
+        )
         headers = self.get_headers()
         response = httpx.get(api_url, headers=headers)
         return response
 
     def get_box_by_id(self, box_id: int) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/boxes/{box_id}"
+        api_url = f"{str(self.url).rstrip('/')}/car_washes/boxes/{box_id}"
         headers = self.get_headers()
         response = httpx.get(api_url, headers=headers)
         return response
 
     def get_car_wash_by_id(self, car_wash_id: int) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/{car_wash_id}"
+        api_url = f"{str(self.url).rstrip('/')}/car_washes/{car_wash_id}"
         headers = self.get_headers()
         response = httpx.get(api_url, headers=headers)
         return response
 
     def get_location_by_id(self, location_id: int) -> httpx.Response:
-        api_url = f"{self.url.rstrip('/')}/car_washes/locations/{location_id}"
+        api_url = (
+            f"{str(self.url).rstrip('/')}/car_washes/locations/{location_id}"
+        )
         headers = self.get_headers()
         response = httpx.get(api_url, headers=headers)
         return response
@@ -423,7 +428,7 @@ class BackendApi:
         """
         Получение букингов пользователя по user_id.
         """
-        api_url = f"{self.url.rstrip('/')}/car_washes/bookings"
+        api_url = f"{str(self.url).rstrip('/')}/car_washes/bookings"
         headers = self.get_headers()
         params = {'user_id': user_id, 'limit': limit}
         try:
@@ -444,7 +449,7 @@ class BackendApi:
         :param image_bytes: Байтовые данные изображения аватара.
         :return: Объект httpx.Response или None в случае ошибки.
         """
-        api_url = f"{self.url.rstrip('/')}/users/{user_id}"
+        api_url = f"{str(self.url).rstrip('/')}/users/{user_id}"
         headers = {
             'Authorization': f'Bearer {self.access_token}',
             'Accept': 'application/json',
@@ -460,4 +465,35 @@ class BackendApi:
             return response
         except httpx.RequestError as e:
             print(f'Ошибка запроса при обновлении пользователя: {e}')
+            return None
+
+    def update_car_wash(
+        self, car_wash_id: int, new_values: dict, files: dict = None
+    ) -> httpx.Response:
+        """
+        Обновление данных автомойки.
+
+        :param car_wash_id: Идентификатор автомойки.
+        :param new_values: Словарь с обновляемыми полями.
+        :param files: Словарь с файлами для загрузки (например, изображение).
+        :return: Объект httpx.Response.
+        """
+        api_url = f"{str(self.url).rstrip('/')}/car_washes/{car_wash_id}"
+        headers = {
+            'Authorization': f'Bearer {self.access_token}',
+            'Accept': 'application/json',
+        }
+
+        data = {'new_values': json.dumps(new_values)} if new_values else None
+
+        try:
+            response = httpx.patch(
+                api_url,
+                files=files,
+                data=data,
+                headers=headers,
+            )
+            return response
+        except httpx.RequestError as e:
+            print(f'Ошибка запроса при обновлении автомойки: {e}')
             return None
