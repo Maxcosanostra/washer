@@ -1,6 +1,8 @@
 import flet as ft
+from pydantic import ValidationError
 
 from washer.api_requests import BackendApi
+from washer.models.user import UserSignIn
 
 
 class SignInPage:
@@ -139,12 +141,14 @@ class SignInPage:
         username = self.username_field.value
         password = self.password_field.value
 
-        if not username or not password:
-            self.show_snack_bar('Заполните все поля!')
+        try:
+            user_sign_in = UserSignIn(username=username, password=password)
+        except ValidationError as ve:
+            self.display_validation_errors(ve)
             return
 
-        print(f'Пытаемся войти с пользователем: {username}')
-        tokens = self.api.login(username, password)
+        print(f'Пытаемся войти с пользователем: {user_sign_in.username}')
+        tokens = self.api.login(user_sign_in.username, user_sign_in.password)
 
         if 'access_token' in tokens:
             self.page.client_storage.set(
@@ -153,7 +157,7 @@ class SignInPage:
             self.page.client_storage.set(
                 'refresh_token', tokens['refresh_token']
             )
-            self.page.client_storage.set('username', username)
+            self.page.client_storage.set('username', user_sign_in.username)
 
             user_info = self.api.get_logged_user()
             if 'id' in user_info:
@@ -164,7 +168,24 @@ class SignInPage:
             else:
                 self.open_wash_selection_page()
         else:
-            self.show_snack_bar('Неверный логин или пароль!')
+            self.show_snack_bar(
+                'Неверный логин или пароль!', bgcolor=ft.colors.RED
+            )
+
+    def display_validation_errors(self, ve: ValidationError):
+        """
+        Отображает ошибки валидации на странице с использованием SnackBar.
+        Убирает префикс "Value error, " из сообщений.
+        """
+        error_messages = []
+        for error in ve.errors():
+            msg = error['msg']
+            prefix = 'Value error, '
+            if msg.startswith(prefix):
+                msg = msg[len(prefix) :]
+            error_messages.append(msg)
+        error_text = '\n'.join(error_messages)
+        self.show_snack_bar(error_text, bgcolor=ft.colors.RED)
 
     def show_snack_bar(self, message: str, bgcolor: str = ft.colors.RED):
         print(f'Показываем сообщение: {message}')
@@ -177,6 +198,11 @@ class SignInPage:
 
     def on_forgot_password_click(self, e):
         print('Переход на страницу восстановления пароля.')
+        # Здесь можно добавить переход на соответствующую страницу
+        # Например:
+        # from washer.ui_components.forgot_password_page
+        # import ForgotPasswordPage
+        # ForgotPasswordPage(self.page)
 
     def open_admin_page(self):
         from washer.ui_components.admin_page import AdminPage
