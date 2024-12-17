@@ -25,6 +25,7 @@ class BookingPage:
         self.selected_box_id = None
         self.selected_date = None
         self.selected_time = None
+        self.selected_time_iso = None
         self.available_times = []
         self.cars = cars
         self.car_price = 0
@@ -123,6 +124,12 @@ class BookingPage:
             disabled=self.time_dropdown_container_disabled
         )
 
+        self.complex_wash_checkbox = ft.Checkbox(
+            label='Комплексная мойка',
+            disabled=True,
+            on_change=self.on_complex_wash_change,
+        )
+
         self.price_text = ft.Text(
             'Стоимость: ₸0',
             size=32,
@@ -147,14 +154,6 @@ class BookingPage:
             color=ft.colors.WHITE,
         )
 
-    def show_loading(self):
-        self.loading_overlay.visible = True
-        self.page.update()
-
-    def hide_loading(self):
-        self.loading_overlay.visible = False
-        self.page.update()
-
     def create_booking_page(self):
         return ft.Container(
             width=730,
@@ -169,6 +168,8 @@ class BookingPage:
                     self.date_picker_button,
                     self.box_dropdown,
                     self.time_dropdown_container,
+                    ft.Divider(),
+                    self.complex_wash_checkbox,
                     self.price_text,
                     self.book_button,
                 ],
@@ -276,6 +277,7 @@ class BookingPage:
 
         self.selected_date = None
         self.selected_time = None
+        self.selected_time_iso = None
         self.date_picker_button.text = 'Выбрать дату'
         self.date_picker_button.disabled = False
         self.box_dropdown.value = None
@@ -283,6 +285,8 @@ class BookingPage:
         self.time_dropdown_container.controls = []
         self.time_dropdown_container.disabled = True
         self.book_button.disabled = True
+        self.complex_wash_checkbox.value = False
+        self.complex_wash_checkbox.disabled = True
         self.price_text.value = 'Стоимость: ₸0'
 
         selected_car = next(
@@ -391,8 +395,14 @@ class BookingPage:
             self.hide_loading()
 
     def show_price(self):
-        self.price_text.value = f'Стоимость: ₸{int(self.car_price)}'
-        self.price_text.color = None
+        if self.complex_wash_checkbox.value:
+            self.price_text.value = f'Стоимость: ₸{int(self.car_price)}'
+            self.price_text.color = None
+            self.book_button.disabled = False
+        else:
+            self.price_text.value = 'Стоимость: ₸0'
+            self.price_text.color = ft.colors.GREY
+            self.book_button.disabled = True
         self.page.update()
 
     def on_box_select(self, e):
@@ -400,12 +410,16 @@ class BookingPage:
         print(f'Выбранный бокс: {self.selected_box_id}')
 
         self.selected_time = None
+        self.selected_time_iso = None
         self.time_dropdown_container.controls = []
         self.time_dropdown_container.disabled = False
         self.book_button.disabled = True
+        self.complex_wash_checkbox.value = False
+        self.complex_wash_checkbox.disabled = True
         self.price_text.value = 'Стоимость: ₸0'
 
         self.load_available_times_for_box()
+
         self.page.update()
 
     def open_date_picker(self, e):
@@ -473,6 +487,8 @@ class BookingPage:
             self.time_dropdown_container.controls = []
             self.time_dropdown_container.disabled = True
             self.book_button.disabled = True
+            self.complex_wash_checkbox.value = False
+            self.complex_wash_checkbox.disabled = True
             self.price_text.value = 'Стоимость: ₸0'
         else:
             self.date_picker_button.text = 'Выбрать дату'
@@ -480,6 +496,8 @@ class BookingPage:
             self.time_dropdown_container.controls = []
             self.time_dropdown_container.disabled = True
             self.book_button.disabled = True
+            self.complex_wash_checkbox.value = False
+            self.complex_wash_checkbox.disabled = True
             self.price_text.value = 'Стоимость: ₸0'
         self.page.update()
 
@@ -641,18 +659,31 @@ class BookingPage:
         return grid
 
     def on_time_select_grid(self, time_slot_iso):
+        self.selected_time_iso = time_slot_iso
         self.selected_time = datetime.datetime.fromisoformat(time_slot_iso)
         print(f'Selected time: {self.selected_time}')
 
         if self.selected_time:
-            self.book_button.disabled = False
-            self.show_price()
+            self.complex_wash_checkbox.disabled = False
+            self.complex_wash_checkbox.value = False
+            self.price_text.value = 'Стоимость: ₸0'
+            self.book_button.disabled = True
+            self.page.update()
 
         self.refresh_time_grid()
         self.page.update()
 
+    def on_complex_wash_change(self, e):
+        if self.complex_wash_checkbox.value:
+            self.show_price()
+        else:
+            self.price_text.value = 'Стоимость: ₸0'
+            self.price_text.color = ft.colors.GREY
+            self.book_button.disabled = True
+            self.page.update()
+
     def create_time_button(self, time_slot: datetime.datetime):
-        is_selected = self.selected_time == time_slot
+        is_selected = self.selected_time_iso == time_slot.isoformat()
         return ft.ElevatedButton(
             text=self.format_time(time_slot),
             on_click=lambda e: self.on_time_select_grid(time_slot.isoformat()),
@@ -771,6 +802,12 @@ class BookingPage:
             and self.selected_car_id
             and self.selected_date
         ):
+            if not self.complex_wash_checkbox.value:
+                self.show_snack_bar(
+                    'Пожалуйста, активируйте чекбокс "Комплексная мойка" '
+                    'для отображения стоимости.'
+                )
+                return
             self.show_confirmation_page()
         else:
             print('Выберите бокс, автомобиль, дату и время для букинга.')
@@ -785,6 +822,12 @@ class BookingPage:
             and self.selected_car_id
             and self.selected_date
         ):
+            if not self.complex_wash_checkbox.value:
+                self.show_snack_bar(
+                    'Пожалуйста, активируйте чекбокс "Комплексная мойка" '
+                    'для отображения стоимости.'
+                )
+                return
             try:
                 start_datetime = self.selected_time.isoformat()
 
@@ -1125,3 +1168,11 @@ class BookingPage:
 
     def show_success_message(self, message: str):
         self.show_snack_bar(message, bgcolor=ft.colors.GREEN)
+
+    def show_loading(self):
+        self.loading_overlay.visible = True
+        self.page.update()
+
+    def hide_loading(self):
+        self.loading_overlay.visible = False
+        self.page.update()
