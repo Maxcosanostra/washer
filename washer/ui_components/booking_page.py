@@ -29,6 +29,10 @@ class BookingPage:
         self.cars = cars
         self.car_price = 0
 
+        self.boxes = []
+        self.available_boxes = []
+        self.schedule_list = []
+
         self.car_dropdown_disabled = False
         self.box_dropdown_disabled = True
         self.date_picker_button_disabled = True
@@ -36,13 +40,6 @@ class BookingPage:
         self.book_button_disabled = True
 
         self.create_elements()
-
-        self.step_2_text = ft.Text(
-            'Шаг 2: Выберите бокс, дату и время',
-            size=20,
-            weight=ft.FontWeight.BOLD,
-            color=ft.colors.GREY,
-        )
 
         self.loading_overlay = ft.Container(
             content=ft.ProgressRing(),
@@ -169,8 +166,8 @@ class BookingPage:
                     self.car_dropdown,
                     self.add_car_button,
                     ft.Divider(),
-                    self.box_dropdown,
                     self.date_picker_button,
+                    self.box_dropdown,
                     self.time_dropdown_container,
                     self.price_text,
                     self.book_button,
@@ -277,8 +274,16 @@ class BookingPage:
         self.selected_car_id = e.control.value
         print(f'Выбран автомобиль с ID: {self.selected_car_id}')
 
-        if self.selected_box_id and self.selected_date and self.selected_time:
-            self.show_loading()
+        self.selected_date = None
+        self.selected_time = None
+        self.date_picker_button.text = 'Выбрать дату'
+        self.date_picker_button.disabled = False
+        self.box_dropdown.value = None
+        self.box_dropdown.disabled = True
+        self.time_dropdown_container.controls = []
+        self.time_dropdown_container.disabled = True
+        self.book_button.disabled = True
+        self.price_text.value = 'Стоимость: ₸0'
 
         selected_car = next(
             (
@@ -297,20 +302,10 @@ class BookingPage:
             )
 
             if configuration_id:
-                if (
-                    self.selected_box_id
-                    and self.selected_date
-                    and self.selected_time
-                ):
-                    self.load_body_type_id(
-                        configuration_id, auto_update_price=True
-                    )
-                else:
-                    self.load_body_type_id(configuration_id)
+                self.load_body_type_id(configuration_id)
             else:
                 print('Configuration ID для автомобиля не определен.')
 
-            self.box_dropdown.disabled = False
         else:
             print(
                 f'Автомобиль с ID {self.selected_car_id} не найден в списке.'
@@ -401,18 +396,17 @@ class BookingPage:
         self.page.update()
 
     def on_box_select(self, e):
-        self.selected_box_id = e.control.value
+        self.selected_box_id = int(e.control.value)
         print(f'Выбранный бокс: {self.selected_box_id}')
 
-        self.selected_date = None
-        self.date_picker_button.text = 'Выбрать дату'
-        self.date_picker_button.disabled = False
+        self.selected_time = None
         self.time_dropdown_container.controls = []
-        self.time_dropdown_container.disabled = True
+        self.time_dropdown_container.disabled = False
+        self.book_button.disabled = True
+        self.price_text.value = 'Стоимость: ₸0'
 
+        self.load_available_times_for_box()
         self.page.update()
-
-        self.open_date_picker(e)
 
     def open_date_picker(self, e):
         print(f'Загруженные расписания: {self.schedule_list}')
@@ -474,153 +468,162 @@ class BookingPage:
             self.date_picker_button.text = (
                 f"Выбранная дата: {self.selected_date.strftime('%d.%m.%Y')}"
             )
-            self.time_dropdown_container.disabled = False
-            self.load_available_times()
+            self.box_dropdown.disabled = False
+            self.load_available_boxes()
+            self.time_dropdown_container.controls = []
+            self.time_dropdown_container.disabled = True
+            self.book_button.disabled = True
+            self.price_text.value = 'Стоимость: ₸0'
         else:
             self.date_picker_button.text = 'Выбрать дату'
+            self.box_dropdown.disabled = True
+            self.time_dropdown_container.controls = []
+            self.time_dropdown_container.disabled = True
+            self.book_button.disabled = True
+            self.price_text.value = 'Стоимость: ₸0'
         self.page.update()
 
     def on_date_dismiss(self, e):
         print('Выбор даты отменен.')
 
-    def load_available_times(self):
+    def load_available_boxes(self):
+        if self.selected_date:
+            self.show_loading()
+            date_str = self.selected_date.strftime('%Y-%m-%d')
+            response = self.api.get_available_times(
+                self.car_wash['id'], date_str
+            )
+
+            if response.status_code == 200:
+                available_times_data = response.json().get(
+                    'available_times', {}
+                )
+                print(f'Available times data: {available_times_data}')
+
+                available_box_ids = list(map(int, available_times_data.keys()))
+                available_boxes = [
+                    box for box in self.boxes if box['id'] in available_box_ids
+                ]
+
+                self.available_boxes = available_boxes
+
+                self.box_dropdown.options = [
+                    ft.dropdown.Option(text=box['name'], key=str(box['id']))
+                    for box in self.available_boxes
+                ]
+
+                if not self.available_boxes:
+                    self.box_dropdown.disabled = True
+                    self.show_snack_bar(
+                        'На выбранную дату нет доступных боксов.'
+                    )
+                else:
+                    self.box_dropdown.disabled = False
+
+                self.hide_loading()
+            else:
+                print(f'Ошибка загрузки доступных времен: {response.text}')
+                self.show_snack_bar(
+                    'Не удалось загрузить доступные времена.', ft.colors.RED
+                )
+                self.hide_loading()
+        else:
+            print('Дата не выбрана.')
+            self.show_snack_bar('Пожалуйста, выберите дату.', ft.colors.RED)
+
+    def load_available_times_for_box(self):
         if self.selected_box_id and self.selected_date:
             self.show_loading()
+            date_str = self.selected_date.strftime('%Y-%m-%d')
+            response = self.api.get_available_times(
+                self.car_wash['id'], date_str
+            )
 
-            try:
-                response = self.api.get_available_times(
-                    self.car_wash['id'], self.selected_date
+            if response.status_code == 200:
+                available_times_data = response.json().get(
+                    'available_times', {}
                 )
-                if response.status_code == 200:
-                    all_times = (
-                        response.json()
-                        .get('available_times', {})
-                        .get(str(self.selected_box_id), [])
-                    )
-                    print(f'Raw available times: {all_times}')
+                box_times = available_times_data.get(
+                    str(self.selected_box_id), []
+                )
+                print(
+                    f'Available times for box '
+                    f'{self.selected_box_id}: {box_times}'
+                )
 
-                    current_datetime = datetime.datetime.now()
-                    selected_date_as_date = self.selected_date.date()
+                filtered_times = self.parse_available_times(box_times)
 
-                    filtered_times = []
-
-                    for time_range in all_times:
-                        try:
-                            start_time = datetime.datetime.fromisoformat(
-                                time_range[0]
-                            )
-                            end_time = datetime.datetime.fromisoformat(
-                                time_range[1]
-                            )
-
-                            while start_time < end_time:
-                                potential_end_time = (
-                                    start_time + datetime.timedelta(hours=2)
-                                )
-
-                                if (
-                                    selected_date_as_date
-                                    == current_datetime.date()
-                                ):
-                                    if (
-                                        start_time > current_datetime
-                                        and potential_end_time <= end_time
-                                    ):
-                                        filtered_times.append(
-                                            start_time.isoformat()
-                                        )
-                                elif (
-                                    selected_date_as_date
-                                    > current_datetime.date()
-                                ):
-                                    if potential_end_time <= end_time:
-                                        filtered_times.append(
-                                            start_time.isoformat()
-                                        )
-                                start_time += datetime.timedelta(hours=1)
-                        except ValueError as e:
-                            print(
-                                f'Invalid time range detected: '
-                                f'{time_range}, Error: {e}'
-                            )
-                            continue
-
-                    print(f'Filtered time slots: {filtered_times}')
-
-                    self.available_times = filtered_times
-                    print(f'Available time intervals: {self.available_times}')
-
-                    if not self.available_times:
-                        self.time_dropdown_container.controls = [
-                            ft.Text(
+                if not filtered_times:
+                    self.time_dropdown_container.controls = [
+                        ft.Container(
+                            content=ft.Text(
                                 'К сожалению, мест не осталось',
                                 color=ft.colors.RED,
                                 size=18,
                                 weight=ft.FontWeight.BOLD,
                                 text_align=ft.TextAlign.CENTER,
-                            )
-                        ]
-                    else:
-                        morning_slots = [
-                            slot
-                            for slot in self.available_times
-                            if 6
-                            <= datetime.datetime.fromisoformat(slot).hour
-                            < 12
-                        ]
-                        day_slots = [
-                            slot
-                            for slot in self.available_times
-                            if 12
-                            <= datetime.datetime.fromisoformat(slot).hour
-                            < 18
-                        ]
-                        evening_slots = [
-                            slot
-                            for slot in self.available_times
-                            if 18
-                            <= datetime.datetime.fromisoformat(slot).hour
-                            <= 22
-                        ]
-
-                        controls = []
-                        if morning_slots:
-                            controls.append(
-                                ft.Text(
-                                    'Утро', size=20, weight=ft.FontWeight.BOLD
-                                )
-                            )
-                            controls.append(
-                                self.create_time_grid(morning_slots)
-                            )
-                        if day_slots:
-                            controls.append(
-                                ft.Text(
-                                    'День', size=20, weight=ft.FontWeight.BOLD
-                                )
-                            )
-                            controls.append(self.create_time_grid(day_slots))
-                        if evening_slots:
-                            controls.append(
-                                ft.Text(
-                                    'Вечер', size=20, weight=ft.FontWeight.BOLD
-                                )
-                            )
-                            controls.append(
-                                self.create_time_grid(evening_slots)
-                            )
-
-                        self.time_dropdown_container.controls = controls
-
-                    self.page.update()
+                            ),
+                            alignment=ft.alignment.center,
+                        ),
+                        ft.Container(
+                            content=ft.Text(
+                                'Выберите другой бокс',
+                                color=ft.colors.RED,
+                                size=18,
+                                weight=ft.FontWeight.BOLD,
+                                text_align=ft.TextAlign.CENTER,
+                            ),
+                            alignment=ft.alignment.center,
+                        ),
+                    ]
+                    self.time_dropdown_container.disabled = True
                 else:
-                    print(f'Error loading available times: {response.text}')
-            except Exception as e:
-                print(f'Error while loading available times: {str(e)}')
-            finally:
+                    morning_slots = [
+                        slot for slot in filtered_times if 6 <= slot.hour < 12
+                    ]
+                    day_slots = [
+                        slot for slot in filtered_times if 12 <= slot.hour < 18
+                    ]
+                    evening_slots = [
+                        slot
+                        for slot in filtered_times
+                        if 18 <= slot.hour <= 22
+                    ]
+
+                    controls = []
+                    if morning_slots:
+                        controls.append(
+                            ft.Text('Утро', size=20, weight=ft.FontWeight.BOLD)
+                        )
+                        controls.append(self.create_time_grid(morning_slots))
+                    if day_slots:
+                        controls.append(
+                            ft.Text('День', size=20, weight=ft.FontWeight.BOLD)
+                        )
+                        controls.append(self.create_time_grid(day_slots))
+                    if evening_slots:
+                        controls.append(
+                            ft.Text(
+                                'Вечер', size=20, weight=ft.FontWeight.BOLD
+                            )
+                        )
+                        controls.append(self.create_time_grid(evening_slots))
+
+                    self.time_dropdown_container.controls = controls
+
+                self.hide_loading()
+                self.page.update()
+            else:
+                print(f'Ошибка загрузки доступных времен: {response.text}')
+                self.show_snack_bar(
+                    'Не удалось загрузить доступные времена.', ft.colors.RED
+                )
                 self.hide_loading()
         else:
-            print('Please select a box and a date.')
+            print('Не выбрана дата или бокс.')
+            self.show_snack_bar(
+                'Пожалуйста, выберите дату и бокс.', ft.colors.RED
+            )
 
     def create_time_grid(self, time_slots):
         grid = ft.GridView(
@@ -637,35 +640,22 @@ class BookingPage:
 
         return grid
 
-    def create_time_click_handler(self, time_slot):
-        def on_time_click(e):
-            self.selected_time = time_slot
-            print(f'Selected time: {self.selected_time}')
-
-            if self.selected_time:
-                self.book_button.disabled = False
-                self.show_price()
-
-            self.page.update()
-
-        return on_time_click
-
-    def on_time_select_grid(self, time_slot):
-        self.selected_time = time_slot
+    def on_time_select_grid(self, time_slot_iso):
+        self.selected_time = datetime.datetime.fromisoformat(time_slot_iso)
         print(f'Selected time: {self.selected_time}')
 
         if self.selected_time:
             self.book_button.disabled = False
             self.show_price()
 
-        self.load_available_times()
+        self.refresh_time_grid()
         self.page.update()
 
-    def create_time_button(self, time_slot):
+    def create_time_button(self, time_slot: datetime.datetime):
         is_selected = self.selected_time == time_slot
         return ft.ElevatedButton(
             text=self.format_time(time_slot),
-            on_click=lambda e: self.on_time_select_grid(time_slot),
+            on_click=lambda e: self.on_time_select_grid(time_slot.isoformat()),
             style=ft.ButtonStyle(
                 bgcolor=ft.colors.BLUE if is_selected else ft.colors.GREY,
                 color=ft.colors.WHITE if is_selected else ft.colors.BLACK,
@@ -676,40 +666,103 @@ class BookingPage:
 
     def parse_available_times(self, times):
         parsed_times = []
-        for time_range in times:
-            start_time = datetime.datetime.fromisoformat(time_range[0])
-            end_time = datetime.datetime.fromisoformat(time_range[1])
+        now = datetime.datetime.now()
 
-            while start_time + datetime.timedelta(hours=1) <= end_time:
-                parsed_times.append(start_time.isoformat())
-                start_time += datetime.timedelta(hours=1)
+        if not self.selected_date:
+            return parsed_times
+
+        is_today = self.selected_date.date() == now.date()
+
+        if is_today:
+            ceil_hour = (now + datetime.timedelta(hours=1)).replace(
+                minute=0, second=0, microsecond=0
+            )
+        else:
+            ceil_hour = None
+
+        for time_range in times:
+            try:
+                start_time = datetime.datetime.fromisoformat(time_range[0])
+                end_time = datetime.datetime.fromisoformat(time_range[1])
+
+                while start_time + datetime.timedelta(hours=2) <= end_time:
+                    if is_today:
+                        if start_time >= ceil_hour:
+                            parsed_times.append(start_time)
+                    else:
+                        parsed_times.append(start_time)
+                    start_time += datetime.timedelta(hours=1)
+            except ValueError as e:
+                print(f'Invalid time range detected: {time_range}, Error: {e}')
+                continue
 
         return parsed_times
 
-    def create_time_dropdown(self):
-        return ft.Dropdown(
-            expand=True,
-            hint_text='Выберите доступное время',
-            options=[
-                ft.dropdown.Option(self.format_time(time_slot))
-                for time_slot in self.available_times
-            ],
-            on_change=self.on_time_select,
-        )
-
-    def format_time(self, time_str):
-        time_obj = datetime.datetime.fromisoformat(time_str)
+    def format_time(self, time_obj):
         return time_obj.strftime('%H:%M')
 
-    def on_time_select(self, e):
-        self.selected_time = e.control.value
-        print(f'Выбрано время: {self.selected_time}')
+    def refresh_time_grid(self):
+        if not self.selected_box_id or not self.selected_date:
+            return
 
-        if self.selected_time:
-            self.book_button.disabled = False
-            self.show_price()
+        date_str = self.selected_date.strftime('%Y-%m-%d')
+        response = self.api.get_available_times(self.car_wash['id'], date_str)
 
-        self.page.update()
+        if response.status_code == 200:
+            available_times_data = response.json().get('available_times', {})
+            box_times = available_times_data.get(str(self.selected_box_id), [])
+            print(
+                f'Available times for box {self.selected_box_id}: {box_times}'
+            )
+
+            filtered_times = self.parse_available_times(box_times)
+
+            if not filtered_times:
+                self.time_dropdown_container.controls = [
+                    ft.Text(
+                        'К сожалению, мест не осталось',
+                        color=ft.colors.RED,
+                        size=18,
+                        weight=ft.FontWeight.BOLD,
+                        text_align=ft.TextAlign.CENTER,
+                    )
+                ]
+                self.time_dropdown_container.disabled = True
+            else:
+                morning_slots = [
+                    slot for slot in filtered_times if 6 <= slot.hour < 12
+                ]
+                day_slots = [
+                    slot for slot in filtered_times if 12 <= slot.hour < 18
+                ]
+                evening_slots = [
+                    slot for slot in filtered_times if 18 <= slot.hour <= 22
+                ]
+
+                controls = []
+                if morning_slots:
+                    controls.append(
+                        ft.Text('Утро', size=20, weight=ft.FontWeight.BOLD)
+                    )
+                    controls.append(self.create_time_grid(morning_slots))
+                if day_slots:
+                    controls.append(
+                        ft.Text('День', size=20, weight=ft.FontWeight.BOLD)
+                    )
+                    controls.append(self.create_time_grid(day_slots))
+                if evening_slots:
+                    controls.append(
+                        ft.Text('Вечер', size=20, weight=ft.FontWeight.BOLD)
+                    )
+                    controls.append(self.create_time_grid(evening_slots))
+
+                self.time_dropdown_container.controls = controls
+
+        else:
+            print(f'Ошибка загрузки доступных времен: {response.text}')
+            self.show_snack_bar(
+                'Не удалось загрузить доступные времена.', ft.colors.RED
+            )
 
     def on_book_click(self, e):
         if (
@@ -733,17 +786,10 @@ class BookingPage:
             and self.selected_date
         ):
             try:
-                if 'T' in self.selected_time:
-                    start_datetime = self.selected_time
-                else:
-                    start_datetime = (
-                        f"{self.selected_date.strftime('%Y-%m-%d')}"
-                        f"T{self.selected_time}:00"
-                    )
+                start_datetime = self.selected_time.isoformat()
 
                 end_datetime = (
-                    datetime.datetime.fromisoformat(start_datetime)
-                    + datetime.timedelta(hours=2)
+                    self.selected_time + datetime.timedelta(hours=2)
                 ).isoformat()
 
                 booking_data = {
@@ -835,37 +881,13 @@ class BookingPage:
                     f'Боксы успешно загружены для автомойки '
                     f'{self.car_wash["name"]}: {all_boxes}'
                 )
-
-                filtered_boxes = [
-                    box
-                    for box in all_boxes
-                    if box['car_wash_id'] == self.car_wash['id']
-                ]
-
-                if filtered_boxes:
-                    box_options = [
-                        ft.dropdown.Option(
-                            key=str(box['id']), text=box['name']
-                        )
-                        for box in filtered_boxes
-                    ]
-                    self.box_dropdown.options = box_options
-                    self.box_dropdown.disabled = False
-                else:
-                    print(
-                        f'Нет доступных боксов для автомойки '
-                        f'{self.car_wash["name"]}.'
-                    )
-                    self.box_dropdown.options = []
-                    self.box_dropdown.disabled = True
+                self.boxes = all_boxes
             else:
                 print(f'Ошибка загрузки боксов: {response.text}')
-                self.box_dropdown.options = []
-                self.box_dropdown.disabled = True
+                self.boxes = []
         except Exception as e:
             print(f'Ошибка загрузки боксов: {str(e)}')
-            self.box_dropdown.options = []
-            self.box_dropdown.disabled = True
+            self.boxes = []
         finally:
             self.hide_loading()
             self.page.update()
@@ -881,21 +903,12 @@ class BookingPage:
         self.page.update()
 
     def show_confirmation_page(self):
-        # selected_car = next(
-        #     (
-        #         car
-        #         for car in self.cars
-        #         if str(car['id']) == self.selected_car_id
-        #     ),
-        #     None,
-        # )
-
         if self.box_dropdown.value:
             selected_box_option = next(
                 (
                     option
                     for option in self.box_dropdown.options
-                    if option.key == self.box_dropdown.value
+                    if option.key == str(self.box_dropdown.value)
                 ),
                 None,
             )
@@ -913,10 +926,8 @@ class BookingPage:
             else 'Не выбрана'
         )
         formatted_time = (
-            datetime.datetime.fromisoformat(self.selected_time).strftime(
-                '%H:%M'
-            )
-            if self.selected_time and 'T' in self.selected_time
+            self.selected_time.strftime('%H:%M')
+            if isinstance(self.selected_time, datetime.datetime)
             else self.selected_time or 'Не выбрано'
         )
         price = f'₸{int(self.car_price)}'
