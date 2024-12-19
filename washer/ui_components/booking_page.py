@@ -1,8 +1,322 @@
-import datetime
+import calendar
+from datetime import date, datetime, timedelta
 
 import flet as ft
 
 from washer.api_requests import BackendApi
+
+date_class: dict[int, str] = {
+    0: 'Пн',
+    1: 'Вт',
+    2: 'Ср',
+    3: 'Чт',
+    4: 'Пт',
+    5: 'Сб',
+    6: 'Вс',
+}
+
+month_class: dict[int, str] = {
+    1: 'Январь',
+    2: 'Февраль',
+    3: 'Март',
+    4: 'Апрель',
+    5: 'Май',
+    6: 'Июнь',
+    7: 'Июль',
+    8: 'Август',
+    9: 'Сентябрь',
+    10: 'Октябрь',
+    11: 'Ноябрь',
+    12: 'Декабрь',
+}
+
+
+class Settings:
+    year: int = datetime.now().year
+    month: int = datetime.now().month
+
+    @staticmethod
+    def get_year() -> int:
+        return Settings.year
+
+    @staticmethod
+    def get_month() -> int:
+        return Settings.month
+
+    @staticmethod
+    def get_date(delta: int):
+        if delta == 1:
+            if Settings.month + delta > 12:
+                Settings.month = 1
+                Settings.year += 1
+            else:
+                Settings.month += 1
+
+        if delta == -1:
+            if Settings.month + delta < 1:
+                Settings.month = 12
+                Settings.year -= 1
+            else:
+                Settings.month -= 1
+
+
+date_box_style = {
+    'width': 30,
+    'height': 30,
+    'alignment': ft.alignment.center,
+    'shape': ft.BoxShape.RECTANGLE,
+    'animate': ft.Animation(duration=400, curve=ft.AnimationCurve.EASE),
+    'border_radius': 5,
+}
+
+today = datetime.today().date()
+
+
+class DateBox(ft.Container):
+    def __init__(
+        self,
+        day: int,
+        date_str: str = None,
+        date_instance: ft.Column = None,
+        on_date_selected=None,
+        date_obj: date = None,
+        disabled: bool = False,
+    ):
+        if date_obj == today and not disabled:
+            initial_bgcolor = None
+            initial_border = ft.Border(
+                left=ft.BorderSide(color='#4fadf9', width=1.5),
+                right=ft.BorderSide(color='#4fadf9', width=1.5),
+                top=ft.BorderSide(color='#4fadf9', width=1.5),
+                bottom=ft.BorderSide(color='#4fadf9', width=1.5),
+            )
+            initial_text_color = ft.colors.BLUE
+        else:
+            initial_bgcolor = None
+            initial_border = None
+            initial_text_color = (
+                ft.colors.GREY_500 if disabled else ft.colors.BLUE
+            )
+
+        super().__init__(
+            **date_box_style,
+            data=date_str,
+            on_click=self.selected if not disabled else None,
+            bgcolor=initial_bgcolor,
+            border=initial_border,
+        )
+
+        self.day = day
+        self.date_instance = date_instance
+        self.on_date_selected = on_date_selected
+        self.date_obj = date_obj
+        self.disabled = disabled
+
+        if isinstance(self.day, int) and self.day != 0:
+            self.content = ft.Text(
+                str(self.day),
+                text_align=ft.TextAlign.CENTER,
+                color=initial_text_color,
+            )
+        else:
+            self.content = ft.Text('', text_align=ft.TextAlign.CENTER)
+
+    def selected(self, e: ft.TapEvent):
+        if self.date_instance:
+            for row in self.date_instance.controls[1:]:
+                for date_box in row.controls:
+                    if isinstance(date_box, DateBox):
+                        if date_box == e.control:
+                            date_box.bgcolor = ft.colors.BLUE
+                            date_box.border = ft.Border(
+                                left=ft.BorderSide(color='#4fadf9', width=1.5),
+                                right=ft.BorderSide(
+                                    color='#4fadf9', width=1.5
+                                ),
+                                top=ft.BorderSide(color='#4fadf9', width=1.5),
+                                bottom=ft.BorderSide(
+                                    color='#4fadf9', width=1.5
+                                ),
+                            )
+                            date_box.content.color = ft.colors.WHITE
+                        else:
+                            if (
+                                date_box.date_obj == today
+                                and not date_box.disabled
+                            ):
+                                date_box.bgcolor = None
+                                date_box.border = ft.Border(
+                                    left=ft.BorderSide(
+                                        color='#4fadf9', width=1.5
+                                    ),
+                                    right=ft.BorderSide(
+                                        color='#4fadf9', width=1.5
+                                    ),
+                                    top=ft.BorderSide(
+                                        color='#4fadf9', width=1.5
+                                    ),
+                                    bottom=ft.BorderSide(
+                                        color='#4fadf9', width=1.5
+                                    ),
+                                )
+                                date_box.content.color = ft.colors.BLUE
+                            elif not date_box.disabled:
+                                date_box.bgcolor = None
+                                date_box.border = None
+                                date_box.content.color = ft.colors.BLUE
+                            else:
+                                date_box.bgcolor = None
+                                date_box.border = None
+                                date_box.content.color = ft.colors.GREY_500
+
+            self.date_instance.update()
+
+            if self.on_date_selected and self.date_obj:
+                self.on_date_selected(self.date_obj)
+
+
+class DateGrid(ft.Column):
+    def __init__(self, year: int, month: int, on_date_selected=None):
+        super().__init__()
+
+        self.year = year
+        self.month = month
+        self.on_date_selected = on_date_selected
+        self.available_dates = []
+
+        self.date_text = ft.Text(
+            f'{month_class[self.month]} {self.year}', color='white'
+        )
+
+        self.year_and_month = ft.Container(
+            bgcolor='#20303e',
+            border_radius=ft.border_radius.only(top_left=10, top_right=10),
+            content=ft.Row(
+                alignment=ft.MainAxisAlignment.CENTER,
+                controls=[
+                    ft.IconButton(
+                        icon=ft.icons.CHEVRON_LEFT,
+                        icon_size=24,
+                        on_click=lambda e: self.update_date_grid(e, -1),
+                        icon_color='white',
+                    ),
+                    ft.Container(
+                        width=150,
+                        content=self.date_text,
+                        alignment=ft.alignment.center,
+                    ),
+                    ft.IconButton(
+                        icon=ft.icons.CHEVRON_RIGHT,
+                        icon_size=24,
+                        on_click=lambda e: self.update_date_grid(e, 1),
+                        icon_color='white',
+                    ),
+                ],
+            ),
+        )
+
+        self.controls.append(self.year_and_month)
+
+        week_days = ft.Row(
+            alignment=ft.MainAxisAlignment.SPACE_EVENLY,
+            controls=[
+                ft.Text(
+                    date_class[index],
+                    text_align=ft.TextAlign.CENTER,
+                    color=ft.colors.GREY_500,
+                    weight=ft.FontWeight.BOLD,
+                )
+                for index in range(7)
+            ],
+        )
+
+        self.controls.append(week_days)
+
+        self.on_attach = self.initial_setup
+
+    def initial_setup(self, e):
+        self.populate_date_grid(self.year, self.month)
+
+    def populate_date_grid(self, year: int, month: int):
+        self.controls = self.controls[:2]
+
+        print(f'Populating calendar for {month_class[month]} {year}')
+        print(f'Available dates: {self.available_dates}')
+
+        for week in calendar.monthcalendar(year, month):
+            row = ft.Row(
+                alignment=ft.MainAxisAlignment.SPACE_EVENLY, spacing=5
+            )
+            for day in week:
+                if day != 0:
+                    try:
+                        date_obj = datetime(year, month, day).date()
+                        is_today = date_obj == today
+                        is_available = date_obj in self.available_dates
+                        print(f'Date: {date_obj}, Available: {is_available}')
+                    except ValueError:
+                        date_obj = None
+                        is_today = False
+                        is_available = False
+                        print(
+                            f'Invalid date: '
+                            f'Year={year}, Month={month}, Day={day}'
+                        )
+
+                    date_box = DateBox(
+                        day,
+                        date_str=self.format_date(day),
+                        date_instance=self,
+                        on_date_selected=self.on_date_selected,
+                        date_obj=date_obj,
+                        disabled=not is_available,
+                    )
+
+                    if is_today and is_available:
+                        date_box.bgcolor = None
+                        date_box.border = ft.Border(
+                            left=ft.BorderSide(color='#4fadf9', width=1.5),
+                            right=ft.BorderSide(color='#4fadf9', width=1.5),
+                            top=ft.BorderSide(color='#4fadf9', width=1.5),
+                            bottom=ft.BorderSide(color='#4fadf9', width=1.5),
+                        )
+                        date_box.content.color = ft.colors.BLUE
+
+                    row.controls.append(date_box)
+                else:
+                    row.controls.append(DateBox(day=0, disabled=True))
+            self.controls.append(row)
+        self.update()
+
+    def update_date_grid(self, e: ft.TapEvent, delta: int):
+        Settings.get_date(delta)
+
+        global today
+        today = datetime.today().date()
+
+        self.update_year_and_month(
+            Settings.get_year(),
+            Settings.get_month(),
+        )
+
+        self.populate_date_grid(
+            Settings.get_year(),
+            Settings.get_month(),
+        )
+
+    def update_year_and_month(self, year: int, month: int):
+        self.year = year
+        self.month = month
+        self.date_text.value = f'{month_class[self.month]} {self.year}'
+        print(f'Updated calendar to {month_class[month]} {year}')
+
+    def format_date(self, day: int) -> str:
+        return f'{month_class[self.month]} {day}, {self.year}'
+
+    def set_available_dates(self, available_dates: list[date]):
+        self.available_dates = available_dates
+        print(f'Setting available_dates for DateGrid: {self.available_dates}')
+        self.populate_date_grid(self.year, self.month)
 
 
 class BookingPage:
@@ -33,10 +347,10 @@ class BookingPage:
         self.boxes = []
         self.available_boxes = []
         self.schedule_list = []
+        self.available_dates = []
 
         self.car_dropdown_disabled = False
         self.box_dropdown_disabled = True
-        self.date_picker_button_disabled = True
         self.time_dropdown_container_disabled = True
         self.book_button_disabled = True
 
@@ -112,12 +426,10 @@ class BookingPage:
             disabled=self.box_dropdown_disabled,
         )
 
-        self.date_picker_button = ft.ElevatedButton(
-            text='Выбрать дату',
-            icon=ft.icons.CALENDAR_MONTH,
-            on_click=self.open_date_picker,
-            width=300,
-            disabled=self.date_picker_button_disabled,
+        self.calendar = DateGrid(
+            year=Settings.get_year(),
+            month=Settings.get_month(),
+            on_date_selected=self.handle_date_selected,
         )
 
         self.time_dropdown_container = ft.Column(
@@ -165,7 +477,7 @@ class BookingPage:
                     self.car_dropdown,
                     self.add_car_button,
                     ft.Divider(),
-                    self.date_picker_button,
+                    self.calendar,
                     self.box_dropdown,
                     self.time_dropdown_container,
                     ft.Divider(),
@@ -185,7 +497,7 @@ class BookingPage:
         location_address = (
             f"{self.location_data['city']}, {self.location_data['address']}"
             if self.location_data
-            else 'Address not available'
+            else 'Адрес недоступен'
         )
 
         return ft.Container(
@@ -278,8 +590,7 @@ class BookingPage:
         self.selected_date = None
         self.selected_time = None
         self.selected_time_iso = None
-        self.date_picker_button.text = 'Выбрать дату'
-        self.date_picker_button.disabled = False
+        self.reset_calendar_selection()
         self.box_dropdown.value = None
         self.box_dropdown.disabled = True
         self.time_dropdown_container.controls = []
@@ -316,6 +627,15 @@ class BookingPage:
             )
 
         self.page.update()
+
+    def reset_calendar_selection(self):
+        for control in self.calendar.controls:
+            if isinstance(control, ft.Row):
+                for date_box in control.controls:
+                    if isinstance(date_box, DateBox):
+                        date_box.bgcolor = None
+                        date_box.border = None
+        self.calendar.update()
 
     def load_body_type_id(self, configuration_id, auto_update_price=False):
         self.show_loading()
@@ -422,76 +742,23 @@ class BookingPage:
 
         self.page.update()
 
-    def open_date_picker(self, e):
-        print(f'Загруженные расписания: {self.schedule_list}')
-
-        current_date = datetime.datetime.today()
-        available_dates = []
-
-        for schedule in self.schedule_list:
-            if 'day_of_week' in schedule:
-                day_of_week = schedule['day_of_week']
-                delta_days = (day_of_week - current_date.weekday()) % 7
-                target_date = current_date + datetime.timedelta(
-                    days=delta_days
-                )
-                available_dates.append(target_date)
-
-        print(f'Доступные даты: {available_dates}')
-
-        if available_dates:
-            first_date = min(available_dates)
-            last_date = max(available_dates)
-        else:
-            first_date = current_date
-            last_date = first_date
-
-        self.page.open(
-            ft.DatePicker(
-                first_date=first_date,
-                last_date=last_date,
-                on_change=self.on_date_change,
-                on_dismiss=self.on_date_dismiss,
-            )
-        )
-
-    def load_schedules(self):
-        response = self.api.get_schedules(self.car_wash['id'])
-        if response.status_code == 200:
-            data = response.json()
-            print(
-                f'Расписания успешно загружены для автомойки '
-                f'{self.car_wash["name"]}: {data}'
-            )
-            self.schedule_list = data.get('data', [])
-            self.available_dates = [
-                datetime.datetime.strptime(schedule['date'], '%Y-%m-%d')
-                for schedule in self.schedule_list
-                if 'date' in schedule
-            ]
-        else:
-            print(f'Ошибка загрузки расписаний: {response.text}')
-            self.schedule_list = []
-            self.available_dates = []
-
-        self.page.update()
-
-    def on_date_change(self, e):
-        self.selected_date = e.control.value
+    def handle_date_selected(self, selected_date):
+        """
+        Callback-функция для обработки выбранной даты из календаря.
+        """
+        self.selected_date = selected_date
+        print(f'Выбрана дата: {self.selected_date}')
         if self.selected_date:
-            self.date_picker_button.text = (
-                f"Выбранная дата: {self.selected_date.strftime('%d.%m.%Y')}"
-            )
-            self.box_dropdown.disabled = False
             self.load_available_boxes()
-            self.time_dropdown_container.controls = []
-            self.time_dropdown_container.disabled = True
+            self.selected_time = None
+            self.selected_time_iso = None
             self.book_button.disabled = True
             self.complex_wash_checkbox.value = False
             self.complex_wash_checkbox.disabled = True
             self.price_text.value = 'Стоимость: ₸0'
         else:
-            self.date_picker_button.text = 'Выбрать дату'
+            self.selected_box_id = None
+            self.box_dropdown.value = None
             self.box_dropdown.disabled = True
             self.time_dropdown_container.controls = []
             self.time_dropdown_container.disabled = True
@@ -501,8 +768,74 @@ class BookingPage:
             self.price_text.value = 'Стоимость: ₸0'
         self.page.update()
 
-    def on_date_dismiss(self, e):
-        print('Выбор даты отменен.')
+    def load_schedules(self):
+        response = self.api.get_schedules(self.car_wash['id'])
+        if response.status_code == 200:
+            data = response.json()
+            print(
+                f'Расписания успешно загружены для автомойки '
+                f'{self.car_wash["name"]}:'
+            )
+            import pprint
+
+            pp = pprint.PrettyPrinter(indent=4)
+            pp.pprint(data)
+
+            self.schedule_list = [
+                schedule
+                for schedule in data.get('data', [])
+                if schedule.get('car_wash_id') == self.car_wash['id']
+            ]
+
+            if not self.schedule_list:
+                print('Нет расписаний для выбранной автомойки.')
+            else:
+                print(
+                    f'Количество расписаний для автомойки: '
+                    f'{len(self.schedule_list)}'
+                )
+
+            available_days_of_week = [
+                schedule['day_of_week']
+                for schedule in self.schedule_list
+                if schedule.get('is_available', False)
+                and 'day_of_week' in schedule
+            ]
+            print(f'Available days of week: {available_days_of_week}')
+
+            available_days_of_week = list(set(available_days_of_week))
+            print(f'Unique available days of week: {available_days_of_week}')
+
+            today_date = datetime.today().date()
+            end_date = today_date + timedelta(days=6)
+
+            available_dates = [
+                today_date + timedelta(days=i)
+                for i in range((end_date - today_date).days + 1)
+                if (today_date + timedelta(days=i)).weekday()
+                in available_days_of_week
+            ]
+            print(f'Computed available_dates: {available_dates}')
+
+            self.available_dates = available_dates
+            print(
+                f'Список доступных дат после обработки: '
+                f'{self.available_dates}'
+            )
+
+        else:
+            print(
+                f'Ошибка загрузки расписаний: '
+                f'{response.status_code}, {response.text}'
+            )
+            self.schedule_list = []
+            self.available_dates = []
+
+        if hasattr(self.calendar, 'set_available_dates'):
+            self.calendar.set_available_dates(self.available_dates)
+        else:
+            print('Календарь не имеет метода set_available_dates.')
+        self.page.update()
 
     def load_available_boxes(self):
         if self.selected_date:
@@ -532,13 +865,34 @@ class BookingPage:
 
                 if not self.available_boxes:
                     self.box_dropdown.disabled = True
+                    self.box_dropdown.value = None
+                    self.selected_box_id = None
                     self.show_snack_bar(
                         'На выбранную дату нет доступных боксов.'
                     )
+                    self.time_dropdown_container.controls = []
+                    self.time_dropdown_container.disabled = True
                 else:
                     self.box_dropdown.disabled = False
+                    if self.selected_box_id is not None:
+                        if self.selected_box_id in available_box_ids:
+                            self.box_dropdown.value = str(self.selected_box_id)
+                            self.load_available_times_for_box()
+                        else:
+                            self.box_dropdown.value = None
+                            self.selected_box_id = None
+                            self.time_dropdown_container.controls = []
+                            self.time_dropdown_container.disabled = True
+                            self.show_snack_bar(
+                                'Выбранный бокс недоступен на выбранную дату.'
+                            )
+                    else:
+                        self.box_dropdown.value = None
+                        self.time_dropdown_container.controls = []
+                        self.time_dropdown_container.disabled = True
 
                 self.hide_loading()
+                self.page.update()
             else:
                 print(f'Ошибка загрузки доступных времен: {response.text}')
                 self.show_snack_bar(
@@ -628,6 +982,7 @@ class BookingPage:
                         controls.append(self.create_time_grid(evening_slots))
 
                     self.time_dropdown_container.controls = controls
+                    self.time_dropdown_container.disabled = False
 
                 self.hide_loading()
                 self.page.update()
@@ -660,7 +1015,8 @@ class BookingPage:
 
     def on_time_select_grid(self, time_slot_iso):
         self.selected_time_iso = time_slot_iso
-        self.selected_time = datetime.datetime.fromisoformat(time_slot_iso)
+        self.selected_time = datetime.fromisoformat(time_slot_iso)
+
         print(f'Selected time: {self.selected_time}')
 
         if self.selected_time:
@@ -682,7 +1038,7 @@ class BookingPage:
             self.book_button.disabled = True
             self.page.update()
 
-    def create_time_button(self, time_slot: datetime.datetime):
+    def create_time_button(self, time_slot: datetime):
         is_selected = self.selected_time_iso == time_slot.isoformat()
         return ft.ElevatedButton(
             text=self.format_time(time_slot),
@@ -697,33 +1053,52 @@ class BookingPage:
 
     def parse_available_times(self, times):
         parsed_times = []
-        now = datetime.datetime.now()
+        now = datetime.now()
 
         if not self.selected_date:
             return parsed_times
 
-        is_today = self.selected_date.date() == now.date()
+        is_today = self.selected_date == now.date()
 
         if is_today:
-            ceil_hour = (now + datetime.timedelta(hours=1)).replace(
+            ceil_hour = (now + timedelta(hours=1)).replace(
                 minute=0, second=0, microsecond=0
             )
+            print(f'Сегодня: {is_today}, ceil_hour: {ceil_hour}')
         else:
             ceil_hour = None
 
         for time_range in times:
             try:
-                start_time = datetime.datetime.fromisoformat(time_range[0])
-                end_time = datetime.datetime.fromisoformat(time_range[1])
+                start_datetime_full = datetime.fromisoformat(time_range[0])
+                end_datetime_full = datetime.fromisoformat(time_range[1])
 
-                while start_time + datetime.timedelta(hours=2) <= end_time:
+                if start_datetime_full.date() != self.selected_date:
+                    print(
+                        f'Date mismatch: '
+                        f'{start_datetime_full.date()} != {self.selected_date}'
+                    )
+                    continue
+
+                start_time = start_datetime_full.time()
+                end_time = end_datetime_full.time()
+
+                start_datetime = datetime.combine(
+                    self.selected_date, start_time
+                )
+                end_datetime = datetime.combine(self.selected_date, end_time)
+
+                while start_datetime + timedelta(hours=2) <= end_datetime:
                     if is_today:
-                        if start_time >= ceil_hour:
-                            parsed_times.append(start_time)
+                        if start_datetime >= ceil_hour:
+                            parsed_times.append(start_datetime)
+                            print(f'Добавлено время: {start_datetime}')
                     else:
-                        parsed_times.append(start_time)
-                    start_time += datetime.timedelta(hours=1)
-            except ValueError as e:
+                        parsed_times.append(start_datetime)
+                        print(f'Добавлено время: {start_datetime}')
+                    start_datetime += timedelta(hours=1)  # Шаг 1 час
+
+            except (ValueError, TypeError) as e:
                 print(f'Invalid time range detected: {time_range}, Error: {e}')
                 continue
 
@@ -789,11 +1164,7 @@ class BookingPage:
 
                 self.time_dropdown_container.controls = controls
 
-        else:
-            print(f'Ошибка загрузки доступных времен: {response.text}')
-            self.show_snack_bar(
-                'Не удалось загрузить доступные времена.', ft.colors.RED
-            )
+        self.page.update()
 
     def on_book_click(self, e):
         if (
@@ -832,7 +1203,7 @@ class BookingPage:
                 start_datetime = self.selected_time.isoformat()
 
                 end_datetime = (
-                    self.selected_time + datetime.timedelta(hours=2)
+                    self.selected_time + timedelta(hours=2)  # Исправлено
                 ).isoformat()
 
                 booking_data = {
@@ -905,7 +1276,6 @@ class BookingPage:
                 key=str(car['id']),
             )
         )
-
         self.car_dropdown.value = str(car['id'])
 
         self.page.client_storage.set('cars', self.cars)
@@ -970,7 +1340,7 @@ class BookingPage:
         )
         formatted_time = (
             self.selected_time.strftime('%H:%M')
-            if isinstance(self.selected_time, datetime.datetime)
+            if isinstance(self.selected_time, datetime)
             else self.selected_time or 'Не выбрано'
         )
         price = f'₸{int(self.car_price)}'
