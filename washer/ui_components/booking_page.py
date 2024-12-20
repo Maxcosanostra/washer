@@ -123,28 +123,12 @@ class DateBox(ft.Container):
 
     def selected(self, e: ft.TapEvent):
         if self.date_instance:
-            for row in self.date_instance.controls[1:]:
-                for date_box in row.controls:
-                    if isinstance(date_box, DateBox):
-                        if date_box == e.control:
-                            date_box.bgcolor = ft.colors.BLUE
-                            date_box.border = ft.Border(
-                                left=ft.BorderSide(color='#4fadf9', width=1.5),
-                                right=ft.BorderSide(
-                                    color='#4fadf9', width=1.5
-                                ),
-                                top=ft.BorderSide(color='#4fadf9', width=1.5),
-                                bottom=ft.BorderSide(
-                                    color='#4fadf9', width=1.5
-                                ),
-                            )
-                            date_box.content.color = ft.colors.WHITE
-                        else:
-                            if (
-                                date_box.date_obj == today
-                                and not date_box.disabled
-                            ):
-                                date_box.bgcolor = None
+            for row in self.date_instance.controls:
+                if isinstance(row, ft.Row):
+                    for date_box in row.controls:
+                        if isinstance(date_box, DateBox):
+                            if date_box == e.control:
+                                date_box.bgcolor = ft.colors.BLUE
                                 date_box.border = ft.Border(
                                     left=ft.BorderSide(
                                         color='#4fadf9', width=1.5
@@ -159,15 +143,36 @@ class DateBox(ft.Container):
                                         color='#4fadf9', width=1.5
                                     ),
                                 )
-                                date_box.content.color = ft.colors.BLUE
-                            elif not date_box.disabled:
-                                date_box.bgcolor = None
-                                date_box.border = None
-                                date_box.content.color = ft.colors.BLUE
+                                date_box.content.color = ft.colors.WHITE
                             else:
-                                date_box.bgcolor = None
-                                date_box.border = None
-                                date_box.content.color = ft.colors.GREY_500
+                                if (
+                                    date_box.date_obj == today
+                                    and not date_box.disabled
+                                ):
+                                    date_box.bgcolor = None
+                                    date_box.border = ft.Border(
+                                        left=ft.BorderSide(
+                                            color='#4fadf9', width=1.5
+                                        ),
+                                        right=ft.BorderSide(
+                                            color='#4fadf9', width=1.5
+                                        ),
+                                        top=ft.BorderSide(
+                                            color='#4fadf9', width=1.5
+                                        ),
+                                        bottom=ft.BorderSide(
+                                            color='#4fadf9', width=1.5
+                                        ),
+                                    )
+                                    date_box.content.color = ft.colors.BLUE
+                                elif not date_box.disabled:
+                                    date_box.bgcolor = None
+                                    date_box.border = None
+                                    date_box.content.color = ft.colors.BLUE
+                                else:
+                                    date_box.bgcolor = None
+                                    date_box.border = None
+                                    date_box.content.color = ft.colors.GREY_500
 
             self.date_instance.update()
 
@@ -232,13 +237,20 @@ class DateGrid(ft.Column):
 
         self.controls.append(week_days)
 
+        self.date_rows = ft.Column(
+            spacing=5,
+            alignment=ft.MainAxisAlignment.CENTER,
+        )
+        self.controls.append(self.date_rows)
+
         self.on_attach = self.initial_setup
 
     def initial_setup(self, e):
         self.populate_date_grid(self.year, self.month)
+        self.update()
 
     def populate_date_grid(self, year: int, month: int):
-        self.controls = self.controls[:2]
+        self.date_rows.controls.clear()
 
         print(f'Populating calendar for {month_class[month]} {year}')
         print(f'Available dates: {self.available_dates}')
@@ -266,7 +278,7 @@ class DateGrid(ft.Column):
                     date_box = DateBox(
                         day,
                         date_str=self.format_date(day),
-                        date_instance=self,
+                        date_instance=self.date_rows,
                         on_date_selected=self.on_date_selected,
                         date_obj=date_obj,
                         disabled=not is_available,
@@ -285,8 +297,7 @@ class DateGrid(ft.Column):
                     row.controls.append(date_box)
                 else:
                     row.controls.append(DateBox(day=0, disabled=True))
-            self.controls.append(row)
-        self.update()
+            self.date_rows.controls.append(row)
 
     def update_date_grid(self, e: ft.TapEvent, delta: int):
         Settings.get_date(delta)
@@ -303,12 +314,14 @@ class DateGrid(ft.Column):
             Settings.get_year(),
             Settings.get_month(),
         )
+        self.update()
 
     def update_year_and_month(self, year: int, month: int):
         self.year = year
         self.month = month
         self.date_text.value = f'{month_class[self.month]} {self.year}'
-        print(f'Updated calendar to {month_class[month]} {year}')
+        print(f'Updated calendar to {month_class[self.month]} {year}')
+        self.date_text.update()
 
     def format_date(self, day: int) -> str:
         return f'{month_class[self.month]} {day}, {self.year}'
@@ -317,6 +330,7 @@ class DateGrid(ft.Column):
         self.available_dates = available_dates
         print(f'Setting available_dates for DateGrid: {self.available_dates}')
         self.populate_date_grid(self.year, self.month)
+        self.update()
 
 
 class BookingPage:
@@ -354,6 +368,10 @@ class BookingPage:
         self.time_dropdown_container_disabled = True
         self.book_button_disabled = True
 
+        self.expanded_panels = [True, False, False]
+
+        self.updating_panels = False
+
         self.create_elements()
 
         self.loading_overlay = ft.Container(
@@ -363,6 +381,17 @@ class BookingPage:
             bgcolor='rgba(0, 0, 0, 0.8)',
             expand=True,
         )
+
+        self.snack_bar = ft.SnackBar(
+            content=ft.Text(
+                '',
+                text_align=ft.TextAlign.CENTER,
+            ),
+            bgcolor=ft.colors.RED,
+            duration=3000,
+        )
+        self.page.overlay.append(self.loading_overlay)
+        self.page.overlay.append(self.snack_bar)
 
         self.page.adaptive = True
         self.page.scroll = 'adaptive'
@@ -383,35 +412,168 @@ class BookingPage:
         self.page.floating_action_button = None
         self.page.update()
 
-        self.page.clean()
-        self.page.add(self.create_booking_page())
-        self.page.overlay.append(self.loading_overlay)
-
-        self.snack_bar = ft.SnackBar(
-            content=ft.Text(
-                '',
-                text_align=ft.TextAlign.CENTER,
+        self.panels = [
+            ft.ExpansionPanel(
+                header=ft.ListTile(
+                    title=ft.Text(
+                        '1. Выбор автомобиля', weight=ft.FontWeight.BOLD
+                    )
+                ),
+                content=ft.Container(
+                    padding=ft.padding.all(10),
+                    content=ft.Column(
+                        [
+                            self.car_dropdown,
+                            self.add_car_button,
+                        ],
+                        spacing=10,
+                    ),
+                ),
+                can_tap_header=True,
+                expanded=self.expanded_panels[0],
             ),
-            bgcolor=ft.colors.RED,
-            duration=3000,
+            ft.ExpansionPanel(
+                header=ft.ListTile(
+                    title=ft.Text(
+                        '2. Выбор даты, бокса и времени',
+                        weight=ft.FontWeight.BOLD,
+                    )
+                ),
+                content=ft.Container(
+                    padding=ft.padding.all(10),
+                    content=ft.Column(
+                        [
+                            self.calendar,
+                            self.box_dropdown,
+                            self.time_dropdown_container,
+                        ],
+                        spacing=10,
+                    ),
+                ),
+                can_tap_header=True,
+                expanded=self.expanded_panels[1],
+            ),
+            ft.ExpansionPanel(
+                header=ft.ListTile(
+                    title=ft.Text('3. Выбор услуги', weight=ft.FontWeight.BOLD)
+                ),
+                content=ft.Container(
+                    padding=ft.padding.all(10),
+                    content=ft.Column(
+                        [
+                            self.service_image_container,
+                            self.complex_wash_checkbox,
+                            self.price_text,
+                        ],
+                        spacing=10,
+                    ),
+                ),
+                can_tap_header=True,
+                expanded=self.expanded_panels[2],
+            ),
+        ]
+
+        self.expansion_panel_list = ft.ExpansionPanelList(
+            expand_icon_color=ft.colors.AMBER,
+            elevation=8,
+            divider_color=ft.colors.AMBER,
+            on_change=self.on_panel_change,
+            controls=self.panels,
+            spacing=10,
         )
-        self.page.overlay.append(self.snack_bar)
+
+        self.main_container = ft.Container(
+            alignment=ft.alignment.center,
+            content=ft.Column(
+                [
+                    self.car_wash_card,
+                    self.expansion_panel_list,
+                    ft.Container(
+                        content=self.book_button,
+                        alignment=ft.alignment.center,
+                    ),
+                ],
+                spacing=20,
+            ),
+            margin=ft.margin.all(0),
+            expand=True,
+        )
+
+        self.page.clean()
+        self.page.add(self.main_container)
         self.page.update()
 
         self.load_schedules()
         self.load_boxes()
 
+    def create_car_wash_card(self):
+        image_link = self.car_wash.get('image_link', 'assets/spa_logo.png')
+        location_address = (
+            f"{self.location_data.get('city', 'Неизвестный город')}, "
+            f"{self.location_data.get('address', 'Адрес не указан')}"
+            if self.location_data
+            else 'Адрес недоступен'
+        )
+
+        car_wash_name = self.car_wash.get('name', 'Автомойка')
+
+        return ft.Container(
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.Stack(
+                        [
+                            ft.Container(
+                                content=ft.Image(
+                                    src=image_link,
+                                    fit=ft.ImageFit.COVER,
+                                    width=float('inf'),
+                                ),
+                                height=170,
+                                alignment=ft.alignment.center,
+                            ),
+                            ft.Container(
+                                content=ft.Text(
+                                    car_wash_name,
+                                    weight=ft.FontWeight.BOLD,
+                                    size=24,
+                                    text_align=ft.TextAlign.CENTER,
+                                ),
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(top=170),
+                            ),
+                            ft.Container(
+                                content=ft.Text(
+                                    location_address,
+                                    text_align=ft.TextAlign.CENTER,
+                                    color=ft.colors.GREY,
+                                    size=16,
+                                ),
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(top=200),
+                            ),
+                        ]
+                    ),
+                    padding=ft.padding.all(8),
+                    width=float('inf'),
+                ),
+                elevation=3,
+            ),
+            alignment=ft.alignment.center,
+            padding=ft.padding.all(0),
+            expand=True,
+        )
+
     def create_elements(self):
         self.add_car_button = ft.ElevatedButton(
-            text='Еще не добавили авто?',
+            text='Добавить ещё автомобиль',
             on_click=self.on_add_car_click,
-            width=300,
+            width=500,
             bgcolor=ft.colors.PURPLE,
             color=ft.colors.WHITE,
         )
 
         self.car_dropdown = ft.Dropdown(
-            width=300,
+            width=500,
             hint_text='Выберите автомобиль',
             options=self.load_user_cars(),
             on_change=self.on_car_select,
@@ -420,7 +582,7 @@ class BookingPage:
 
         self.box_dropdown = ft.Dropdown(
             label='Выберите бокс',
-            width=300,
+            width=500,
             options=[],
             on_change=self.on_box_select,
             disabled=self.box_dropdown_disabled,
@@ -466,76 +628,50 @@ class BookingPage:
             color=ft.colors.WHITE,
         )
 
-    def create_booking_page(self):
-        return ft.Container(
-            width=730,
-            alignment=ft.alignment.center,
-            content=ft.ListView(
-                controls=[
-                    self.create_car_wash_card(),
-                    ft.Divider(),
-                    self.car_dropdown,
-                    self.add_car_button,
-                    ft.Divider(),
-                    self.calendar,
-                    self.box_dropdown,
-                    self.time_dropdown_container,
-                    ft.Divider(),
-                    self.complex_wash_checkbox,
-                    self.price_text,
-                    self.book_button,
-                ],
-                padding=ft.padding.all(0),
-                spacing=20,
+        self.service_image_container = ft.Container(
+            content=ft.Image(
+                src='https://drive.google.com/uc?export=view&id=1j8oXQLe8WXS96vE3U32zieRVGq0knqyQ',
+                fit=ft.ImageFit.COVER,
+                width=float('inf'),
+                height=200,
             ),
-            margin=ft.margin.all(0),
-            expand=True,
+            border_radius=ft.border_radius.all(12),
+            clip_behavior=ft.ClipBehavior.HARD_EDGE,
+            # border=ft.border.all(color=ft.colors.BLACK, width=1),
+            # Обводка (опционально)
+            alignment=ft.alignment.center,
         )
 
-    def create_car_wash_card(self):
-        image_link = self.car_wash.get('image_link', 'assets/spa_logo.png')
-        location_address = (
-            f"{self.location_data['city']}, {self.location_data['address']}"
-            if self.location_data
-            else 'Адрес недоступен'
-        )
+        self.car_wash_card = self.create_car_wash_card()
 
-        return ft.Container(
-            content=ft.Card(
-                content=ft.Container(
-                    content=ft.Column(
-                        [
-                            ft.Container(
-                                content=ft.Image(
-                                    src=image_link,
-                                    fit=ft.ImageFit.COVER,
-                                    width=float('inf'),
-                                ),
-                                height=170,
-                                alignment=ft.alignment.center,
-                            ),
-                            ft.Text(
-                                f"{self.car_wash['name']}",
-                                weight=ft.FontWeight.BOLD,
-                                size=24,
-                                text_align=ft.TextAlign.CENTER,
-                            ),
-                            ft.Text(
-                                location_address,
-                                text_align=ft.TextAlign.CENTER,
-                                color=ft.colors.GREY,
-                                size=16,
-                            ),
-                        ],
-                        spacing=0,
-                    ),
-                    padding=ft.padding.all(8),
-                ),
-                elevation=3,
-            ),
-            alignment=ft.alignment.center,
-            width=400,
-        )
+    def on_panel_change(self, e: ft.ControlEvent):
+        if self.updating_panels:
+            return
+
+        index_str = e.data
+        print(f'Panel change event: {index_str}')
+
+        try:
+            index = int(index_str)
+        except ValueError:
+            print(f'Invalid panel index: {index_str}')
+            return
+
+        self.updating_panels = True
+        try:
+            if self.expanded_panels[index]:
+                self.expanded_panels = [False] * len(self.expanded_panels)
+            else:
+                self.expanded_panels = [False] * len(self.expanded_panels)
+                self.expanded_panels[index] = True
+            self.update_expansion_panel_list()
+        finally:
+            self.updating_panels = False
+
+        print(f'Updated expanded_panels: {self.expanded_panels}')
+
+        self.expansion_panel_list.update()
+        self.page.update()
 
     def load_user_cars(self):
         user_id = self.page.client_storage.get('user_id')
@@ -580,7 +716,7 @@ class BookingPage:
         if not self.cars or len(self.cars) == 0:
             self.add_car_button.text = 'Еще не добавили авто?'
         else:
-            self.add_car_button.text = 'Добавить еще автомобиль'
+            self.add_car_button.text = 'Добавить ещё автомобиль'
         self.page.update()
 
     def on_car_select(self, e):
@@ -626,15 +762,21 @@ class BookingPage:
                 f'Автомобиль с ID {self.selected_car_id} не найден в списке.'
             )
 
+        self.updating_panels = True
+        try:
+            self.expanded_panels = [False, True, False]
+            self.update_expansion_panel_list()
+        finally:
+            self.updating_panels = False
+
         self.page.update()
 
     def reset_calendar_selection(self):
-        for control in self.calendar.controls:
-            if isinstance(control, ft.Row):
-                for date_box in control.controls:
-                    if isinstance(date_box, DateBox):
-                        date_box.bgcolor = None
-                        date_box.border = None
+        for row in self.calendar.date_rows.controls:
+            for date_box in row.controls:
+                if isinstance(date_box, DateBox):
+                    date_box.bgcolor = None
+                    date_box.border = None
         self.calendar.update()
 
     def load_body_type_id(self, configuration_id, auto_update_price=False):
@@ -740,6 +882,13 @@ class BookingPage:
 
         self.load_available_times_for_box()
 
+        self.updating_panels = True
+        try:
+            self.expanded_panels = [False, True, False]
+            self.update_expansion_panel_list()
+        finally:
+            self.updating_panels = False
+
         self.page.update()
 
     def handle_date_selected(self, selected_date):
@@ -766,7 +915,35 @@ class BookingPage:
             self.complex_wash_checkbox.value = False
             self.complex_wash_checkbox.disabled = True
             self.price_text.value = 'Стоимость: ₸0'
+
+        if self.selected_date:
+            self.updating_panels = True
+            try:
+                self.expanded_panels = [False, True, False]
+                self.update_expansion_panel_list()
+            finally:
+                self.updating_panels = False
+        else:
+            self.updating_panels = True
+            try:
+                self.expanded_panels = [False, False, False]
+                self.update_expansion_panel_list()
+            finally:
+                self.updating_panels = False
+
         self.page.update()
+
+    def update_expansion_panel_list(self):
+        """
+        Обновляет список панелей в ExpansionPanelList
+        на основе текущего состояния expanded_panels.
+        """
+        for i, panel in enumerate(self.panels):
+            if i < len(self.expanded_panels):
+                panel.expanded = self.expanded_panels[i]
+            else:
+                panel.expanded = False
+        self.expansion_panel_list.update()
 
     def load_schedules(self):
         response = self.api.get_schedules(self.car_wash['id'])
@@ -807,11 +984,10 @@ class BookingPage:
             print(f'Unique available days of week: {available_days_of_week}')
 
             today_date = datetime.today().date()
-            end_date = today_date + timedelta(days=6)
 
             available_dates = [
                 today_date + timedelta(days=i)
-                for i in range((end_date - today_date).days + 1)
+                for i in range(7)
                 if (today_date + timedelta(days=i)).weekday()
                 in available_days_of_week
             ]
@@ -1025,6 +1201,15 @@ class BookingPage:
             self.price_text.value = 'Стоимость: ₸0'
             self.book_button.disabled = True
             self.page.update()
+
+        self.updating_panels = True
+        try:
+            self.expanded_panels = [False, False, True]
+            self.update_expansion_panel_list()
+        finally:
+            self.updating_panels = False
+
+        self.page.update()
 
         self.refresh_time_grid()
         self.page.update()
@@ -1518,8 +1703,9 @@ class BookingPage:
             leading_width=40,
         )
 
+        self.update_expansion_panel_list()
         self.page.clean()
-        self.page.add(self.create_booking_page())
+        self.page.add(self.main_container)
         self.page.overlay.append(self.loading_overlay)
         self.page.overlay.append(self.snack_bar)
         self.page.update()
