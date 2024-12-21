@@ -462,7 +462,7 @@ class BookingPage:
                     content=ft.Column(
                         [
                             self.service_image_container,
-                            self.complex_wash_checkbox,
+                            self.complex_wash_section,
                             self.price_text,
                         ],
                         spacing=10,
@@ -599,9 +599,61 @@ class BookingPage:
         )
 
         self.complex_wash_checkbox = ft.Checkbox(
-            label='Комплексная мойка',
+            label='',
             disabled=True,
             on_change=self.on_complex_wash_change,
+            value=False,
+        )
+
+        self.complex_wash_text = ft.Text(
+            'Комплексная автомойка',
+            size=18,
+            weight=ft.FontWeight.BOLD,
+            color=ft.colors.GREY_600,
+        )
+
+        self.complex_wash_section = ft.Column(
+            [
+                ft.Row(
+                    [
+                        self.complex_wash_text,
+                        self.complex_wash_checkbox,
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    expand=True,
+                ),
+                ft.Row(
+                    [
+                        ft.Icon(
+                            ft.icons.ACCESS_TIME, color=ft.colors.GREY_600
+                        ),
+                        ft.Text(
+                            '1,5 - 2 часа',
+                            color=ft.colors.GREY_600,
+                            size=16,
+                            weight=ft.FontWeight.NORMAL,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=5,
+                ),
+                ft.Text(
+                    'Наружная часть автомобиля: '
+                    '1 фаза - бесконтактный шампунь, '
+                    '2 фаза - ручная мойка "hydro shampoo", '
+                    'чернение шин силиконом.\n'
+                    'Внутренняя часть автомобиля: '
+                    'уборка салона с помощью торнадора и пылесоса, '
+                    'ароматизация салона, '
+                    'бумажные полики.',
+                    size=14,
+                    color=ft.colors.GREY_600,
+                    text_align=ft.TextAlign.LEFT,
+                ),
+            ],
+            spacing=10,
         )
 
         self.price_text = ft.Text(
@@ -643,6 +695,97 @@ class BookingPage:
         )
 
         self.car_wash_card = self.create_car_wash_card()
+
+        self.panels = [
+            ft.ExpansionPanel(
+                header=ft.ListTile(
+                    title=ft.Text(
+                        '1. Выбор автомобиля', weight=ft.FontWeight.BOLD
+                    )
+                ),
+                content=ft.Container(
+                    padding=ft.padding.all(10),
+                    content=ft.Column(
+                        [
+                            self.car_dropdown,
+                            self.add_car_button,
+                        ],
+                        spacing=10,
+                    ),
+                ),
+                can_tap_header=True,
+                expanded=self.expanded_panels[0],
+            ),
+            ft.ExpansionPanel(
+                header=ft.ListTile(
+                    title=ft.Text(
+                        '2. Выбор даты, бокса и времени',
+                        weight=ft.FontWeight.BOLD,
+                    )
+                ),
+                content=ft.Container(
+                    padding=ft.padding.all(10),
+                    content=ft.Column(
+                        [
+                            self.calendar,
+                            self.box_dropdown,
+                            self.time_dropdown_container,
+                        ],
+                        spacing=10,
+                    ),
+                ),
+                can_tap_header=True,
+                expanded=self.expanded_panels[1],
+            ),
+            ft.ExpansionPanel(
+                header=ft.ListTile(
+                    title=ft.Text('3. Выбор услуги', weight=ft.FontWeight.BOLD)
+                ),
+                content=ft.Container(
+                    padding=ft.padding.all(10),
+                    content=ft.Column(
+                        [
+                            self.service_image_container,
+                            self.complex_wash_section,
+                            self.price_text,
+                        ],
+                        spacing=10,
+                    ),
+                ),
+                can_tap_header=True,
+                expanded=self.expanded_panels[2],
+            ),
+        ]
+
+        self.expansion_panel_list = ft.ExpansionPanelList(
+            expand_icon_color=ft.colors.AMBER,
+            elevation=8,
+            divider_color=ft.colors.AMBER,
+            on_change=self.on_panel_change,
+            controls=self.panels,
+            spacing=10,
+        )
+
+        self.main_container = ft.Container(
+            alignment=ft.alignment.center,
+            content=ft.Column(
+                [
+                    self.car_wash_card,
+                    self.expansion_panel_list,
+                    ft.Container(
+                        content=self.book_button,
+                        alignment=ft.alignment.center,
+                    ),
+                ],
+                spacing=20,
+            ),
+            margin=ft.margin.all(0),
+            expand=True,
+        )
+
+        self.page.clean()
+        self.page.add(self.main_container)
+        self.page.update()
 
     def on_panel_change(self, e: ft.ControlEvent):
         if self.updating_panels:
@@ -1216,12 +1359,17 @@ class BookingPage:
 
     def on_complex_wash_change(self, e):
         if self.complex_wash_checkbox.value:
+            self.complex_wash_text.color = (
+                ft.colors.BLUE
+            )  # Устанавливаем голубой цвет при выборе
             self.show_price()
         else:
+            self.complex_wash_text.color = (
+                None  # Устанавливаем серый цвет при снятии выбора
+            )
             self.price_text.value = 'Стоимость: ₸0'
-            self.price_text.color = ft.colors.GREY
             self.book_button.disabled = True
-            self.page.update()
+        self.page.update()
 
     def create_time_button(self, time_slot: datetime):
         is_selected = self.selected_time_iso == time_slot.isoformat()
