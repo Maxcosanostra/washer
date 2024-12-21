@@ -1666,11 +1666,14 @@ class BookingPage:
         else:
             box_name = 'Не выбран'
 
-        formatted_date = (
-            self.selected_date.strftime('%d.%m.%Y')
-            if self.selected_date
-            else 'Не выбрана'
-        )
+        if self.selected_date:
+            day_of_week = date_class[self.selected_date.weekday()]
+            formatted_date = (
+                f"{self.selected_date.strftime('%d.%m.%Y')} ({day_of_week})"
+            )
+        else:
+            formatted_date = 'Не выбрана'
+
         formatted_time = (
             self.selected_time.strftime('%H:%M')
             if isinstance(self.selected_time, datetime)
@@ -1683,6 +1686,7 @@ class BookingPage:
             ('Дата', formatted_date),
             ('Время', formatted_time),
             ('Цена', price),
+            ('Услуга', 'Комплексная мойка'),
         ]
 
         booking_info_column = ft.Column(
