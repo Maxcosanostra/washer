@@ -114,6 +114,8 @@ class MyBookingsPage:
         booking_content.append(self.completed_bookings_container)
 
         return ft.Container(
+            width=730,
+            alignment=ft.alignment.center,
             content=ft.Column(
                 controls=booking_content,
                 spacing=15,
@@ -194,7 +196,7 @@ class MyBookingsPage:
                 ),
                 elevation=3,
             ),
-            width=400,
+            width=700,
             padding=ft.padding.all(5),
             margin=ft.margin.only(bottom=20),
         )
