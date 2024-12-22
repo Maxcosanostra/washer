@@ -129,6 +129,36 @@ class SelectCarPage:
                     )
         elif response.status_code == 200:
             brands = response.json().get('data', [])
+
+            POPULAR_BRANDS = [
+                'Audi',
+                'BMW',
+                'Mercedes-Benz',
+                'Chevrolet',
+                'Hyundai',
+                'Kia',
+                'Lada (ВАЗ)',
+                'LiXiang',
+                'Mazda',
+                'Nissan',
+                'Renault',
+                'Skoda',
+                'Toyota',
+                'Volkswagen',
+                'Zeekr',
+            ]
+
+            def sort_key(brand_dict):
+                brand_name = brand_dict['name']
+
+                for i, popular_name in enumerate(POPULAR_BRANDS):
+                    if brand_name.lower() == popular_name.lower():
+                        return (0, i)
+
+                return (1, brand_name.lower())
+
+            brands.sort(key=sort_key)
+
             self.full_brands_list = brands
             self.brands_dict = {brand['name']: brand['id'] for brand in brands}
             self.update_brands_list(brands)
@@ -275,7 +305,6 @@ class SelectCarPage:
                     f'выбрано автоматически',
                     bgcolor=ft.colors.BLUE,
                 )
-
                 self.generation_dropdown.visible = False
                 self.get_body_type(self.selected_generation_id)
             else:
@@ -315,7 +344,6 @@ class SelectCarPage:
 
                 self.generation_dropdown.on_change = on_generation_select
                 self.page.update()
-
         else:
             print(f'Ошибка при загрузке поколений: {response.text}')
 
@@ -593,7 +621,6 @@ class SelectCarPage:
             return False
 
         response = self.api.refresh_token(refresh_token)
-
         if 'error' not in response:
             self.page.client_storage.set(
                 'access_token', response['access_token']
