@@ -156,7 +156,7 @@ class SelectCarPage:
             height=30,
         )
 
-        self.brands_list = ft.ListView(controls=[], height=300)
+        self.brands_list = ft.ListView(controls=[], height=350)
 
         return ft.AlertDialog(
             title=ft.Text('Выберите марку автомобиля'),
@@ -499,7 +499,6 @@ class SelectCarPage:
 
         self.snack_bar.content.value = message
         self.snack_bar.content.color = text_color
-
         self.snack_bar.bgcolor = bgcolor
         self.snack_bar.open = True
 
@@ -513,7 +512,6 @@ class SelectCarPage:
 
     def on_save_click(self, e):
         access_token = self.page.client_storage.get('access_token')
-
         if not access_token:
             self.show_error_message('Токен доступа отсутствует!')
             return
@@ -525,7 +523,6 @@ class SelectCarPage:
         full_name = f'{self.selected_brand} {self.selected_model}'
         if generation_display:
             full_name += f' {generation_display}'
-
         if self.selected_body_type:
             full_name += f' {self.selected_body_type}'
 
