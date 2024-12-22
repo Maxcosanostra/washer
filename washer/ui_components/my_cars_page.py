@@ -67,23 +67,28 @@ class MyCarsPage:
             )
             car_blocks = [empty_image, empty_text]
 
+        add_car_button = ft.ElevatedButton(
+            text='Добавить автомобиль',
+            on_click=self.on_add_car_click,
+            bgcolor=ft.colors.BLUE,
+            color=ft.colors.WHITE,
+            width=400,
+        )
+
         return ft.Container(
+            width=730,
+            alignment=ft.alignment.center,
             content=ft.Column(
                 controls=[
                     *car_blocks,
-                    ft.ElevatedButton(
-                        text='Добавить автомобиль',
-                        on_click=self.on_add_car_click,
-                        bgcolor=ft.colors.BLUE,
-                        color=ft.colors.WHITE,
-                    ),
+                    add_car_button,
                 ],
                 spacing=15,
-                scroll='adaptive',
                 alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                scroll='adaptive',
             ),
-            padding=ft.padding.all(20),
+            padding=ft.padding.all(10),
         )
 
     def create_car_info_card(self, car):
@@ -141,7 +146,8 @@ class MyCarsPage:
                 ),
                 elevation=3,
             ),
-            width=370,
+            width=700,
+            padding=ft.padding.all(5),
             margin=ft.margin.only(bottom=20),
         )
 
@@ -342,6 +348,7 @@ class MyCarsPage:
                 self.page.clean()
                 self.page.add(self.create_cars_page())
                 self.page.update()
+                print(f'Автомобиль с ID {car_id} успешно удален.')
             else:
                 print(f'Ошибка при удалении автомобиля: {response.text}')
         except Exception as e:
