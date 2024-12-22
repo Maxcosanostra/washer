@@ -497,6 +497,7 @@ class BookingPage:
                 spacing=20,
             ),
             margin=ft.margin.all(0),
+            width=730,
             expand=True,
         )
 
@@ -568,13 +569,13 @@ class BookingPage:
         self.add_car_button = ft.ElevatedButton(
             text='Добавить ещё автомобиль',
             on_click=self.on_add_car_click,
-            width=500,
+            width=700,
             bgcolor=ft.colors.PURPLE,
             color=ft.colors.WHITE,
         )
 
         self.car_dropdown = ft.Dropdown(
-            width=500,
+            width=700,
             hint_text='Выберите автомобиль',
             options=self.load_user_cars(),
             on_change=self.on_car_select,
@@ -583,7 +584,7 @@ class BookingPage:
 
         self.box_dropdown = ft.Dropdown(
             label='Выберите бокс',
-            width=500,
+            width=700,
             options=[],
             on_change=self.on_box_select,
             disabled=self.box_dropdown_disabled,
@@ -596,7 +597,8 @@ class BookingPage:
         )
 
         self.time_dropdown_container = ft.Column(
-            disabled=self.time_dropdown_container_disabled
+            disabled=self.time_dropdown_container_disabled,
+            width=700,
         )
 
         self.complex_wash_checkbox = ft.Checkbox(
@@ -667,7 +669,7 @@ class BookingPage:
         self.book_button = ft.ElevatedButton(
             text='Забронировать',
             on_click=self.on_book_click,
-            width=300,
+            width=300,  # Ширина кнопки оставлена без изменений
             bgcolor=ft.colors.BLUE,
             color=ft.colors.WHITE,
             disabled=self.book_button_disabled,
@@ -676,7 +678,7 @@ class BookingPage:
         self.back_button = ft.ElevatedButton(
             text='Назад',
             on_click=self.on_back_click,
-            width=300,
+            width=300,  # Ширина кнопки оставлена без изменений
             bgcolor=ft.colors.GREY_700,
             color=ft.colors.WHITE,
         )
@@ -690,8 +692,6 @@ class BookingPage:
             ),
             border_radius=ft.border_radius.all(12),
             clip_behavior=ft.ClipBehavior.HARD_EDGE,
-            # border=ft.border.all(color=ft.colors.BLACK, width=1),
-            # Обводка (опционально)
             alignment=ft.alignment.center,
         )
 
