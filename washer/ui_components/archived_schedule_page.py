@@ -216,10 +216,13 @@ class ArchivedSchedulePage:
         )
         rows.append(total_row)
 
+        def on_delete_click(e, date=date):
+            self.confirm_delete_bookings(date)
+
         delete_button = ft.Container(
             content=ft.ElevatedButton(
                 text='Удалить из истории',
-                on_click=lambda e: self.delete_bookings_by_date(date),
+                on_click=on_delete_click,
                 bgcolor=ft.colors.RED,
                 color=ft.colors.WHITE,
                 width=250,
@@ -237,6 +240,33 @@ class ArchivedSchedulePage:
             ),
         )
 
+    def confirm_delete_bookings(self, date):
+        def confirm_delete(e):
+            self.page.dialog.open = False
+            self.page.update()
+            self.delete_bookings_by_date(date)
+
+        def cancel_delete(e):
+            self.page.dialog.open = False
+            self.page.update()
+
+        dlg_modal = ft.AlertDialog(
+            modal=True,
+            title=ft.Text('Подтверждение удаления'),
+            content=ft.Text(
+                f'Вы уверены, что хотите удалить букинги за {date}?'
+            ),
+            actions=[
+                ft.TextButton('Да', on_click=confirm_delete),
+                ft.TextButton('Нет', on_click=cancel_delete),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        self.page.dialog = dlg_modal
+        dlg_modal.open = True
+        self.page.update()
+
     def delete_bookings_by_date(self, date):
         bookings_to_delete = [
             booking['id']
@@ -244,15 +274,35 @@ class ArchivedSchedulePage:
             if booking['start_datetime'].startswith(date)
         ]
 
+        success_deletions = []
+        failed_deletions = []
+
         for booking_id in bookings_to_delete:
             response = self.api.delete_booking(booking_id)
             if response.status_code == 200:
-                print(f'Букинг {booking_id} успешно удален.')
+                success_deletions.append(booking_id)
             else:
+                failed_deletions.append(booking_id)
                 print(
                     f'Ошибка при удалении букинга '
                     f'{booking_id}: {response.text}'
                 )
+
+        if success_deletions:
+            print(f'Букинги {success_deletions} успешно удалены.')
+            self.page.snack_bar = ft.SnackBar(
+                ft.Text(f'Букинги за {date} успешно удалены.'),
+                open=True,
+            )
+
+        if failed_deletions:
+            self.page.snack_bar = ft.SnackBar(
+                ft.Text(f'Не удалось удалить некоторые букинги за {date}.'),
+                open=True,
+                bgcolor=ft.colors.RED_200,
+            )
+
+        self.page.update()
 
         self.load_bookings()
         self.page.controls[-1] = self.create_archived_schedule_page()
