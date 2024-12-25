@@ -15,6 +15,9 @@ class SignUpPage:
         self.user_basic_info: Optional[UserBasicInfo] = None
         self.user_password: Optional[UserPassword] = None
         self.user_registration: Optional[UserRegistration] = None
+        self.phone_number: Optional[str] = None
+
+        self.is_formatting = False
 
         self.first_name_field = self.create_first_name_field()
         self.last_name_field = self.create_last_name_field()
@@ -22,6 +25,7 @@ class SignUpPage:
 
         self.password_field = self.create_password_field()
         self.confirm_password_field = self.create_confirm_password_field()
+        self.phone_number_field = self.create_phone_number_field()
 
         self.image_picker = ft.FilePicker(on_result=self.on_file_picked)
         self.page.overlay.append(self.image_picker)
@@ -93,6 +97,64 @@ class SignUpPage:
             height=60,
             border_radius=ft.border_radius.all(30),
         )
+
+    def create_phone_number_field(self):
+        phone_field = ft.TextField(
+            label='Номер телефона',
+            hint_text='(___) ___-__-__',
+            value='+7',
+            width=300,
+            text_size=15,
+            height=60,
+            border_radius=ft.border_radius.all(30),
+            content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
+            keyboard_type=ft.KeyboardType.NUMBER,
+            on_change=self.format_phone_number,
+        )
+        return phone_field
+
+    def format_phone_number(self, e):
+        if self.is_formatting:
+            return
+
+        self.is_formatting = True
+
+        raw_input = self.phone_number_field.value or ''
+        digits = ''.join(c for c in raw_input if c.isdigit())
+
+        formatted = ''
+
+        if len(digits) >= 1:
+            if digits[0] == '7':
+                formatted += '+' + digits[0]
+            else:
+                formatted += digits[0]
+        if len(digits) > 1:
+            formatted += ' (' + digits[1:4]
+        if len(digits) >= 4:
+            formatted += ') ' + digits[4:7]
+        if len(digits) >= 7:
+            formatted += '-' + digits[7:9]
+        if len(digits) >= 9:
+            formatted += '-' + digits[9:11]
+
+        if len(digits) < 11:
+            if len(digits) < 10 and formatted.endswith('-'):
+                formatted = formatted[:-1]
+            if len(digits) < 7 and formatted.endswith(') '):
+                formatted = formatted[:-2]
+            if len(digits) < 4 and formatted.endswith(' ('):
+                formatted = formatted[:-2]
+            if len(digits) < 1 and formatted.startswith('+'):
+                formatted = ''
+
+        if len(formatted) > 18:
+            formatted = formatted[:18]
+
+        self.phone_number_field.value = formatted
+        self.phone_number_field.update()
+
+        self.is_formatting = False
 
     def show_welcome_page(self, e=None):
         page_width = self.page.window.width
@@ -339,9 +401,9 @@ class SignUpPage:
             self.show_snack_bar(error_text, bgcolor=ft.colors.RED)
             return
 
-        self.show_step_3()
+        self.show_step_3_phone()
 
-    def show_step_3(self, e=None):
+    def show_step_3_phone(self, e=None):
         self.page.clean()
 
         self.page.add(
@@ -362,6 +424,72 @@ class SignUpPage:
                         ft.Container(
                             content=ft.Text(
                                 'Шаг 3', size=28, weight=ft.FontWeight.BOLD
+                            ),
+                            alignment=ft.alignment.center,
+                        ),
+                        ft.Container(
+                            content=ft.Text('Введите номер телефона', size=18),
+                            alignment=ft.alignment.center,
+                            margin=ft.margin.only(bottom=10),
+                        ),
+                        ft.Container(
+                            content=self.phone_number_field,
+                            width=300,
+                            alignment=ft.alignment.center,
+                            margin=ft.margin.only(bottom=20),
+                        ),
+                        ft.Container(
+                            content=ft.ElevatedButton(
+                                text='Далее',
+                                bgcolor=ft.colors.PURPLE_ACCENT,
+                                color=ft.colors.WHITE,
+                                on_click=self.save_step_3_phone,
+                            ),
+                            width=300,
+                            alignment=ft.alignment.center,
+                            margin=ft.margin.only(top=20, bottom=15),
+                        ),
+                    ],
+                    expand=True,
+                    padding=ft.padding.symmetric(vertical=20, horizontal=20),
+                ),
+                expand=True,
+                border_radius=ft.border_radius.all(12),
+            )
+        )
+
+    def save_step_3_phone(self, e=None):
+        phone = self.phone_number_field.value.strip()
+        if not self.validate_phone_number(phone):
+            self.show_snack_bar(
+                'Некорректный номер телефона!', bgcolor=ft.colors.RED
+            )
+            return
+        self.phone_number = phone
+
+        self.show_step_4_image()
+
+    def show_step_4_image(self, e=None):
+        self.page.clean()
+
+        self.page.add(
+            ft.Container(
+                content=ft.ListView(
+                    controls=[
+                        ft.Container(height=100),
+                        ft.Row(
+                            controls=[
+                                ft.IconButton(
+                                    icon=ft.icons.ARROW_BACK,
+                                    on_click=self.show_step_3_phone,
+                                ),
+                                ft.Text('Назад', size=16),
+                            ],
+                            alignment=ft.MainAxisAlignment.START,
+                        ),
+                        ft.Container(
+                            content=ft.Text(
+                                'Шаг 4', size=28, weight=ft.FontWeight.BOLD
                             ),
                             alignment=ft.alignment.center,
                         ),
@@ -395,7 +523,7 @@ class SignUpPage:
                                 alignment=ft.alignment.center,
                                 content=ft.Icon(ft.icons.PERSON, size=50),
                                 on_click=(
-                                    lambda _: self.image_picker.pick_files(
+                                    lambda e: self.image_picker.pick_files(
                                         allow_multiple=False,
                                         file_type=ft.FilePickerFileType.IMAGE,
                                     )
@@ -429,7 +557,11 @@ class SignUpPage:
             print(f'Выбрано изображение: {self.selected_image}')
 
     def on_sign_up_click(self, e=None):
-        if not self.user_basic_info or not self.user_password:
+        if (
+            not self.user_basic_info
+            or not self.user_password
+            or not self.phone_number
+        ):
             self.show_snack_bar(
                 'Пожалуйста, завершите все шаги регистрации!',
                 bgcolor=ft.colors.RED,
@@ -442,7 +574,9 @@ class SignUpPage:
                 first_name=self.user_basic_info.first_name,
                 last_name=self.user_basic_info.last_name,
                 password=self.user_password.password,
-                image=None,  # По умолчанию без изображения
+                image=None,
+                # phone_number=self.phone_number,
+                # Добавим позже, когда сервер поддержит
             )
         except ValidationError as ve:
             error_messages = []
@@ -534,3 +668,12 @@ class SignUpPage:
         from washer.ui_components.sign_in_page import SignInPage
 
         SignInPage(self.page)
+
+    def validate_phone_number(self, phone: str) -> bool:
+        import re
+
+        pattern = (
+            r'^(\+\d{1,3} \(\d{3}\) \d{3}-\d{2}-\d{2})|'
+            r'(\d{1,3} \(\d{3}\) \d{3}-\d{2}-\d{2})$'
+        )
+        return re.match(pattern, phone) is not None
