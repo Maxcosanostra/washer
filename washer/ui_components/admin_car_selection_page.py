@@ -1,3 +1,5 @@
+import re
+
 import flet as ft
 
 from washer.api_requests import BackendApi
@@ -17,6 +19,7 @@ class AdminCarSelectionPage:
         self.full_brands_list = []
         self.selected_brand = None
         self.selected_model_id = None
+        self.selected_model = None
         self.selected_generation = None
         self.selected_generation_id = None
         self.generation_year_range = None
@@ -24,6 +27,20 @@ class AdminCarSelectionPage:
         self.generations = []
         self.body_types_dict = {}
         self.selected_body_type = None
+        self.selected_body_type_id = None
+
+        self.car_number = ''
+        self.car_number_valid = False
+
+        self.car_number_label = ft.Text(
+            'Введите госномер автомобиля',
+            size=16,
+            weight=ft.FontWeight.BOLD,
+            visible=False,
+        )
+        self.car_number_plate = self._create_license_plate_field()
+        self.car_number_plate.visible = False
+
         self.brand_button_text = 'Выберите марку автомобиля'
         self.selected_car = {}
         self.snack_bar = None
@@ -54,6 +71,192 @@ class AdminCarSelectionPage:
 
         self.load_brands()
         self.setup_snack_bar()
+
+    def _create_license_plate_field(self):
+        self.kz_flag = ft.Image(
+            src='https://upload.wikimedia.org/wikipedia/commons/d/d3/Flag_of_Kazakhstan.svg',
+            width=16,
+            height=10,
+            fit=ft.ImageFit.CONTAIN,
+        )
+        self.kz_text = ft.Text(
+            'KZ',
+            size=10,
+            color=ft.colors.BLACK,
+            weight=ft.FontWeight.BOLD,
+        )
+        self.kz_flag_container = ft.Column(
+            controls=[self.kz_flag, self.kz_text],
+            spacing=1,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+            visible=False,
+        )
+
+        self.right_divider = ft.VerticalDivider(
+            width=8,
+            color=ft.colors.BLACK,
+            visible=True,
+        )
+
+        self.last_two_field = ft.TextField(
+            label='',
+            hint_text='XY',
+            text_style=ft.TextStyle(
+                color=ft.colors.BLACK,
+                weight=ft.FontWeight.BOLD,
+                size=20,
+            ),
+            border=None,
+            bgcolor=ft.colors.TRANSPARENT,
+            width=22,
+            visible=True,
+            on_change=self.on_last_two_change,
+        )
+        last_two_container = ft.Container(
+            content=self.last_two_field,
+            width=40,
+        )
+
+        self.main_number_field = ft.TextField(
+            label='',
+            hint_text='505TCM',
+            hint_style=ft.TextStyle(color=ft.colors.BLACK, size=16),
+            text_style=ft.TextStyle(
+                color=ft.colors.BLACK,
+                weight=ft.FontWeight.BOLD,
+                size=20,
+            ),
+            border=None,
+            bgcolor=ft.colors.TRANSPARENT,
+            width=100,
+            visible=True,
+            on_change=self.on_main_number_change,
+            content_padding=ft.padding.all(0),
+        )
+
+        self.plate_container = ft.Container(
+            width=180,
+            height=40,
+            bgcolor=ft.colors.WHITE,
+            border_radius=ft.border_radius.all(6),
+            border=ft.border.all(2, ft.colors.BLACK),
+            padding=0,
+            content=ft.Row(
+                controls=[
+                    self.kz_flag_container,
+                    self.main_number_field,
+                    self.right_divider,
+                    last_two_container,
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_AROUND,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=-1,
+            ),
+        )
+
+        return self.plate_container
+
+    def _hide_kz_and_right(self):
+        self.kz_flag_container.visible = False
+        self.right_divider.visible = False
+        self.last_two_field.visible = False
+        self.last_two_field.value = ''
+
+    def on_main_number_change(self, e):
+        main_value = e.control.value or ''
+        raw_value = re.sub(r'\s+', '', main_value).upper()
+
+        if not raw_value:
+            self._hide_kz_and_right()
+            self.main_number_field.width = 130
+            self.plate_container.width = 180
+            e.control.value = ''
+        else:
+            if raw_value[0].isdigit():
+                self.kz_flag_container.visible = True
+                self.right_divider.visible = True
+                self.last_two_field.visible = True
+                self.main_number_field.width = 100
+
+                if len(raw_value) > 6:
+                    overflow = raw_value[6:]
+                    raw_value = raw_value[:6]
+                    new_last = (self.last_two_field.value or '') + overflow
+                    new_last = new_last[:2]
+                    self.last_two_field.value = new_last
+
+                e.control.value = raw_value
+                self.plate_container.width = 180
+            else:
+                self._hide_kz_and_right()
+                self.main_number_field.width = 180
+
+                if len(raw_value) > 7:
+                    raw_value = raw_value[:7]
+
+                pattern = r'^([A-Z])(\d{3})([A-Z]{2,3})$'
+                match = re.match(pattern, raw_value)
+                if match:
+                    part1, part2, part3 = match.groups()
+                    spaced_value = f'{part1}  {part2}  {part3}'
+                    e.control.value = spaced_value
+                else:
+                    e.control.value = raw_value
+
+                num_chars = len(raw_value)
+                calculated_width = 14 * num_chars + 20
+                self.plate_container.width = max(140, calculated_width)
+
+        e.page.update()
+        self._validate_number()
+
+    def on_last_two_change(self, e):
+        last_val = e.control.value or ''
+        last_val = re.sub(r'\s+', '', last_val).upper()
+        if len(last_val) > 2:
+            last_val = last_val[:2]
+        e.control.value = last_val
+        e.page.update()
+        self._validate_number()
+
+        if self.car_number.startswith(tuple(map(str, range(10)))):
+            self.plate_container.width = 180
+        else:
+            main_val = (self.main_number_field.value or '').upper()
+            main_val = re.sub(r'\s+', '', main_val)
+            calculated_width = 14 * len(main_val) + 30
+            self.plate_container.width = max(140, calculated_width)
+
+        self.page.update()
+
+    def _validate_number(self):
+        main_val = (self.main_number_field.value or '').upper()
+        main_val = re.sub(r'\s+', '', main_val)
+
+        last_val = (self.last_two_field.value or '').upper()
+        last_val = re.sub(r'\s+', '', last_val)
+
+        full_raw = main_val + last_val
+
+        pattern = r'^([A-Z]\d{3}[A-Z]{2,3}|\d{3}[A-Z]{2,3}\d{2})$'
+        self.car_number_valid = bool(re.match(pattern, full_raw))
+
+        self.car_number = full_raw
+        self.check_if_save_button_should_be_enabled()
+
+    def check_if_save_button_should_be_enabled(self):
+        if (
+            self.selected_brand
+            and self.selected_model_id
+            and self.selected_generation_id
+            and self.selected_body_type_id
+            and self.car_number_valid
+        ):
+            self.save_button.disabled = False
+        else:
+            self.save_button.disabled = True
+        self.page.update()
 
     def create_car_selection_page(self):
         return ft.Container(
@@ -90,6 +293,18 @@ class AdminCarSelectionPage:
                     ),
                     ft.Container(
                         content=self.body_type_dropdown,
+                        alignment=ft.alignment.center,
+                        width=300,
+                        margin=ft.margin.only(bottom=10),
+                    ),
+                    ft.Container(
+                        content=self.car_number_label,
+                        alignment=ft.alignment.center,
+                        width=300,
+                        margin=ft.margin.only(bottom=5),
+                    ),
+                    ft.Container(
+                        content=self.car_number_plate,
                         alignment=ft.alignment.center,
                         width=300,
                         margin=ft.margin.only(bottom=10),
@@ -131,6 +346,34 @@ class AdminCarSelectionPage:
         elif response.status_code == 200:
             brands = response.json().get('data', [])
             self.full_brands_list = brands
+
+            POPULAR_BRANDS = [
+                'Audi',
+                'BMW',
+                'Mercedes-Benz',
+                'Chevrolet',
+                'Hyundai',
+                'Kia',
+                'Lada (ВАЗ)',
+                'LiXiang',
+                'Changan',
+                'Nissan',
+                'Renault',
+                'Skoda',
+                'Toyota',
+                'Volkswagen',
+                'Zeekr',
+            ]
+
+            def sort_key(brand_dict):
+                brand_name = brand_dict['name']
+                for i, popular_name in enumerate(POPULAR_BRANDS):
+                    if brand_name.lower() == popular_name.lower():
+                        return (0, i)
+                return (1, brand_name.lower())
+
+            brands.sort(key=sort_key)
+
             self.brands_dict = {brand['name']: brand['id'] for brand in brands}
             self.update_brands_list(brands)
         else:
@@ -153,13 +396,13 @@ class AdminCarSelectionPage:
     def create_search_dialog(self):
         self.search_bar = ft.TextField(
             label='',
-            hint_text='',
+            hint_text='Поиск бренда',
             on_change=self.on_search_change,
             width=300,
             height=30,
         )
 
-        self.brands_list = ft.ListView(controls=[], height=300)
+        self.brands_list = ft.ListView(controls=[], height=350)
 
         return ft.AlertDialog(
             title=ft.Text('Выберите марку автомобиля'),
@@ -223,11 +466,17 @@ class AdminCarSelectionPage:
             self.generation_dropdown.options = []
             self.generation_dropdown.visible = False
             self.selected_generation = None
+            self.selected_generation_id = None
             self.body_type_dropdown.options = []
             self.body_type_dropdown.visible = False
-            self.selected_model_id = None
-            self.selected_generation_id = None
+            self.selected_body_type = None
+            self.selected_body_type_id = None
             self.save_button.disabled = True
+
+            self.car_number_label.visible = False
+            self.car_number_plate.visible = False
+            self.car_number = ''
+            self.car_number_valid = False
 
             self.page.update()
 
@@ -235,6 +484,7 @@ class AdminCarSelectionPage:
 
     def on_model_select(self, e):
         selected_model = e.control.value
+        self.selected_model = selected_model
         self.selected_model_id = self.models_dict.get(selected_model)
 
         if not self.selected_model_id:
@@ -248,21 +498,28 @@ class AdminCarSelectionPage:
             if not generations:
                 print('Поколения для выбранной модели не найдены.')
                 self.generation_dropdown.visible = False
-                self.page.update()
                 return
 
             self.generations = generations
             self.body_type_dropdown.options = []
             self.body_type_dropdown.value = None
             self.body_type_dropdown.visible = False
+            self.selected_body_type = None
+            self.selected_body_type_id = None
             self.save_button.disabled = True
 
+            self.car_number_label.visible = False
+            self.car_number_plate.visible = False
+            self.car_number = ''
+            self.car_number_valid = False
+
             if len(generations) == 1:
-                gen = generations[0]
-                self.selected_generation = gen['name']
-                self.selected_generation_id = gen['id']
-                self.generation_year_range = gen.get('year_range', '')
-                self.generation_codes = gen.get('codes', '')
+                self.selected_generation = generations[0]['name']
+                self.selected_generation_id = generations[0]['id']
+                self.generation_year_range = generations[0].get(
+                    'year_range', ''
+                )
+                self.generation_codes = generations[0].get('codes', '')
 
                 if not self.selected_generation and self.generation_year_range:
                     self.selected_generation = self.generation_year_range
@@ -271,12 +528,6 @@ class AdminCarSelectionPage:
                     f'Поколение "{self.selected_generation}" '
                     f'выбрано автоматически',
                     bgcolor=ft.colors.BLUE,
-                )
-
-                print(
-                    f'Автоматически выбрано поколение: '
-                    f'{self.selected_generation} '
-                    f'({self.generation_codes}) ({self.generation_year_range})'
                 )
                 self.generation_dropdown.visible = False
                 self.get_body_type(self.selected_generation_id)
@@ -302,7 +553,11 @@ class AdminCarSelectionPage:
                         self.body_type_dropdown.value = None
                         self.body_type_dropdown.visible = False
                         self.save_button.disabled = True
-                        self.page.update()
+
+                        self.car_number_label.visible = False
+                        self.car_number_plate.visible = False
+                        self.car_number = ''
+                        self.car_number_valid = False
 
                         selected_gen = next(
                             gen
@@ -329,20 +584,16 @@ class AdminCarSelectionPage:
             selected_generation
         )
 
-        print(
-            f'Выбранное поколение: {selected_generation}, '
-            f'ID поколения: {self.selected_generation_id}'
-        )
-
         if not self.selected_generation_id:
             print('ID поколения не найден.')
             return
 
+        self.selected_generation = selected_generation
         generation_info = next(
             (
-                gen
-                for gen in self.generations
-                if gen['id'] == self.selected_generation_id
+                g
+                for g in self.generations
+                if g['id'] == self.selected_generation_id
             ),
             None,
         )
@@ -357,8 +608,16 @@ class AdminCarSelectionPage:
         self.body_type_dropdown.options = []
         self.body_type_dropdown.value = None
         self.body_type_dropdown.visible = False
+        self.selected_body_type = None
+        self.selected_body_type_id = None
+        self.save_button.disabled = True
+
+        self.car_number_label.visible = False
+        self.car_number_plate.visible = False
+        self.car_number = ''
+        self.car_number_valid = False
+
         self.page.update()
-        print('Скрыт и сброшен dropdown с типом кузова')
 
         self.get_body_type(self.selected_generation_id)
 
@@ -366,36 +625,45 @@ class AdminCarSelectionPage:
         response = self.api.get_configurations(generation_id)
         if response.status_code == 200:
             configurations = response.json().get('data', [])
-            unique_body_types = {
-                config['body_type_id'] for config in configurations
-            }
+            unique_body_types = {c['body_type_id'] for c in configurations}
 
             if len(unique_body_types) == 1:
                 body_type_id = configurations[0]['body_type_id']
                 body_type_name = self.get_body_type_name(body_type_id)
                 self.selected_body_type = body_type_name
+                self.selected_body_type_id = body_type_id
                 print(f'Автоматически выбран тип кузова: {body_type_name}')
 
                 self.show_snack_bar(
                     f'Тип кузова "{body_type_name}" выбран автоматически',
                     bgcolor=ft.colors.BLUE,
                 )
-
                 self.load_car_price(body_type_id)
                 self.body_type_dropdown.visible = False
+
+                self.car_number_label.visible = True
+                self.car_number_plate.visible = True
                 self.save_button.disabled = False
                 self.page.update()
+
+                self.check_if_save_button_should_be_enabled()
             else:
-                self.body_types_dict = self.fetch_body_type_names(
-                    unique_body_types
-                )
+                self.body_types_dict = {
+                    bt_id: self.get_body_type_name(bt_id)
+                    for bt_id in unique_body_types
+                }
                 self.body_type_dropdown.options = [
-                    ft.dropdown.Option(self.body_types_dict[bt])
-                    for bt in unique_body_types
+                    ft.dropdown.Option(self.body_types_dict[bt_id])
+                    for bt_id in unique_body_types
                 ]
                 self.body_type_dropdown.value = None
                 self.body_type_dropdown.visible = True
                 self.save_button.disabled = True
+
+                self.car_number_label.visible = False
+                self.car_number_plate.visible = False
+                self.car_number = ''
+                self.car_number_valid = False
 
                 def on_body_type_select(e):
                     if self.body_type_dropdown.value:
@@ -411,9 +679,14 @@ class AdminCarSelectionPage:
                             self.selected_body_type = (
                                 self.body_type_dropdown.value
                             )
+                            self.selected_body_type_id = selected_body_type_id
                             self.load_car_price(selected_body_type_id)
                         self.save_button.disabled = False
                         self.page.update()
+
+                        self.car_number_label.visible = True
+                        self.car_number_plate.visible = True
+                        self.check_if_save_button_should_be_enabled()
 
                 self.body_type_dropdown.on_change = on_body_type_select
                 self.page.update()
@@ -573,24 +846,28 @@ class AdminCarSelectionPage:
             self.show_error_message('Токен доступа отсутствует!')
             return
 
+        if not self.car_number_valid:
+            self.show_error_message('Некорректный формат номера!')
+            return
+
         generation_display = self.selected_generation
         if not generation_display and self.generation_year_range:
             generation_display = self.generation_year_range
 
-        full_name = f'{self.selected_brand} {self.model_dropdown.value}'
+        full_name = f'{self.selected_brand} {self.selected_model}'
         if generation_display:
             full_name += f' {generation_display}'
-
-        if self.body_type_dropdown.value:
-            full_name += f' {self.body_type_dropdown.value}'
+        if self.selected_body_type:
+            full_name += f' {self.selected_body_type}'
 
         selected_car = {
             'brand': self.selected_brand,
-            'model': self.model_dropdown.value,
+            'model': self.selected_model,
             'generation': generation_display or 'Не указано',
-            'body_type': self.body_type_dropdown.value
-            or self.selected_body_type,
+            'body_type': self.selected_body_type or 'Не указано',
             'configuration_id': self.selected_generation_id,
+            'body_type_id': self.selected_body_type_id,
+            'car_number': self.car_number,
             'name': full_name,
         }
 
@@ -600,16 +877,7 @@ class AdminCarSelectionPage:
                 f'Автомобиль "{full_name}" успешно сохранен!'
             )
             self.selected_car = response.json()
-            self.selected_car.update(
-                {
-                    'brand': self.selected_brand,
-                    'model': self.model_dropdown.value,
-                    'generation': generation_display or 'Не указано',
-                    'body_type': self.body_type_dropdown.value
-                    or self.selected_body_type,
-                    'full_name': full_name,
-                }
-            )
+            self.selected_car.update(selected_car)
             self.on_car_selected(self.selected_car, self.car_price)
         else:
             error_message = response.text if response else 'Неизвестная ошибка'
