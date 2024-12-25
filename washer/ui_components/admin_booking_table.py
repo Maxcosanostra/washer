@@ -78,7 +78,9 @@ class AdminBookingTable:
                 for booking in self.bookings:
                     if 'user_car_id' in booking:
                         car_name = self.get_car_name(booking['user_car_id'])
-                        booking['car_name'] = car_name
+                        booking['car_name'] = (
+                            car_name if car_name != 'Неизвестно' else ''
+                        )
 
                 print(
                     f"Загружено букингов: {len(self.bookings)} "
@@ -428,12 +430,26 @@ class AdminBookingTable:
         response = self.api.get_car_by_id(user_car_id)
         if response.status_code == 200:
             car_data = response.json()
-            return car_data.get('name', 'Неизвестно')
-        return 'Неизвестно'
+            return (
+                car_data.get('name', '')
+                if car_data.get('name', '') != 'Неизвестно'
+                else ''
+            )
+        return ''
 
     def open_booking_details_dialog(self, booking):
-        car_name = booking.get('car_name', 'Неизвестно')
+        user_id = booking.get('user_id')
+        car_name = booking.get('car_name', '')
         price = booking.get('price', 'Не указана')
+
+        user_response = self.api.get_user_by_id(user_id)
+        if user_response and user_response.status_code == 200:
+            user_data = user_response.json()
+            first_name = user_data.get('first_name', '')
+            last_name = user_data.get('last_name', '')
+            full_name = f'{first_name} {last_name}'.strip()
+        else:
+            full_name = 'Неизвестен'
 
         def confirm_delete(e):
             self.page.close(confirm_dialog)
@@ -462,8 +478,10 @@ class AdminBookingTable:
             title=ft.Text('Детали букинга'),
             content=ft.Column(
                 [
-                    ft.Text(f'Автомобиль: {car_name}', size=16),
-                    ft.Text(f'Цена: ₸{price}', size=16),
+                    self.create_detail_row(ft.icons.PERSON, full_name),
+                    self.create_detail_row(ft.icons.DIRECTIONS_CAR, car_name),
+                    self.create_detail_row(ft.icons.MONEY, f'₸{price}'),
+                    self.create_detail_row(ft.icons.PHONE, ''),
                 ]
             ),
             actions=[
@@ -482,6 +500,16 @@ class AdminBookingTable:
         self.page.dialog = details_dialog
         details_dialog.open = True
         self.page.update()
+
+    def create_detail_row(self, icon, text):
+        return ft.Row(
+            controls=[
+                ft.Icon(icon, size=20),
+                ft.Text(text, size=16, expand=True),
+            ],
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=10,
+        )
 
     def delete_booking(self, booking_id: int):
         try:
