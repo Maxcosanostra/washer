@@ -287,6 +287,42 @@ class AdminBookingTable:
         )
         rows.append(header)
 
+        box_names_row = [
+            ft.Container(
+                content=ft.Text(
+                    '', weight='bold', text_align=ft.TextAlign.CENTER, size=14
+                ),
+                width=100,
+                height=40,
+                alignment=ft.alignment.center,
+            )
+        ]
+
+        for box in self.boxes_list:
+            box_names_row.append(
+                ft.Container(
+                    content=ft.Text(
+                        box['name'],
+                        weight='bold',
+                        text_align=ft.TextAlign.CENTER,
+                        size=14,
+                    ),
+                    expand=True,
+                    height=40,
+                    alignment=ft.alignment.center,
+                )
+            )
+
+        rows.append(
+            ft.Row(
+                controls=box_names_row,
+                spacing=5,
+                height=40,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.START,
+            )
+        )
+
         skip_slots = {}
         for time in timeslots:
             row_controls = [ft.Text(time, weight='bold', width=100, height=40)]
