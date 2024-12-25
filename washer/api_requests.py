@@ -497,3 +497,16 @@ class BackendApi:
         except httpx.RequestError as e:
             print(f'Ошибка запроса при обновлении автомойки: {e}')
             return None
+
+    def get_user_by_id(self, user_id: int) -> httpx.Response:
+        api_url = f"{str(self.url).rstrip('/')}/users/{user_id}"
+        headers = self.get_headers()
+        try:
+            response = httpx.get(api_url, headers=headers)
+            return response
+        except httpx.RequestError as e:
+            print(
+                f'Ошибка запроса при получении пользователя с ID '
+                f'{user_id}: {e}'
+            )
+            return None
