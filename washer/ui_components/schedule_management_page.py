@@ -216,7 +216,7 @@ class ScheduleManagementPage:
                                     icon=ft.icons.EDIT,
                                     on_click=lambda e,
                                     s=schedule: self.on_edit_schedule(s),
-                                    icon_size=16,
+                                    icon_size=18,
                                     tooltip='Редактировать расписание',
                                     padding=ft.padding.all(0),
                                 ),
@@ -226,7 +226,7 @@ class ScheduleManagementPage:
                                     s=schedule: self.on_delete_schedule(
                                         s['id']
                                     ),
-                                    icon_size=16,
+                                    icon_size=18,
                                     tooltip='Удалить расписание',
                                     padding=ft.padding.all(0),
                                 ),
@@ -333,6 +333,9 @@ class ScheduleManagementPage:
             self.show_end_time_modal()
         except ValueError:
             print('Ошибка: Неверный формат времени. Используйте ЧЧ:ММ.')
+            self.show_error_message(
+                'Неверный формат времени. Используйте ЧЧ:ММ.'
+            )
 
     def show_end_time_modal(self):
         self.end_time_input = ft.TextField(
@@ -519,18 +522,18 @@ class ScheduleManagementPage:
 
     def on_time_change(self, e):
         if e.control == self.schedule_start_time_picker:
-            selected_time = self.schedule_start_time_picker.value.strftime(
-                '%H:%M'
-            )
-            self.start_time_button.text = f'Начало: {selected_time}'
-            self.page.update()
-
+            if self.schedule_start_time_picker.value:
+                selected_time = self.schedule_start_time_picker.value.strftime(
+                    '%H:%M'
+                )
+                self.start_time_button.text = f'Начало: {selected_time}'
         elif e.control == self.schedule_end_time_picker:
-            selected_time = self.schedule_end_time_picker.value.strftime(
-                '%H:%M'
-            )
-            self.end_time_button.text = f'Окончание: {selected_time}'
-            self.page.update()
+            if self.schedule_end_time_picker.value:
+                selected_time = self.schedule_end_time_picker.value.strftime(
+                    '%H:%M'
+                )
+                self.end_time_button.text = f'Окончание: {selected_time}'
+        self.page.update()
 
     def create_manual_schedule_section(self):
         self.start_time_button_manual = ft.ElevatedButton(
@@ -583,18 +586,24 @@ class ScheduleManagementPage:
 
     def on_time_change_manual(self, e):
         if e.control == self.schedule_start_time_picker_manual:
-            selected_time = (
-                self.schedule_start_time_picker_manual.value.strftime('%H:%M')
-            )
-            self.start_time_button_manual.text = f'Начало: {selected_time}'
-            self.page.update()
-
+            if self.schedule_start_time_picker_manual.value:
+                selected_time = (
+                    self.schedule_start_time_picker_manual.value.strftime(
+                        '%H:%M'
+                    )
+                )
+                self.start_time_button_manual.text = f'Начало: {selected_time}'
         elif e.control == self.schedule_end_time_picker_manual:
-            selected_time = (
-                self.schedule_end_time_picker_manual.value.strftime('%H:%M')
-            )
-            self.end_time_button_manual.text = f'Окончание: {selected_time}'
-            self.page.update()
+            if self.schedule_end_time_picker_manual.value:
+                selected_time = (
+                    self.schedule_end_time_picker_manual.value.strftime(
+                        '%H:%M'
+                    )
+                )
+                self.end_time_button_manual.text = (
+                    f'Окончание: {selected_time}'
+                )
+        self.page.update()
 
     def create_week_schedule_for_all_boxes(self, e):
         if (
@@ -706,7 +715,7 @@ class ScheduleManagementPage:
             content=self.create_schedule_list_section(), expand=True
         )
 
-        return ft.ListView(
+        main_content = ft.ListView(
             controls=[
                 self.create_week_schedule_section(),
                 ft.Divider(),
@@ -715,8 +724,16 @@ class ScheduleManagementPage:
                 self.schedule_list_container,
             ],
             spacing=20,
-            padding=ft.padding.symmetric(horizontal=20),
+            padding=ft.padding.only(right=15),
             expand=True,
+        )
+
+        return ft.Container(
+            content=main_content,
+            margin=ft.margin.only(top=20),
+            expand=True,
+            width=730,
+            alignment=ft.alignment.center,
         )
 
     def on_back_to_edit_page(self, e=None):
