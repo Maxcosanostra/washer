@@ -46,7 +46,8 @@ class PriceManagementPage:
                     ],
                     self.create_add_price_section(),
                 ],
-                padding=ft.padding.all(20),
+                spacing=10,
+                expand=True,
             ),
             expand=True,
         )
@@ -69,7 +70,15 @@ class PriceManagementPage:
             leading_width=100,
         )
 
-        return self.price_list_container
+        main_content = self.price_list_container
+
+        return ft.Container(
+            content=main_content,
+            margin=ft.margin.only(top=20),
+            expand=True,
+            width=730,
+            alignment=ft.alignment.center,
+        )
 
     def create_price_display(self, price):
         body_type_name = self.body_type_dict.get(
@@ -144,6 +153,7 @@ class PriceManagementPage:
                     padding=ft.padding.all(10),
                 ),
                 elevation=3,
+                width=400,
             ),
             margin=ft.margin.only(bottom=10),
             width=400,
@@ -301,7 +311,8 @@ class PriceManagementPage:
                 ],
                 self.create_add_price_section(),
             ],
-            padding=ft.padding.all(20),
+            spacing=10,
+            expand=True,
         )
         self.page.update()
 
