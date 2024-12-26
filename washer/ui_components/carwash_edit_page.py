@@ -70,10 +70,10 @@ class CarWashEditPage:
         if self.boxes_list:
             self.today_bookings = self.load_today_bookings()
 
-        page.clean()
-        page.add(app_bar)
-        page.add(self.create_edit_page())
-        page.overlay.append(self.loading_overlay)
+        self.page.clean()
+        self.page.add(app_bar)
+        self.page.add(self.create_edit_page())
+        self.page.overlay.append(self.loading_overlay)
 
     def reset_data(self):
         self.boxes_list = []
@@ -227,7 +227,7 @@ class CarWashEditPage:
             visible=self.show_cancel_button,
         )
 
-        return ft.ListView(
+        main_content = ft.ListView(
             controls=[
                 self.avatar_container,
                 ft.Row(
@@ -325,8 +325,16 @@ class CarWashEditPage:
                 ),
             ],
             spacing=20,
-            padding=ft.padding.symmetric(horizontal=20),
+            padding=ft.padding.only(right=15),
             expand=True,
+        )
+
+        return ft.Container(
+            content=main_content,
+            margin=ft.margin.only(top=20),
+            expand=True,
+            width=730,
+            alignment=ft.alignment.center,
         )
 
     def load_today_bookings(self):
@@ -499,6 +507,7 @@ class CarWashEditPage:
                     ft.Icon(
                         name=ft.icons.CALENDAR_VIEW_MONTH,
                         size=50,
+                        color='#ef7b00',
                     ),
                     ft.Text(
                         'Посмотреть букинги',
@@ -626,6 +635,7 @@ class CarWashEditPage:
                     ft.Icon(
                         name=ft.icons.CALENDAR_TODAY,
                         size=50,
+                        color='#ef7b00',
                     ),
                     ft.Text(
                         'Расписание',
@@ -652,6 +662,7 @@ class CarWashEditPage:
                     ft.Icon(
                         name=ft.icons.GARAGE,
                         size=50,
+                        color='#ef7b00',
                     ),
                     ft.Text(
                         'Боксы',
@@ -680,6 +691,7 @@ class CarWashEditPage:
                     ft.Icon(
                         name=ft.icons.ATTACH_MONEY,
                         size=50,
+                        color='#ef7b00',
                     ),
                     ft.Text(
                         'Цены',
