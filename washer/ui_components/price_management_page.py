@@ -191,6 +191,7 @@ class PriceManagementPage:
             height=60,
             border_radius=ft.border_radius.all(30),
             content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
+            keyboard_type=ft.KeyboardType.NUMBER,
         )
 
         add_button = ft.ElevatedButton(
@@ -277,6 +278,7 @@ class PriceManagementPage:
             height=40,
             border_radius=ft.border_radius.all(30),
             content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
+            keyboard_type=ft.KeyboardType.NUMBER,
         )
 
         dlg_modal = ft.AlertDialog(
