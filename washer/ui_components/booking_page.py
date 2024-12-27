@@ -964,6 +964,25 @@ class BookingPage:
             margin=ft.margin.only(bottom=20),
         )
 
+        wishes_header = ft.Text(
+            'Есть пожелания или комментарии? Добавьте ниже',
+            size=18,
+            weight=ft.FontWeight.BOLD,
+            text_align=ft.TextAlign.CENTER,
+        )
+
+        wishes_field = ft.TextField(
+            label=(
+                'Например: оставил вещи в салоне. '
+                'Переложите, пожалуйста, в багажник и тд..'
+            ),
+            hint_text='',
+            # multiline=True,
+            width=500,
+            height=100,
+            border_radius=ft.border_radius.all(10),
+        )
+
         confirm_button = ft.ElevatedButton(
             text='Подтвердить букинг',
             on_click=self.on_confirm_booking,
@@ -993,32 +1012,35 @@ class BookingPage:
             leading_width=40,
         )
 
-        self.page.clean()
-        self.page.add(
-            ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Text(
-                            'Пожалуйста, подтвердите свои данные',
-                            size=24,
-                            weight=ft.FontWeight.BOLD,
-                            text_align=ft.TextAlign.CENTER,
-                        ),
-                        booking_info_card,
-                        car_info_card,
-                        confirm_button,
-                        back_button,
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=20,
+        main_content = ft.Column(
+            [
+                ft.Text(
+                    'Пожалуйста, подтвердите свои данные',
+                    size=24,
+                    weight=ft.FontWeight.BOLD,
+                    text_align=ft.TextAlign.CENTER,
                 ),
-                alignment=ft.alignment.center,
-                expand=True,
-                padding=ft.padding.all(20),
-            )
+                booking_info_card,
+                car_info_card,
+                wishes_header,
+                wishes_field,
+                confirm_button,
+                back_button,
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=10,
         )
 
+        confirmation_container = ft.Container(
+            content=main_content,
+            alignment=ft.alignment.center,
+            expand=True,
+            width=730,
+        )
+
+        self.page.clean()
+        self.page.add(confirmation_container)
         self.page.update()
 
     def on_panel_change(self, e: ft.ControlEvent):
