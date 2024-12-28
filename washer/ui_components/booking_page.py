@@ -445,6 +445,8 @@ class BookingPage:
                     content=ft.Column(
                         [
                             self.calendar,
+                            self.select_nearest_time_button,  # Новая кнопка
+                            self.or_text,
                             self.box_dropdown,
                             self.time_dropdown_container,
                         ],
@@ -596,6 +598,23 @@ class BookingPage:
             on_date_selected=self.handle_date_selected,
         )
 
+        self.select_nearest_time_button = ft.ElevatedButton(
+            text='Выбрать ближайшее время',
+            on_click=self.on_select_nearest_time_click,
+            width=700,
+            bgcolor=ft.colors.GREEN,
+            color=ft.colors.WHITE,
+            disabled=True,
+        )
+
+        self.or_text = ft.Text(
+            'или',
+            size=16,
+            weight=ft.FontWeight.BOLD,
+            color=ft.colors.GREY_700,
+            text_align=ft.TextAlign.CENTER,
+        )
+
         self.time_dropdown_container = ft.Column(
             disabled=self.time_dropdown_container_disabled,
             width=700,
@@ -649,7 +668,7 @@ class BookingPage:
                     'чернение шин силиконом.\n'
                     'Внутренняя часть автомобиля: '
                     'уборка салона с помощью торнадора и пылесоса, '
-                    'ароматизация салона, '
+                    'ароматизация, '
                     'бумажные полики.',
                     size=14,
                     color=ft.colors.GREY_600,
@@ -1134,6 +1153,7 @@ class BookingPage:
         self.complex_wash_checkbox.value = False
         self.complex_wash_checkbox.disabled = True
         self.price_text.value = 'Стоимость: ₸0'
+        self.select_nearest_time_button.disabled = True
 
         selected_car = next(
             (
@@ -1278,6 +1298,7 @@ class BookingPage:
         self.complex_wash_checkbox.value = False
         self.complex_wash_checkbox.disabled = True
         self.price_text.value = 'Стоимость: ₸0'
+        self.select_nearest_time_button.disabled = True
 
         self.load_available_times_for_box()
 
@@ -1304,6 +1325,7 @@ class BookingPage:
             self.complex_wash_checkbox.value = False
             self.complex_wash_checkbox.disabled = True
             self.price_text.value = 'Стоимость: ₸0'
+            self.select_nearest_time_button.disabled = False
         else:
             self.selected_box_id = None
             self.box_dropdown.value = None
@@ -1314,6 +1336,7 @@ class BookingPage:
             self.complex_wash_checkbox.value = False
             self.complex_wash_checkbox.disabled = True
             self.price_text.value = 'Стоимость: ₸0'
+            self.select_nearest_time_button.disabled = True
 
         if self.selected_date:
             self.updating_panels = True
@@ -1447,6 +1470,7 @@ class BookingPage:
                     )
                     self.time_dropdown_container.controls = []
                     self.time_dropdown_container.disabled = True
+                    self.select_nearest_time_button.disabled = True
                 else:
                     self.box_dropdown.disabled = False
                     if self.selected_box_id is not None:
@@ -1466,17 +1490,22 @@ class BookingPage:
                         self.time_dropdown_container.controls = []
                         self.time_dropdown_container.disabled = True
 
+                    self.select_nearest_time_button.disabled = False
+
                 self.hide_loading()
                 self.page.update()
             else:
                 print(f'Ошибка загрузки доступных времен: {response.text}')
                 self.show_snack_bar(
-                    'Не удалось загрузить доступные времена.', ft.colors.RED
+                    'Не удалось загрузить доступные времена.',
+                    bgcolor=ft.colors.RED,
                 )
                 self.hide_loading()
         else:
             print('Дата не выбрана.')
-            self.show_snack_bar('Пожалуйста, выберите дату.', ft.colors.RED)
+            self.show_snack_bar(
+                'Пожалуйста, выберите дату.', bgcolor=ft.colors.RED
+            )
 
     def load_available_times_for_box(self):
         if self.selected_box_id and self.selected_date:
@@ -1524,9 +1553,10 @@ class BookingPage:
                         ),
                     ]
                     self.time_dropdown_container.disabled = True
+                    self.book_button.disabled = True
                 else:
                     morning_slots = [
-                        slot for slot in filtered_times if 6 <= slot.hour < 12
+                        slot for slot in filtered_times if 2 <= slot.hour < 12
                     ]
                     day_slots = [
                         slot for slot in filtered_times if 12 <= slot.hour < 18
@@ -1558,19 +1588,21 @@ class BookingPage:
 
                     self.time_dropdown_container.controls = controls
                     self.time_dropdown_container.disabled = False
+                    self.book_button.disabled = True
 
                 self.hide_loading()
                 self.page.update()
             else:
                 print(f'Ошибка загрузки доступных времен: {response.text}')
                 self.show_snack_bar(
-                    'Не удалось загрузить доступные времена.', ft.colors.RED
+                    'Не удалось загрузить доступные времена.',
+                    bgcolor=ft.colors.RED,
                 )
                 self.hide_loading()
         else:
             print('Не выбрана дата или бокс.')
             self.show_snack_bar(
-                'Пожалуйста, выберите дату и бокс.', ft.colors.RED
+                'Пожалуйста, выберите дату и бокс.', bgcolor=ft.colors.RED
             )
 
     def create_time_grid(self, time_slots):
@@ -1599,6 +1631,7 @@ class BookingPage:
             self.complex_wash_checkbox.value = False
             self.price_text.value = 'Стоимость: ₸0'
             self.book_button.disabled = True
+            self.select_nearest_time_button.disabled = True
             self.page.update()
 
         self.updating_panels = True
@@ -1615,14 +1648,10 @@ class BookingPage:
 
     def on_complex_wash_change(self, e):
         if self.complex_wash_checkbox.value:
-            self.complex_wash_text.color = (
-                ft.colors.BLUE
-            )  # Устанавливаем голубой цвет при выборе
+            self.complex_wash_text.color = ft.colors.BLUE
             self.show_price()
         else:
-            self.complex_wash_text.color = (
-                None  # Устанавливаем серый цвет при снятии выбора
-            )
+            self.complex_wash_text.color = None
             self.price_text.value = 'Стоимость: ₸0'
             self.book_button.disabled = True
         self.page.update()
@@ -2009,3 +2038,77 @@ class BookingPage:
     def hide_loading(self):
         self.loading_overlay.visible = False
         self.page.update()
+
+    def on_select_nearest_time_click(self, e):
+        if not self.selected_date:
+            self.show_snack_bar('Пожалуйста, выберите дату.')
+            return
+
+        self.show_loading()
+
+        date_str = self.selected_date.strftime('%Y-%m-%d')
+        response = self.api.get_available_times(self.car_wash['id'], date_str)
+
+        if response.status_code == 200:
+            available_times_data = response.json().get('available_times', {})
+            print(f'Available times data: {available_times_data}')
+
+            available_slots = []
+
+            for box_id, time_ranges in available_times_data.items():
+                parsed_times = self.parse_available_times(time_ranges)
+
+                for slot_datetime in parsed_times:
+                    available_slots.append((slot_datetime, int(box_id)))
+                    print(f'Добавлено время: {slot_datetime}, бокс: {box_id}')
+
+            if available_slots:
+                available_slots.sort(key=lambda x: x[0])
+
+                earliest_time, selected_box_id = available_slots[0]
+                print(
+                    f'Самый ранний слот: '
+                    f'{earliest_time} в боксе {selected_box_id}'
+                )
+
+                self.selected_box_id = selected_box_id
+                self.selected_time = earliest_time
+                self.selected_time_iso = earliest_time.isoformat()
+
+                self.box_dropdown.value = str(self.selected_box_id)
+                self.time_dropdown_container.controls = [
+                    self.create_time_grid([self.selected_time])
+                ]
+                self.time_dropdown_container.disabled = False
+                self.book_button.disabled = True
+                self.complex_wash_checkbox.disabled = False
+                self.complex_wash_checkbox.value = False
+                self.price_text.value = 'Стоимость: ₸0'
+
+                self.calendar.update()
+
+                self.updating_panels = True
+                try:
+                    self.expanded_panels = [False, False, True]
+                    self.update_expansion_panel_list()
+                finally:
+                    self.updating_panels = False
+
+                self.page.update()
+                self.hide_loading()
+                self.show_snack_bar(
+                    f'Выбран бокс {selected_box_id} на '
+                    f'{earliest_time.strftime("%H:%M")}.',
+                    bgcolor=ft.colors.GREEN,
+                )
+            else:
+                self.hide_loading()
+                self.show_snack_bar(
+                    'На выбранную дату нет доступных боксов и времени.'
+                )
+        else:
+            self.hide_loading()
+            self.show_snack_bar(
+                'Не удалось загрузить доступные времена.',
+                bgcolor=ft.colors.RED,
+            )
