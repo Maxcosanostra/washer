@@ -2116,90 +2116,117 @@ class BookingPage:
             )
             self.or_text.visible = True
             self.or_text.update()
+
+            self.selected_box_id = None
+            self.selected_time = None
+            self.selected_time_iso = None
+
+            self.box_dropdown.value = None
+            self.box_dropdown.update()
+
+            self.time_dropdown_container.controls = []
+            self.time_dropdown_container.disabled = True
+            self.time_dropdown_container.update()
+
+            self.book_button.disabled = True
+            self.complex_wash_checkbox.value = False
+            self.complex_wash_checkbox.disabled = True
+
+            self.price_text.value = 'Стоимость: ₸0'
+            self.price_text.update()
+
+            self.page.update()
             return
 
-        if not self.selected_date:
-            self.show_snack_bar('Пожалуйста, выберите дату.')
-            return
+        if not self.nearest_time_selected:
+            if not self.selected_date:
+                self.show_snack_bar('Пожалуйста, выберите дату.')
+                return
 
-        self.show_loading()
+            self.show_loading()
 
-        date_str = self.selected_date.strftime('%Y-%m-%d')
-        response = self.api.get_available_times(self.car_wash['id'], date_str)
+            date_str = self.selected_date.strftime('%Y-%m-%d')
+            response = self.api.get_available_times(
+                self.car_wash['id'], date_str
+            )
 
-        if response.status_code == 200:
-            available_times_data = response.json().get('available_times', {})
-            available_slots = []
-
-            for box_id, time_ranges in available_times_data.items():
-                parsed_times = self.parse_available_times(time_ranges)
-                for slot_datetime in parsed_times:
-                    available_slots.append((slot_datetime, int(box_id)))
-                    print(f'Добавлено время: {slot_datetime}, бокс: {box_id}')
-
-            if available_slots:
-                available_slots.sort(key=lambda x: x[0])
-                earliest_time, selected_box_id = available_slots[0]
-                print(
-                    f'Самый ранний слот: {earliest_time} '
-                    f'в боксе {selected_box_id}'
+            if response.status_code == 200:
+                available_times_data = response.json().get(
+                    'available_times', {}
                 )
+                available_slots = []
 
-                self.selected_box_id = selected_box_id
-                self.selected_time = earliest_time
-                self.selected_time_iso = earliest_time.isoformat()
+                for box_id, time_ranges in available_times_data.items():
+                    parsed_times = self.parse_available_times(time_ranges)
+                    for slot_datetime in parsed_times:
+                        available_slots.append((slot_datetime, int(box_id)))
+                        print(
+                            f'Добавлено время: {slot_datetime}, бокс: {box_id}'
+                        )
 
-                self.box_dropdown.value = str(self.selected_box_id)
-                self.box_dropdown.update()
+                if available_slots:
+                    available_slots.sort(key=lambda x: x[0])
+                    earliest_time, selected_box_id = available_slots[0]
+                    print(
+                        f'Самый ранний слот: {earliest_time} '
+                        f'в боксе {selected_box_id}'
+                    )
 
-                self.time_dropdown_container.controls = [
-                    self.create_time_grid([self.selected_time])
-                ]
-                self.time_dropdown_container.disabled = False
-                self.book_button.disabled = True
-                self.complex_wash_checkbox.disabled = False
-                self.complex_wash_checkbox.value = False
-                self.price_text.value = 'Стоимость: ₸0'
+                    self.selected_box_id = selected_box_id
+                    self.selected_time = earliest_time
+                    self.selected_time_iso = earliest_time.isoformat()
 
-                self.nearest_time_selected = True
-                self.select_nearest_time_button.text = (
-                    'Выбрано ближайшее время'
-                )
-                self.update_nearest_time_button_style()
+                    self.box_dropdown.value = str(self.selected_box_id)
+                    self.box_dropdown.update()
 
-                self.calendar.update()
+                    self.time_dropdown_container.controls = [
+                        self.create_time_grid([self.selected_time])
+                    ]
+                    self.time_dropdown_container.disabled = False
+                    self.book_button.disabled = True
+                    self.complex_wash_checkbox.disabled = False
+                    self.complex_wash_checkbox.value = False
+                    self.price_text.value = 'Стоимость: ₸0'
 
-                self.or_text.visible = False
-                self.or_text.update()
+                    self.nearest_time_selected = True
+                    self.select_nearest_time_button.text = (
+                        'Выбрано ближайшее время'
+                    )
+                    self.update_nearest_time_button_style()
 
-                self.updating_panels = True
-                try:
-                    self.expanded_panels = [False, False, True]
-                    self.update_expansion_panel_list()
-                finally:
-                    self.updating_panels = False
+                    self.calendar.update()
 
-                self.page.update()
-                self.hide_loading()
-                self.show_snack_bar(
-                    f'Выбран бокс {selected_box_id} на '
-                    f'{earliest_time.strftime("%H:%M")}.',
-                    bgcolor=ft.colors.GREEN,
-                )
+                    self.or_text.visible = False
+                    self.or_text.update()
+
+                    self.updating_panels = True
+                    try:
+                        self.expanded_panels = [False, False, True]
+                        self.update_expansion_panel_list()
+                    finally:
+                        self.updating_panels = False
+
+                    self.page.update()
+                    self.hide_loading()
+                    self.show_snack_bar(
+                        f'Выбран бокс {selected_box_id} на '
+                        f'{earliest_time.strftime("%H:%M")}.',
+                        bgcolor=ft.colors.GREEN,
+                    )
+                else:
+                    self.hide_loading()
+                    self.show_snack_bar(
+                        'На выбранную дату нет доступных боксов и времени.'
+                    )
             else:
                 self.hide_loading()
                 self.show_snack_bar(
-                    'На выбранную дату нет доступных боксов и времени.'
+                    'Не удалось загрузить доступные времена.',
+                    bgcolor=ft.colors.RED,
                 )
-        else:
-            self.hide_loading()
-            self.show_snack_bar(
-                'Не удалось загрузить доступные времена.',
-                bgcolor=ft.colors.RED,
-            )
 
-        self.update_nearest_time_button_style()
-        self.page.update()
+            self.update_nearest_time_button_style()
+            self.page.update()
 
     def get_nearest_time_button_style(self):
         if self.nearest_time_selected:
