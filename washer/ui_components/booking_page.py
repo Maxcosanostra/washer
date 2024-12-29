@@ -616,6 +616,7 @@ class BookingPage:
             ),
             alignment=ft.alignment.center,
             padding=ft.padding.symmetric(vertical=10),
+            visible=True,  # Сделать видимым по умолчанию
         )
 
         self.time_dropdown_container = ft.Column(
@@ -1298,6 +1299,8 @@ class BookingPage:
                 'Автоматический выбор ближайшего времени отменен.',
                 bgcolor=ft.colors.RED,
             )
+            self.or_text.visible = True
+            self.or_text.update()
 
         self.selected_box_id = int(e.control.value)
         print(f'Выбранный бокс: {self.selected_box_id}')
@@ -2067,8 +2070,11 @@ class BookingPage:
             self.select_nearest_time_button.text = 'Выбрать ближайшее время'
             self.update_nearest_time_button_style()
             self.show_snack_bar(
-                'Выбор ближайшего времени отменен.', bgcolor=ft.colors.RED
+                'Автоматический выбор ближайшего времени отменен.',
+                bgcolor=ft.colors.RED,
             )
+            self.or_text.visible = True
+            self.or_text.update()
             return
 
         if not self.selected_date:
@@ -2122,6 +2128,9 @@ class BookingPage:
 
                 self.calendar.update()
 
+                self.or_text.visible = False
+                self.or_text.update()
+
                 self.updating_panels = True
                 try:
                     self.expanded_panels = [False, False, True]
@@ -2147,6 +2156,9 @@ class BookingPage:
                 'Не удалось загрузить доступные времена.',
                 bgcolor=ft.colors.RED,
             )
+
+        self.update_nearest_time_button_style()
+        self.page.update()
 
     def get_nearest_time_button_style(self):
         if self.nearest_time_selected:
