@@ -70,8 +70,6 @@ date_box_style = {
     'border_radius': 5,
 }
 
-today = datetime.today().date()
-
 
 class DateBox(ft.Container):
     def __init__(
@@ -82,8 +80,10 @@ class DateBox(ft.Container):
         on_date_selected=None,
         date_obj: date = None,
         disabled: bool = False,
+        today: date = None,
     ):
-        if date_obj == today and not disabled:
+        self.today = today
+        if date_obj == self.today and not disabled:
             initial_bgcolor = None
             initial_border = ft.Border(
                 left=ft.BorderSide(color='#4fadf9', width=1.5),
@@ -147,7 +147,7 @@ class DateBox(ft.Container):
                                 date_box.content.color = ft.colors.WHITE
                             else:
                                 if (
-                                    date_box.date_obj == today
+                                    date_box.date_obj == self.today
                                     and not date_box.disabled
                                 ):
                                     date_box.bgcolor = None
@@ -182,13 +182,15 @@ class DateBox(ft.Container):
 
 
 class DateGrid(ft.Column):
-    def __init__(self, year: int, month: int, on_date_selected=None):
+    def __init__(
+        self, year: int, month: int, on_date_selected=None, today: date = None
+    ):
         super().__init__()
-
         self.year = year
         self.month = month
         self.on_date_selected = on_date_selected
         self.available_dates = []
+        self.today = today
 
         self.date_text = ft.Text(
             f'{month_class[self.month]} {self.year}', color='white'
@@ -255,6 +257,7 @@ class DateGrid(ft.Column):
 
         print(f'Populating calendar for {month_class[month]} {year}')
         print(f'Available dates: {self.available_dates}')
+        print(f'Today is: {self.today}')
 
         for week in calendar.monthcalendar(year, month):
             row = ft.Row(
@@ -264,9 +267,12 @@ class DateGrid(ft.Column):
                 if day != 0:
                     try:
                         date_obj = datetime(year, month, day).date()
-                        is_today = date_obj == today
+                        is_today = date_obj == self.today
                         is_available = date_obj in self.available_dates
-                        print(f'Date: {date_obj}, Available: {is_available}')
+                        print(
+                            f'Date: {date_obj}, Is Today: {is_today}, '
+                            f'Available: {is_available}'
+                        )
                     except ValueError:
                         date_obj = None
                         is_today = False
@@ -283,6 +289,7 @@ class DateGrid(ft.Column):
                         on_date_selected=self.on_date_selected,
                         date_obj=date_obj,
                         disabled=not is_available,
+                        today=self.today,
                     )
 
                     if is_today and is_available:
@@ -297,14 +304,17 @@ class DateGrid(ft.Column):
 
                     row.controls.append(date_box)
                 else:
-                    row.controls.append(DateBox(day=0, disabled=True))
+                    row.controls.append(
+                        DateBox(day=0, disabled=True, today=self.today)
+                    )
             self.date_rows.controls.append(row)
+
+        self.update()
 
     def update_date_grid(self, e: ft.TapEvent, delta: int):
         Settings.get_date(delta)
 
-        global today
-        today = datetime.today().date()
+        self.today = datetime.today().date()
 
         self.update_year_and_month(
             Settings.get_year(),
@@ -353,6 +363,7 @@ class BookingPage:
         self.selected_car_id = None
         self.selected_box_id = None
         self.selected_date = None
+        self.today = datetime.today().date()
         self.selected_time = None
         self.selected_time_iso = None
         self.available_times = []
@@ -596,6 +607,7 @@ class BookingPage:
             year=Settings.get_year(),
             month=Settings.get_month(),
             on_date_selected=self.handle_date_selected,
+            today=self.today,
         )
 
         self.select_nearest_time_button = ft.OutlinedButton(
@@ -1198,8 +1210,26 @@ class BookingPage:
         for row in self.calendar.date_rows.controls:
             for date_box in row.controls:
                 if isinstance(date_box, DateBox):
-                    date_box.bgcolor = None
-                    date_box.border = None
+                    if (
+                        date_box.date_obj == self.today
+                        and not date_box.disabled
+                    ):
+                        date_box.bgcolor = None
+                        date_box.border = ft.Border(
+                            left=ft.BorderSide(color='#4fadf9', width=1.5),
+                            right=ft.BorderSide(color='#4fadf9', width=1.5),
+                            top=ft.BorderSide(color='#4fadf9', width=1.5),
+                            bottom=ft.BorderSide(color='#4fadf9', width=1.5),
+                        )
+                        date_box.content.color = ft.colors.BLUE
+                    else:
+                        date_box.bgcolor = None
+                        date_box.border = None
+                        date_box.content.color = (
+                            ft.colors.BLUE
+                            if not date_box.disabled
+                            else ft.colors.GREY_500
+                        )
         self.calendar.update()
 
     def load_body_type_id(self, configuration_id, auto_update_price=False):
