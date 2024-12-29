@@ -1362,6 +1362,17 @@ class BookingPage:
         """
         self.selected_date = selected_date
         print(f'Выбрана дата: {self.selected_date}')
+
+        if self.nearest_time_selected:
+            self.nearest_time_selected = False
+            self.select_nearest_time_button.text = 'Выбрать ближайшее время'
+            self.update_nearest_time_button_style()
+            self.or_text.visible = True
+            self.or_text.update()
+            print(
+                'Состояние ближайшего времени сброшено из-за изменения даты.'
+            )
+
         if self.selected_date:
             self.load_available_boxes()
             self.selected_time = None
