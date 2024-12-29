@@ -1290,6 +1290,15 @@ class BookingPage:
         self.page.update()
 
     def on_box_select(self, e):
+        if self.nearest_time_selected:
+            self.nearest_time_selected = False
+            self.select_nearest_time_button.text = 'Выбрать ближайшее время'
+            self.update_nearest_time_button_style()
+            self.show_snack_bar(
+                'Автоматический выбор ближайшего времени отменен.',
+                bgcolor=ft.colors.RED,
+            )
+
         self.selected_box_id = int(e.control.value)
         print(f'Выбранный бокс: {self.selected_box_id}')
 
@@ -1301,7 +1310,7 @@ class BookingPage:
         self.complex_wash_checkbox.value = False
         self.complex_wash_checkbox.disabled = True
         self.price_text.value = 'Стоимость: ₸0'
-        self.select_nearest_time_button.disabled = True
+        self.select_nearest_time_button.disabled = False
 
         self.load_available_times_for_box()
 
