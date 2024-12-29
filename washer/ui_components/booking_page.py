@@ -421,6 +421,9 @@ class BookingPage:
             leading_width=40,
         )
 
+        if self.page.navigation_bar:
+            self.page.navigation_bar.selected_index = 3
+
         self.page.floating_action_button = None
         self.page.update()
 
