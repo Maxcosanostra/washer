@@ -17,6 +17,9 @@ class MyBookingsPage:
         self.completed_visible = False
         self.completed_bookings_container = ft.Container(visible=False)
 
+        if self.page.navigation_bar:
+            self.page.navigation_bar.selected_index = 0
+
         self.page.floating_action_button = None
         # self.page.update()
         # При включении self.page.update() AppBar скидывается некрасиво
