@@ -391,7 +391,7 @@ class BookingPage:
         )
         self.page.overlay.append(self.loading_overlay)
         self.page.overlay.append(self.snack_bar)
-
+        self.nearest_time_selected = False
         self.create_elements()
 
         self.page.adaptive = True
@@ -598,21 +598,24 @@ class BookingPage:
             on_date_selected=self.handle_date_selected,
         )
 
-        self.select_nearest_time_button = ft.ElevatedButton(
+        self.select_nearest_time_button = ft.OutlinedButton(
             text='Выбрать ближайшее время',
             on_click=self.on_select_nearest_time_click,
             width=700,
-            bgcolor=ft.colors.GREEN,
-            color=ft.colors.WHITE,
             disabled=True,
+            style=self.get_nearest_time_button_style(),
         )
 
-        self.or_text = ft.Text(
-            'или',
-            size=16,
-            weight=ft.FontWeight.BOLD,
-            color=ft.colors.GREY_700,
-            text_align=ft.TextAlign.CENTER,
+        self.or_text = ft.Container(
+            content=ft.Text(
+                'или',
+                size=16,
+                weight=ft.FontWeight.BOLD,
+                color=ft.colors.GREY_700,
+                text_align=ft.TextAlign.CENTER,
+            ),
+            alignment=ft.alignment.center,
+            padding=ft.padding.symmetric(vertical=10),
         )
 
         self.time_dropdown_container = ft.Column(
@@ -1621,6 +1624,10 @@ class BookingPage:
         return grid
 
     def on_time_select_grid(self, time_slot_iso):
+        self.nearest_time_selected = False
+        self.select_nearest_time_button.text = 'Выбрать ближайшее время'
+        self.update_nearest_time_button_style()
+
         self.selected_time_iso = time_slot_iso
         self.selected_time = datetime.fromisoformat(time_slot_iso)
 
@@ -1645,6 +1652,12 @@ class BookingPage:
 
         self.refresh_time_grid()
         self.page.update()
+
+        self.show_snack_bar(
+            f'Выбран бокс {self.selected_box_id} на '
+            f'{self.selected_time.strftime("%H:%M")}.',
+            bgcolor=ft.colors.GREEN,
+        )
 
     def on_complex_wash_change(self, e):
         if self.complex_wash_checkbox.value:
@@ -2040,6 +2053,15 @@ class BookingPage:
         self.page.update()
 
     def on_select_nearest_time_click(self, e):
+        if self.nearest_time_selected:
+            self.nearest_time_selected = False
+            self.select_nearest_time_button.text = 'Выбрать ближайшее время'
+            self.update_nearest_time_button_style()
+            self.show_snack_bar(
+                'Выбор ближайшего времени отменен.', bgcolor=ft.colors.RED
+            )
+            return
+
         if not self.selected_date:
             self.show_snack_bar('Пожалуйста, выберите дату.')
             return
@@ -2051,24 +2073,20 @@ class BookingPage:
 
         if response.status_code == 200:
             available_times_data = response.json().get('available_times', {})
-            print(f'Available times data: {available_times_data}')
-
             available_slots = []
 
             for box_id, time_ranges in available_times_data.items():
                 parsed_times = self.parse_available_times(time_ranges)
-
                 for slot_datetime in parsed_times:
                     available_slots.append((slot_datetime, int(box_id)))
                     print(f'Добавлено время: {slot_datetime}, бокс: {box_id}')
 
             if available_slots:
                 available_slots.sort(key=lambda x: x[0])
-
                 earliest_time, selected_box_id = available_slots[0]
                 print(
-                    f'Самый ранний слот: '
-                    f'{earliest_time} в боксе {selected_box_id}'
+                    f'Самый ранний слот: {earliest_time} '
+                    f'в боксе {selected_box_id}'
                 )
 
                 self.selected_box_id = selected_box_id
@@ -2076,6 +2094,8 @@ class BookingPage:
                 self.selected_time_iso = earliest_time.isoformat()
 
                 self.box_dropdown.value = str(self.selected_box_id)
+                self.box_dropdown.update()
+
                 self.time_dropdown_container.controls = [
                     self.create_time_grid([self.selected_time])
                 ]
@@ -2084,6 +2104,12 @@ class BookingPage:
                 self.complex_wash_checkbox.disabled = False
                 self.complex_wash_checkbox.value = False
                 self.price_text.value = 'Стоимость: ₸0'
+
+                self.nearest_time_selected = True
+                self.select_nearest_time_button.text = (
+                    'Выбрано ближайшее время'
+                )
+                self.update_nearest_time_button_style()
 
                 self.calendar.update()
 
@@ -2112,3 +2138,30 @@ class BookingPage:
                 'Не удалось загрузить доступные времена.',
                 bgcolor=ft.colors.RED,
             )
+
+    def get_nearest_time_button_style(self):
+        if self.nearest_time_selected:
+            return ft.ButtonStyle(
+                shape=ft.RoundedRectangleBorder(radius=20),
+                padding=ft.Padding(left=10, right=10, top=5, bottom=5),
+                bgcolor=ft.colors.BLUE,
+                color=ft.colors.WHITE,
+                overlay_color=ft.colors.BLUE_200,
+                animation_duration=200,
+            )
+        else:
+            return ft.ButtonStyle(
+                shape=ft.RoundedRectangleBorder(radius=20),
+                padding=ft.Padding(left=10, right=10, top=5, bottom=5),
+                side=ft.BorderSide(color=ft.colors.BLUE, width=1),
+                color=ft.colors.BLUE,
+                bgcolor=ft.colors.TRANSPARENT,
+                overlay_color=ft.colors.BLUE_200,
+                animation_duration=200,
+            )
+
+    def update_nearest_time_button_style(self):
+        self.select_nearest_time_button.style = (
+            self.get_nearest_time_button_style()
+        )
+        self.select_nearest_time_button.update()
