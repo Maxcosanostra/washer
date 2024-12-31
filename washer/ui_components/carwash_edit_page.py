@@ -24,11 +24,9 @@ class CarWashEditPage:
         self.body_type_dict = {}
         self.total_revenue = 0
         self.boxes_list = []
-
         self.show_change_button = False
         self.show_save_button = False
         self.show_cancel_button = False
-
         self.page.adaptive = True
 
         app_bar = ft.AppBar(
@@ -57,11 +55,17 @@ class CarWashEditPage:
             expand=True,
         )
 
+        self.page.navigation_bar = self.create_navigation_bar()
+
         self.image_picker = ft.FilePicker(on_result=self.on_image_picked)
         self.page.overlay.append(self.image_picker)
 
-        self.reset_data()
+        self.page.clean()
+        self.page.add(app_bar)
+        self.page.overlay.append(self.loading_overlay)
 
+        self.show_loading()
+        self.reset_data()
         self.load_boxes()
         self.load_body_types()
         self.load_schedules()
@@ -70,10 +74,61 @@ class CarWashEditPage:
         if self.boxes_list:
             self.today_bookings = self.load_today_bookings()
 
-        self.page.clean()
-        self.page.add(app_bar)
+        self.hide_loading()
         self.page.add(self.create_edit_page())
-        self.page.overlay.append(self.loading_overlay)
+        self.page.update()
+
+    def create_navigation_bar(self):
+        navigation_bar = ft.NavigationBar(
+            destinations=[
+                ft.NavigationBarDestination(
+                    icon=ft.icons.ATTACH_MONEY,
+                    selected_icon=ft.icons.ATTACH_MONEY_OUTLINED,
+                    label='Цены',
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.icons.CALENDAR_TODAY,
+                    selected_icon=ft.icons.CALENDAR_TODAY_OUTLINED,
+                    label='Расписание',
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.icons.HOME,
+                    selected_icon=ft.icons.HOME_OUTLINED,
+                    label='Главная',
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.icons.GARAGE,
+                    selected_icon=ft.icons.GARAGE_OUTLINED,
+                    label='Боксы',
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.icons.VIEW_LIST,
+                    selected_icon=ft.icons.VIEW_LIST_OUTLINED,
+                    label='Букинги',
+                ),
+            ],
+            selected_index=2,
+            on_change=self.on_navigation_change,
+            indicator_color='#ef7b00',
+            label_behavior=ft.NavigationBarLabelBehavior.ALWAYS_SHOW,
+        )
+        return navigation_bar
+
+    def on_navigation_change(self, e):
+        selected_index = e.control.selected_index
+        print(
+            f'[CarWashEditPage] NavigationBar selected index: {selected_index}'
+        )
+        if selected_index == 0:
+            self.on_prices_button_click(None)
+        elif selected_index == 1:
+            self.on_schedule_button_click(None)
+        elif selected_index == 2:
+            return
+        elif selected_index == 3:
+            self.on_boxes_button_click(None)
+        elif selected_index == 4:
+            self.on_booking_button_click(None)
 
     def reset_data(self):
         self.boxes_list = []
@@ -137,6 +192,7 @@ class CarWashEditPage:
             self.dates_storage[day_of_week] = target_date.strftime('%Y-%m-%d')
 
     def load_total_revenue(self):
+        car_wash_id = None
         try:
             car_wash_id = self.car_wash['id']
             response = self.api.get_bookings(car_wash_id)
@@ -145,7 +201,6 @@ class CarWashEditPage:
                 current_date_str = datetime.date.today().strftime('%Y-%m-%d')
                 total_revenue = 0
                 current_time = datetime.datetime.now()
-
                 for booking in bookings_data:
                     booking_date = booking.get('start_datetime', '')
                     end_time_str = booking.get('end_datetime', '')
@@ -159,7 +214,6 @@ class CarWashEditPage:
                         ):
                             price = float(booking.get('price', 0))
                             total_revenue += price
-
                 self.total_revenue = total_revenue
                 print(
                     f'Общая выручка для автомойки '
@@ -229,6 +283,7 @@ class CarWashEditPage:
 
         main_content = ft.ListView(
             controls=[
+                ft.Container(height=10),
                 self.avatar_container,
                 ft.Row(
                     controls=[
@@ -245,7 +300,7 @@ class CarWashEditPage:
                         weight=ft.FontWeight.BOLD,
                         text_align=ft.TextAlign.CENTER,
                     ),
-                    padding=ft.padding.only(top=10),
+                    padding=ft.padding.only(top=5),
                 ),
                 ft.Container(
                     content=ft.Text(
@@ -254,45 +309,7 @@ class CarWashEditPage:
                         text_align=ft.TextAlign.CENTER,
                         color=ft.colors.GREY,
                     ),
-                    padding=ft.padding.only(bottom=10),
-                ),
-                ft.Row(
-                    controls=[
-                        ft.Container(
-                            content=ft.Icon(
-                                ft.icons.DIRECTIONS_CAR,
-                                size=50,
-                                color='#ef7b00',
-                            ),
-                            on_click=self.on_boxes_button_click,
-                        ),
-                        ft.Container(
-                            content=ft.Icon(
-                                ft.icons.ATTACH_MONEY,
-                                size=50,
-                                color='#ef7b00',
-                            ),
-                            on_click=self.on_prices_button_click,
-                        ),
-                        ft.Container(
-                            content=ft.Icon(
-                                ft.icons.CALENDAR_TODAY,
-                                size=50,
-                                color='#ef7b00',
-                            ),
-                            on_click=self.on_schedule_button_click,
-                        ),
-                        ft.Container(
-                            content=ft.Icon(
-                                ft.icons.VIEW_LIST,
-                                size=50,
-                                color='#ef7b00',
-                            ),
-                            on_click=self.on_booking_button_click,
-                        ),
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_EVENLY,
-                    spacing=10,
+                    padding=ft.padding.only(bottom=5),
                 ),
                 ft.Divider(),
                 ft.Container(
@@ -324,20 +341,21 @@ class CarWashEditPage:
                     expand=True,
                 ),
             ],
-            spacing=20,
+            spacing=5,
             padding=ft.padding.only(right=15),
             expand=True,
         )
 
         return ft.Container(
             content=main_content,
-            margin=ft.margin.only(top=20),
+            margin=ft.margin.only(top=-10),
             expand=True,
             width=730,
             alignment=ft.alignment.center,
         )
 
     def load_today_bookings(self):
+        car_wash_id = None
         try:
             car_wash_id = self.car_wash['id']
             response = self.api.get_bookings(car_wash_id)
@@ -349,13 +367,12 @@ class CarWashEditPage:
                     for booking in all_bookings
                     if booking['start_datetime'].startswith(today)
                 ]
-
                 for booking in today_bookings:
                     box = next(
                         (
-                            box
-                            for box in self.boxes_list
-                            if box['id'] == booking['box_id']
+                            bx
+                            for bx in self.boxes_list
+                            if bx['id'] == booking['box_id']
                         ),
                         None,
                     )
@@ -433,62 +450,76 @@ class CarWashEditPage:
 
         rows = [header]
         current_time = datetime.datetime.now()
-
         sorted_bookings = sorted(
-            self.today_bookings, key=lambda b: b['start_datetime']
+            getattr(self, 'today_bookings', []),
+            key=lambda b: b['start_datetime'],
         )
 
-        for booking in sorted_bookings:
-            start_time = datetime.datetime.fromisoformat(
-                booking['start_datetime']
+        if not sorted_bookings:
+            rows.append(
+                ft.Row(
+                    controls=[
+                        ft.Text(
+                            'Записей на сегодня нет',
+                            size=16,
+                            color=ft.colors.GREY,
+                        )
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                )
             )
-            end_time = datetime.datetime.fromisoformat(booking['end_datetime'])
+        else:
+            for booking in sorted_bookings:
+                start_time = datetime.datetime.fromisoformat(
+                    booking['start_datetime']
+                )
+                end_time = datetime.datetime.fromisoformat(
+                    booking['end_datetime']
+                )
 
-            if current_time < start_time:
-                status = 'В ожидании'
-                color = '#FFD700'
-            elif start_time <= current_time <= end_time:
-                status = 'В процессе'
-                color = '#FFA500'
-            else:
-                status = 'Завершено'
-                color = '#32CD32'
+                if current_time < start_time:
+                    status = 'В ожидании'
+                    color = '#FFD700'
+                elif start_time <= current_time <= end_time:
+                    status = 'В процессе'
+                    color = '#FFA500'
+                else:
+                    status = 'Завершено'
+                    color = '#32CD32'
 
-            box_name = booking.get('box_name', 'Неизвестный бокс')
+                box_name = booking.get('box_name', 'Неизвестный бокс')
 
-            row = ft.Row(
-                controls=[
-                    ft.Text(
-                        start_time.strftime('%H:%M'),
-                        width=70,
-                        text_align=ft.TextAlign.CENTER,
-                    ),
-                    ft.Text(
-                        end_time.strftime('%H:%M'),
-                        width=90,
-                        text_align=ft.TextAlign.CENTER,
-                    ),
-                    ft.Text(
-                        box_name, width=70, text_align=ft.TextAlign.CENTER
-                    ),
-                    ft.Text(
-                        status,
-                        width=90,
-                        text_align=ft.TextAlign.CENTER,
-                        color=color,
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-            )
-            rows.append(row)
+                row = ft.Row(
+                    controls=[
+                        ft.Text(
+                            start_time.strftime('%H:%M'),
+                            width=70,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        ft.Text(
+                            end_time.strftime('%H:%M'),
+                            width=90,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        ft.Text(
+                            box_name, width=70, text_align=ft.TextAlign.CENTER
+                        ),
+                        ft.Text(
+                            status,
+                            width=90,
+                            text_align=ft.TextAlign.CENTER,
+                            color=color,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                )
+                rows.append(row)
 
         return ft.Container(
             content=ft.Column(
                 controls=[
                     ft.Text(
-                        'Статус букингов',
-                        size=24,
-                        weight=ft.FontWeight.BOLD,
+                        'Статус букингов', size=24, weight=ft.FontWeight.BOLD
                     ),
                     *rows,
                 ],
@@ -499,41 +530,6 @@ class CarWashEditPage:
 
     def on_view_archived_schedule_click(self, e):
         ArchivedSchedulePage(self.page, self.car_wash, self.locations)
-
-    def create_booking_button(self):
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Icon(
-                        name=ft.icons.CALENDAR_VIEW_MONTH,
-                        size=50,
-                        color='#ef7b00',
-                    ),
-                    ft.Text(
-                        'Посмотреть букинги',
-                        text_align=ft.TextAlign.CENTER,
-                        size=16,
-                        weight=ft.FontWeight.BOLD,
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-                spacing=5,
-            ),
-            on_click=self.on_booking_button_click,
-            padding=ft.padding.symmetric(vertical=20),
-            alignment=ft.alignment.center,
-        )
-
-    def on_booking_button_click(self, e):
-        from washer.ui_components.admin_booking_table import AdminBookingTable
-
-        current_date = str(date.today())
-        AdminBookingTable(
-            self.page,
-            self.car_wash,
-            current_date,
-            locations=self.locations,
-        )
 
     def create_schedule_list_section(self):
         header = ft.Row(
@@ -559,9 +555,7 @@ class CarWashEditPage:
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         )
-
         rows = [header]
-
         sorted_schedules = sorted(
             self.schedule_list,
             key=lambda x: datetime.datetime.strptime(
@@ -569,7 +563,6 @@ class CarWashEditPage:
                 '%Y-%m-%d',
             ),
         )
-
         for schedule in sorted_schedules:
             day_of_week = schedule['day_of_week']
             schedule_date = datetime.datetime.strptime(
@@ -600,7 +593,6 @@ class CarWashEditPage:
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             )
             rows.append(row)
-
         return ft.Container(
             content=ft.Column(
                 controls=[
@@ -628,84 +620,43 @@ class CarWashEditPage:
         ]
         return days_of_week_names[day_of_week]
 
-    def create_schedule_button(self):
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Icon(
-                        name=ft.icons.CALENDAR_TODAY,
-                        size=50,
-                        color='#ef7b00',
-                    ),
-                    ft.Text(
-                        'Расписание',
-                        text_align=ft.TextAlign.CENTER,
-                        size=16,
-                        weight=ft.FontWeight.BOLD,
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-                spacing=5,
-            ),
-            on_click=self.on_schedule_button_click,
-            padding=ft.padding.symmetric(vertical=20),
-            alignment=ft.alignment.center,
-        )
-
     def on_schedule_button_click(self, e):
+        self.page.navigation_bar.selected_index = 1
+        self.page.update()
         ScheduleManagementPage(self.page, self.car_wash, self.locations)
-
-    def create_boxes_button(self):
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Icon(
-                        name=ft.icons.GARAGE,
-                        size=50,
-                        color='#ef7b00',
-                    ),
-                    ft.Text(
-                        'Боксы',
-                        text_align=ft.TextAlign.CENTER,
-                        size=16,
-                        weight=ft.FontWeight.BOLD,
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-                spacing=5,
-            ),
-            on_click=self.on_boxes_button_click,
-            padding=ft.padding.symmetric(vertical=20),
-            alignment=ft.alignment.center,
-        )
+        self.page.update()
 
     def on_boxes_button_click(self, e):
         from washer.ui_components.box_management_page import BoxManagementPage
 
+        self.page.navigation_bar.selected_index = 3
+        self.page.update()
         BoxManagementPage(self.page, self.car_wash, self.locations)
 
-    def create_prices_button(self):
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Icon(
-                        name=ft.icons.ATTACH_MONEY,
-                        size=50,
-                        color='#ef7b00',
-                    ),
-                    ft.Text(
-                        'Цены',
-                        text_align=ft.TextAlign.CENTER,
-                        size=16,
-                        weight=ft.FontWeight.BOLD,
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-                spacing=5,
-            ),
-            on_click=self.on_prices_button_click,
-            padding=ft.padding.symmetric(vertical=20),
-            alignment=ft.alignment.center,
+    def on_prices_button_click(self, e):
+        from washer.ui_components.price_management_page import (
+            PriceManagementPage,
+        )
+
+        self.page.navigation_bar.selected_index = 0
+        self.page.update()
+        prices = self.load_prices()
+        PriceManagementPage(
+            self.page,
+            self.car_wash,
+            self.body_type_dict,
+            prices,
+            self.locations,
+        )
+
+    def on_booking_button_click(self, e):
+        from washer.ui_components.admin_booking_table import AdminBookingTable
+
+        self.page.navigation_bar.selected_index = 4
+        self.page.update()
+        current_date = str(date.today())
+        AdminBookingTable(
+            self.page, self.car_wash, current_date, locations=self.locations
         )
 
     def load_prices(self):
@@ -715,20 +666,6 @@ class CarWashEditPage:
         else:
             print(f'Ошибка загрузки цен: {response.text}')
             return []
-
-    def on_prices_button_click(self, e):
-        from washer.ui_components.price_management_page import (
-            PriceManagementPage,
-        )
-
-        prices = self.load_prices()
-        PriceManagementPage(
-            self.page,
-            self.car_wash,
-            self.body_type_dict,
-            prices,
-            self.locations,
-        )
 
     def on_avatar_click(self, e):
         self.show_change_button = not self.show_change_button
@@ -744,7 +681,6 @@ class CarWashEditPage:
             self.selected_image = e.files[0].path
             if hasattr(e.files[0], 'bytes') and e.files[0].bytes:
                 self.selected_image_bytes = e.files[0].bytes
-
             self.avatar_container.content = ft.Image(
                 src=self.selected_image,
                 width=150,
@@ -788,16 +724,13 @@ class CarWashEditPage:
         self.show_change_button = show_change
         self.show_save_button = show_save
         self.show_cancel_button = show_cancel
-
         self.change_button.visible = show_change
         self.save_button.visible = show_save
         self.cancel_button.visible = show_cancel
-
         self.page.update()
 
     def upload_image(self):
         files = None
-
         if self.selected_image_bytes:
             files = {
                 'image': ('image.png', io.BytesIO(self.selected_image_bytes))
@@ -808,7 +741,6 @@ class CarWashEditPage:
             except FileNotFoundError:
                 self.hide_loading()
                 return
-
         new_values = {
             'name': self.car_wash['name'],
             'location_id': self.car_wash['location_id'],
