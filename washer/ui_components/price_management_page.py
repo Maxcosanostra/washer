@@ -37,18 +37,21 @@ class PriceManagementPage:
             self.price_list = []
 
     def create_price_management_page(self):
-        self.price_list_container = ft.Container(
-            content=ft.ListView(
-                controls=[
-                    *[
-                        self.create_price_display(price)
-                        for price in self.price_list
-                    ],
-                    self.create_add_price_section(),
+        price_list_view = ft.ListView(
+            controls=[
+                ft.Container(height=10),
+                *[
+                    self.create_price_display(price)
+                    for price in self.price_list
                 ],
-                spacing=10,
-                expand=True,
-            ),
+                self.create_add_price_section(),
+            ],
+            spacing=5,
+            expand=True,
+        )
+
+        self.price_list_container = ft.Container(
+            content=price_list_view,
             expand=True,
         )
 
@@ -70,11 +73,9 @@ class PriceManagementPage:
             leading_width=100,
         )
 
-        main_content = self.price_list_container
-
         return ft.Container(
-            content=main_content,
-            margin=ft.margin.only(top=20),
+            content=self.price_list_container,
+            margin=ft.margin.only(top=-10),  # прижимаем контент к AppBar
             expand=True,
             width=730,
             alignment=ft.alignment.center,
