@@ -1,5 +1,3 @@
-import time
-
 import flet as ft
 
 from washer.api_requests import BackendApi
@@ -17,7 +15,6 @@ class AdminPage:
         self.current_car_wash_id = None
 
         self.api = BackendApi()
-
         access_token = self.page.client_storage.get('access_token')
         if access_token:
             self.api.set_access_token(access_token)
@@ -25,14 +22,21 @@ class AdminPage:
         self.page.adaptive = True
 
         self.page.appbar = ft.AppBar(
+            leading=ft.IconButton(
+                icon=ft.icons.LOGOUT,
+                on_click=self.on_logout_click,
+                icon_color='#ef7b00',
+                padding=ft.padding.only(left=10),
+            ),
             title=ft.Text(
-                'Управление автомойками',
+                'Мои автомойки',
                 size=20,
                 weight=ft.FontWeight.BOLD,
                 text_align=ft.TextAlign.CENTER,
             ),
             center_title=True,
             bgcolor=ft.colors.SURFACE_VARIANT,
+            leading_width=60,
         )
 
         self.loading_overlay = ft.Container(
@@ -51,10 +55,29 @@ class AdminPage:
         )
 
         self.page.clean()
-        self.page.add(self.create_main_container())
+        self.page.add(self.create_admin_page())
         self.page.overlay.append(self.loading_overlay)
 
         self.load_car_washes()
+
+    def create_admin_page(self):
+        main_content = ft.ListView(
+            controls=[
+                ft.Container(height=10),
+                self.car_washes_list_view,
+            ],
+            spacing=10,
+            expand=True,
+            padding=ft.padding.all(0),
+        )
+
+        return ft.Container(
+            content=main_content,
+            margin=ft.margin.only(top=-10),
+            expand=True,
+            width=730,
+            alignment=ft.alignment.center,
+        )
 
     def show_loading(self):
         self.loading_overlay.visible = True
@@ -63,28 +86,6 @@ class AdminPage:
     def hide_loading(self):
         self.loading_overlay.visible = False
         self.page.update()
-
-    def create_main_container(self):
-        return ft.Column(
-            controls=[
-                self.car_washes_list_view,
-                ft.Container(
-                    content=ft.TextButton(
-                        text='Выйти',
-                        on_click=self.on_logout_click,
-                        style=ft.ButtonStyle(
-                            bgcolor=ft.colors.RED,
-                            color=ft.colors.WHITE,
-                        ),
-                    ),
-                    alignment=ft.alignment.center,
-                    padding=ft.padding.symmetric(vertical=20),
-                ),
-            ],
-            expand=True,
-            height=720,
-            alignment=ft.MainAxisAlignment.START,
-        )
 
     def load_car_washes(self):
         self.show_loading()
@@ -196,8 +197,7 @@ class AdminPage:
         load_edit_page(None)
 
     def on_logout_click(self, _):
-        def delayed_hide_appbar():
-            time.sleep(0.1)
+        def hide_appbar():
             self.page.appbar = None
             self.page.update()
 
@@ -210,5 +210,4 @@ class AdminPage:
         from washer.ui_components.sign_in_page import SignInPage
 
         SignInPage(self.page)
-
-        delayed_hide_appbar()
+        hide_appbar()
