@@ -80,6 +80,7 @@ class ScheduleManagementPage:
         self.page.add(self.create_schedule_management_page())
         self.page.overlay.append(self.loading_overlay)
         self.page.overlay.append(self.snack_bar)
+        self.page.update()
 
     def setup_snack_bar(self):
         self.snack_bar = ft.SnackBar(
@@ -272,7 +273,6 @@ class ScheduleManagementPage:
                                 ),
                                 expand=4,
                                 alignment=ft.alignment.center,
-                                # padding=ft.padding.only(left=5),
                             ),
                             ft.Container(
                                 content=ft.Text(
@@ -717,20 +717,21 @@ class ScheduleManagementPage:
 
         main_content = ft.ListView(
             controls=[
+                ft.Container(height=10),
                 self.create_week_schedule_section(),
                 ft.Divider(),
                 self.create_manual_schedule_section(),
                 ft.Divider(),
                 self.schedule_list_container,
             ],
-            spacing=20,
+            spacing=10,
             padding=ft.padding.only(right=15),
             expand=True,
         )
 
         return ft.Container(
             content=main_content,
-            margin=ft.margin.only(top=20),
+            margin=ft.margin.only(top=-10),
             expand=True,
             width=730,
             alignment=ft.alignment.center,
