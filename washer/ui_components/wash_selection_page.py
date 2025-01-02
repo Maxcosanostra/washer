@@ -27,6 +27,8 @@ class WashSelectionPage:
             self.redirect_to_sign_in_page()
             return
 
+        self.page.appbar = self.create_app_bar()
+
         self.progress_bar = ft.ProgressBar(width=400, visible=False)
 
         self.car_washes_list = ft.ListView(controls=[], padding=0, spacing=0)
@@ -74,6 +76,48 @@ class WashSelectionPage:
         )
 
         self.page.update()
+
+    def create_app_bar(self):
+        avatar_url = self.get_avatar_from_server()
+        avatar = (
+            ft.Image(
+                src=avatar_url,
+                width=40,
+                height=40,
+                border_radius=ft.border_radius.all(20),
+                fit=ft.ImageFit.COVER,
+            )
+            if avatar_url
+            else ft.Container(
+                content=ft.Icon(
+                    ft.icons.PERSON, size=30, color=ft.colors.GREY
+                ),
+                width=40,
+                height=40,
+                border_radius=ft.border_radius.all(20),
+                bgcolor=ft.colors.GREY_200,
+                alignment=ft.alignment.center,
+            )
+        )
+
+        return ft.AppBar(
+            leading=ft.Container(
+                content=avatar, on_click=self.on_avatar_click
+            ),
+            title=ft.Container(
+                content=ft.Text(
+                    'Wexy!',
+                    font_family='LavishlyYours',
+                    size=32,
+                    weight=ft.FontWeight.BOLD,
+                    color=None,
+                ),
+                margin=ft.margin.only(top=-9),
+                # Слегка поднимаем текст через отрицательный отступ
+            ),
+            center_title=True,
+            bgcolor=None,
+        )
 
     def create_avatar_container(self):
         avatar_url = self.get_avatar_from_server()
