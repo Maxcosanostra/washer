@@ -4,6 +4,8 @@ import flet as ft
 
 from washer.api_requests import BackendApi
 from washer.config import config
+from washer.ui_components.account_settings_page import AccountSettingsPage
+from washer.ui_components.my_finance_page import MyFinancePage
 
 
 class WashSelectionPage:
@@ -27,7 +29,10 @@ class WashSelectionPage:
             self.redirect_to_sign_in_page()
             return
 
-        self.page.appbar = self.create_app_bar()
+        self.drawer = self.create_navigation_drawer()
+        self.page.drawer = self.drawer
+
+        self.page.appbar = self.create_app_bar_with_drawer()
 
         self.progress_bar = ft.ProgressBar(width=400, visible=False)
 
@@ -37,10 +42,14 @@ class WashSelectionPage:
         self.search_bar.visible = False
 
         self.page.clean()
+
+        self.page.appbar = self.create_app_bar_with_drawer()
+        self.page.drawer = self.create_navigation_drawer()
+
         self.main_container = self.create_main_container()
-        self.page.add(self.main_container)
         self.page.add(
-            ft.Container(self.progress_bar, alignment=ft.alignment.center)
+            self.main_container,
+            ft.Container(self.progress_bar, alignment=ft.alignment.center),
         )
 
         self.progress_bar.visible = True
@@ -77,32 +86,74 @@ class WashSelectionPage:
 
         self.page.update()
 
-    def create_app_bar(self):
-        avatar_url = self.get_avatar_from_server()
-        avatar = (
-            ft.Image(
-                src=avatar_url,
-                width=40,
-                height=40,
-                border_radius=ft.border_radius.all(20),
-                fit=ft.ImageFit.COVER,
-            )
-            if avatar_url
-            else ft.Container(
-                content=ft.Icon(
-                    ft.icons.PERSON, size=30, color=ft.colors.GREY
-                ),
-                width=40,
-                height=40,
-                border_radius=ft.border_radius.all(20),
-                bgcolor=ft.colors.GREY_200,
-                alignment=ft.alignment.center,
-            )
-        )
+    def reload_page(self):
+        username = self.username
+        self.page.clean()
+        WashSelectionPage(self.page, username)
 
+    def create_navigation_drawer(self):
+        drawer = ft.NavigationDrawer(
+            on_dismiss=self.on_drawer_dismiss,
+            on_change=self.on_drawer_change,
+            controls=[
+                ft.Container(
+                    padding=ft.padding.all(16),
+                    bgcolor=ft.colors.BLUE_GREY_900,
+                    content=ft.Row(
+                        controls=[
+                            self.avatar_container,
+                            ft.Text(
+                                f'Привет, {self.username}!',
+                                color=ft.colors.WHITE,
+                                size=18,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.START,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                ),
+                ft.Divider(thickness=1, color=ft.colors.GREY_300),
+                ft.NavigationDrawerDestination(
+                    label='Главная',
+                    icon=ft.icons.HOME_OUTLINED,
+                    selected_icon=ft.icons.HOME,
+                ),
+                ft.NavigationDrawerDestination(
+                    label='Мои записи',
+                    icon=ft.icons.EVENT_NOTE_OUTLINED,
+                    selected_icon=ft.icons.EVENT_NOTE,
+                ),
+                ft.NavigationDrawerDestination(
+                    label='Мои автомобили',
+                    icon=ft.icons.CAR_REPAIR_OUTLINED,
+                    selected_icon=ft.icons.CAR_REPAIR,
+                ),
+                ft.NavigationDrawerDestination(
+                    label='Мои финансы',
+                    icon=ft.icons.ATTACH_MONEY_OUTLINED,
+                    selected_icon=ft.icons.ATTACH_MONEY,
+                ),
+                ft.Divider(thickness=1, color=ft.colors.GREY_300),
+                ft.NavigationDrawerDestination(
+                    label='Настройки',
+                    icon=ft.icons.SETTINGS_OUTLINED,
+                    selected_icon=ft.icons.SETTINGS,
+                ),
+                ft.NavigationDrawerDestination(
+                    label='Выйти',
+                    icon=ft.icons.LOGOUT_OUTLINED,
+                    selected_icon=ft.icons.LOGOUT,
+                ),
+            ],
+        )
+        return drawer
+
+    def create_app_bar_with_drawer(self):
         return ft.AppBar(
-            leading=ft.Container(
-                content=avatar, on_click=self.on_avatar_click
+            leading=ft.IconButton(
+                icon=ft.icons.MENU,
+                on_click=self.open_drawer,
             ),
             title=ft.Container(
                 content=ft.Text(
@@ -118,6 +169,46 @@ class WashSelectionPage:
             center_title=True,
             bgcolor=None,
         )
+
+    def open_drawer(self, e):
+        self.page.drawer.open = True
+        self.page.update()  # Обновляем страницу
+
+    def on_drawer_dismiss(self, e):
+        print('NavigationDrawer закрыт')
+
+    def on_drawer_change(self, e):
+        selected = e.control.selected_index
+        print(f'Выбранный индекс в NavigationDrawer: {selected}')
+
+        self.page.drawer.open = False
+        self.page.update()
+
+        if selected == 0:
+            # Перезагружаем страницу полностью
+            self.reload_page()
+        elif selected == 1:
+            self.open_my_bookings_page()
+        elif selected == 2:
+            self.open_my_cars_page()
+        elif selected == 3:
+            self.open_my_finances_page()
+        elif selected == 4:
+            self.open_settings_page()
+        elif selected == 5:
+            self.logout()
+
+    def open_settings_page(self):
+        AccountSettingsPage(self.page)
+        self.page.update()
+
+    def open_my_finances_page(self):
+        MyFinancePage(self.page)
+        self.page.update()
+
+    def logout(self):
+        self.page.client_storage.clear()
+        self.redirect_to_sign_in_page()
 
     def create_avatar_container(self):
         avatar_url = self.get_avatar_from_server()
@@ -181,7 +272,6 @@ class WashSelectionPage:
         return ft.Container(
             content=ft.ListView(
                 controls=[
-                    self.create_welcome_card(),
                     ft.Container(
                         content=ft.Text(
                             'Автомойки',
@@ -200,35 +290,6 @@ class WashSelectionPage:
             expand=True,
             width=730,
             alignment=ft.alignment.center,
-        )
-
-    def create_welcome_card(self):
-        return ft.Container(
-            content=ft.Card(
-                content=ft.Container(
-                    content=ft.Row(
-                        [
-                            ft.Container(
-                                content=self.avatar_container,
-                                alignment=ft.alignment.center,
-                            ),
-                            ft.Text(
-                                f'Привет, {self.username}!',
-                                size=20,
-                                weight=ft.FontWeight.BOLD,
-                                text_align=ft.TextAlign.LEFT,
-                            ),
-                        ],
-                        alignment=ft.MainAxisAlignment.START,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                    ),
-                    padding=ft.padding.all(10),
-                    expand=True,
-                ),
-                elevation=3,
-            ),
-            alignment=ft.alignment.center,
-            expand=True,
         )
 
     def create_search_bar(self):
@@ -488,22 +549,10 @@ class WashSelectionPage:
         selected_index = e.control.selected_index
         print(f'NavigationBar selected index: {selected_index}')
 
-        self.page.appbar = None
-
         if selected_index == 0:
             self.open_my_bookings_page()
         elif selected_index == 1:
-            self.page.clean()
-            self.page.add(self.main_container)
-            self.page.add(
-                ft.Container(self.progress_bar, alignment=ft.alignment.center)
-            )  # Добавляем ProgressBar снова
-
-            self.page.floating_action_button = ft.FloatingActionButton(
-                icon=ft.icons.SEARCH,
-                tooltip='Поиск автомойки',
-                on_click=self.on_fab_click,
-            )
+            self.reload_page()
         elif selected_index == 2:
             self.open_my_cars_page()
 
