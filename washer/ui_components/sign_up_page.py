@@ -157,10 +157,6 @@ class SignUpPage:
         self.is_formatting = False
 
     def show_welcome_page(self, e=None):
-        page_width = self.page.window.width
-
-        welcome_text_size = 22 if page_width < 600 else 28
-        title_text_size = 36 if page_width < 600 else 48
         image_size = 300
 
         self.page.clean()
@@ -168,37 +164,20 @@ class SignUpPage:
             ft.Container(
                 content=ft.ListView(
                     controls=[
-                        ft.Container(height=100),  # Отступ сверху
                         ft.Container(
                             content=ft.Text(
-                                'Добро пожаловать',
-                                size=welcome_text_size,
+                                'wexy!',
+                                size=180,
+                                font_family='LavishlyYours',
+                                # Применение пользовательского шрифта
                                 weight=ft.FontWeight.BOLD,
                                 text_align=ft.TextAlign.CENTER,
                             ),
-                            margin=ft.margin.only(bottom=1),
+                            margin=ft.margin.only(bottom=20),
                         ),
                         ft.Container(
                             content=ft.Text(
-                                'в',
-                                size=welcome_text_size,
-                                weight=ft.FontWeight.BOLD,
-                                text_align=ft.TextAlign.CENTER,
-                            ),
-                            margin=ft.margin.only(bottom=1),
-                        ),
-                        ft.Container(
-                            content=ft.Text(
-                                'Washer!',
-                                size=title_text_size,
-                                weight=ft.FontWeight.BOLD,
-                                text_align=ft.TextAlign.CENTER,
-                            ),
-                            margin=ft.margin.only(bottom=10),
-                        ),
-                        ft.Container(
-                            content=ft.Text(
-                                'Лучшая автомойка в вашем кармане',
+                                'Лучшие автомойки в вашем кармане',
                                 size=16,
                                 text_align=ft.TextAlign.CENTER,
                                 color=ft.colors.GREY,
