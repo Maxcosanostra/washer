@@ -29,10 +29,10 @@ class WashSelectionPage:
             self.redirect_to_sign_in_page()
             return
 
-        self.drawer = self.create_navigation_drawer()
-        self.page.drawer = self.drawer
+        self.page.clean()
 
         self.page.appbar = self.create_app_bar_with_drawer()
+        self.page.drawer = self.create_navigation_drawer()
 
         self.progress_bar = ft.ProgressBar(width=400, visible=False)
 
@@ -40,11 +40,6 @@ class WashSelectionPage:
 
         self.search_bar = self.create_search_bar()
         self.search_bar.visible = False
-
-        self.page.clean()
-
-        self.page.appbar = self.create_app_bar_with_drawer()
-        self.page.drawer = self.create_navigation_drawer()
 
         self.main_container = self.create_main_container()
         self.page.add(
@@ -120,16 +115,6 @@ class WashSelectionPage:
                     selected_icon=ft.icons.HOME,
                 ),
                 ft.NavigationDrawerDestination(
-                    label='Мои записи',
-                    icon=ft.icons.EVENT_NOTE_OUTLINED,
-                    selected_icon=ft.icons.EVENT_NOTE,
-                ),
-                ft.NavigationDrawerDestination(
-                    label='Мои автомобили',
-                    icon=ft.icons.CAR_REPAIR_OUTLINED,
-                    selected_icon=ft.icons.CAR_REPAIR,
-                ),
-                ft.NavigationDrawerDestination(
                     label='Мои финансы',
                     icon=ft.icons.ATTACH_MONEY_OUTLINED,
                     selected_icon=ft.icons.ATTACH_MONEY,
@@ -178,32 +163,42 @@ class WashSelectionPage:
         print('NavigationDrawer закрыт')
 
     def on_drawer_change(self, e):
+        if not self.page.drawer:
+            print('NavigationDrawer отсутствует на текущей странице.')
+            return
+
         selected = e.control.selected_index
         print(f'Выбранный индекс в NavigationDrawer: {selected}')
 
         self.page.drawer.open = False
         self.page.update()
+        print(f'NavigationDrawer закрыт: {self.page.drawer.open}')
 
         if selected == 0:
-            # Перезагружаем страницу полностью
             self.reload_page()
         elif selected == 1:
-            self.open_my_bookings_page()
-        elif selected == 2:
-            self.open_my_cars_page()
-        elif selected == 3:
             self.open_my_finances_page()
-        elif selected == 4:
+        elif selected == 2:
             self.open_settings_page()
-        elif selected == 5:
+        elif selected == 3:
             self.logout()
+
+        if self.page.drawer:
+            print(
+                f'NavigationDrawer после обработки выбора: '
+                f'{self.page.drawer.open}'
+            )
 
     def open_settings_page(self):
         AccountSettingsPage(self.page)
         self.page.update()
 
     def open_my_finances_page(self):
-        MyFinancePage(self.page)
+        my_finance_page = MyFinancePage(self.page)
+        my_finance_page.open()
+
+        if hasattr(self.page, 'navigation_bar'):
+            self.page.navigation_bar.selected_index = 3
         self.page.update()
 
     def logout(self):
@@ -360,13 +355,6 @@ class WashSelectionPage:
 
         available_slots = self.get_available_slots(car_wash['id'])
 
-        # Оригинальная логика отображения количества доступных слотов
-        # if available_slots > 0:
-        #     slots_text = f'Свободно мест: {available_slots}'
-        # else:
-        #     slots_text = 'Свободных мест на сегодня нет'
-
-        # Новая логика отображения статуса слотов
         if available_slots > 0:
             slots_text = 'Есть свободные боксы'
         else:
