@@ -10,12 +10,15 @@ class SignInPage:
         self.page = page
         self.api = BackendApi()
 
+        self.disable_navigation_drawer_and_appbar()
+
         self.username_field = self.create_username_field()
         self.password_field = self.create_password_field()
 
         page.clean()
 
         self.page.navigation_bar = None
+        self.page.floating_action_button = None
 
         self.snack_bar = ft.SnackBar(
             content=ft.Text(
@@ -31,6 +34,11 @@ class SignInPage:
         self.page.update()
 
         page.add(self.create_sign_in_container())
+
+    def disable_navigation_drawer_and_appbar(self):
+        """Отключает NavigationDrawer и AppBar, обновляет страницу."""
+        self.page.drawer = None
+        self.page.appbar = None
 
     def create_username_field(self):
         return ft.TextField(
