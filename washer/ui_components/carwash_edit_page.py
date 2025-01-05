@@ -89,7 +89,7 @@ class CarWashEditPage:
                 ft.NavigationBarDestination(
                     icon=ft.icons.CALENDAR_TODAY,
                     selected_icon=ft.icons.CALENDAR_TODAY_OUTLINED,
-                    label='Расписание',
+                    label='График',
                 ),
                 ft.NavigationBarDestination(
                     icon=ft.icons.HOME,
