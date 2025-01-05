@@ -6,6 +6,10 @@ class MyFinancePage:
         self.page = page
 
     def open(self):
+        self.page.drawer = None
+        self.page.floating_action_button = None
+        # if self.page.navigation_bar:
+        #     self.page.navigation_bar.selected_index = 3
         self.page.clean()
         self.page.appbar = self.create_appbar()
         self.page.add(self.create_finances_page())
