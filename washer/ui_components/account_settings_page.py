@@ -37,6 +37,7 @@ class AccountSettingsPage:
             error_message = self.user_data['error']
             print('Ошибка при загрузке данных пользователя:', error_message)
             self.page.clean()
+            self.page.drawer = None  # Отключаем NavigationDrawer
             self.page.add(
                 ft.Container(
                     content=ft.Text(
@@ -51,6 +52,10 @@ class AccountSettingsPage:
             self.page.update()
 
     def show_account_settings(self):
+        self.page.drawer = None
+        self.page.floating_action_button = None
+        if self.page.navigation_bar:
+            self.page.navigation_bar.selected_index = 3
         self.page.appbar = ft.AppBar(
             leading=ft.IconButton(
                 icon=ft.icons.ARROW_BACK,
@@ -77,7 +82,7 @@ class AccountSettingsPage:
         )
         username_field = ft.TextField(
             value=self.user_data.get('username', ''),
-            label='Имя пользователя',
+            # label='Имя пользователя',
             width=300,
             text_size=15,
             height=60,
@@ -93,7 +98,7 @@ class AccountSettingsPage:
         )
         first_name_field = ft.TextField(
             value=self.user_data.get('first_name', ''),
-            label='Имя',
+            # label='Имя',
             width=300,
             text_size=15,
             height=60,
@@ -112,7 +117,7 @@ class AccountSettingsPage:
         )
         last_name_field = ft.TextField(
             value=self.user_data.get('last_name', ''),
-            label='Фамилия',
+            # label='Фамилия',
             width=300,
             text_size=15,
             height=60,
@@ -131,7 +136,7 @@ class AccountSettingsPage:
         )
         password_field = ft.TextField(
             value='',
-            label='Пароль',
+            # label='Пароль',
             password=True,
             can_reveal_password=True,
             width=300,
