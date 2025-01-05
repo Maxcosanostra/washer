@@ -20,6 +20,7 @@ class MyCarsPage:
         # Но за то FAB скрывается красиво до загрузки страницы
 
     def open(self):
+        self.page.drawer = None
         self.load_user_cars_from_server()
         self.page.clean()
         self.page.add(self.create_cars_page())
