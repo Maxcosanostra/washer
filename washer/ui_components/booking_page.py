@@ -523,6 +523,7 @@ class BookingPage:
 
         self.load_schedules()
         self.load_boxes()
+        self.page.drawer = None
 
     def create_car_wash_card(self):
         image_link = self.car_wash.get('image_link', 'assets/spa_logo.png')
