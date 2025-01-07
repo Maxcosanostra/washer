@@ -841,7 +841,6 @@ class AdminCarSelectionPage:
 
     def on_save_click(self, e):
         access_token = self.page.client_storage.get('access_token')
-
         if not access_token:
             self.show_error_message('Токен доступа отсутствует!')
             return
@@ -860,28 +859,46 @@ class AdminCarSelectionPage:
         if self.selected_body_type:
             full_name += f' {self.selected_body_type}'
 
-        selected_car = {
-            'brand': self.selected_brand,
-            'model': self.selected_model,
-            'generation': generation_display or 'Не указано',
-            'body_type': self.selected_body_type or 'Не указано',
-            'configuration_id': self.selected_generation_id,
-            'body_type_id': self.selected_body_type_id,
-            'car_number': self.car_number,
+        selected_car_for_request = {
             'name': full_name,
+            'configuration_id': self.selected_generation_id,
+            'license_plate': self.car_number,
         }
 
-        response = self.api.create_user_car(selected_car)
-        if response and response.status_code == 200:
-            self.show_success_message(
-                f'Автомобиль "{full_name}" успешно сохранен!'
-            )
-            self.selected_car = response.json()
-            self.selected_car.update(selected_car)
-            self.on_car_selected(self.selected_car, self.car_price)
-        else:
-            error_message = response.text if response else 'Неизвестная ошибка'
-            self.show_error_message(f'Ошибка: {error_message}')
+        try:
+            response = self.api.create_user_car(selected_car_for_request)
+            if response and response.status_code == 200:
+                self.show_success_message(
+                    f'Автомобиль "{full_name}" успешно сохранен!'
+                )
+
+                self.selected_car = response.json()
+
+                if not self.selected_car.get('name'):
+                    self.selected_car['name'] = full_name
+
+                self.selected_car.update(
+                    {
+                        'brand': self.selected_brand,
+                        'model': self.selected_model,
+                        'generation': generation_display or 'Не указано',
+                        'body_type': self.selected_body_type or 'Не указано',
+                        'configuration_id': self.selected_generation_id,
+                        'body_type_id': self.selected_body_type_id,
+                        'car_number': self.car_number,
+                    }
+                )
+
+                self.on_car_selected(self.selected_car, self.car_price)
+
+            else:
+                error_message = (
+                    response.text if response else 'Неизвестная ошибка'
+                )
+                self.show_error_message(f'Ошибка: {error_message}')
+
+        except Exception as ex:
+            self.show_error_message(f'Ошибка: {str(ex)}')
 
     def create_back_button(self):
         return ft.Container(
