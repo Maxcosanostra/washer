@@ -176,19 +176,19 @@ class SignUpPage:
                             margin=ft.margin.only(bottom=20),
                         ),
                         ft.Container(
+                            content=ft.Image(
+                                src='https://drive.google.com/uc?export=view&id=1haBXQrQ_akd40ZAuIi7dr-apE8hWhi5h',
+                                width=image_size,
+                                height=image_size,
+                            ),
+                            margin=ft.margin.only(bottom=30),
+                        ),
+                        ft.Container(
                             content=ft.Text(
                                 'Лучшие автомойки в вашем кармане',
                                 size=16,
                                 text_align=ft.TextAlign.CENTER,
                                 color=ft.colors.GREY,
-                            ),
-                            margin=ft.margin.only(bottom=30),
-                        ),
-                        ft.Container(
-                            content=ft.Image(
-                                src='https://drive.google.com/uc?export=view&id=1haBXQrQ_akd40ZAuIi7dr-apE8hWhi5h',
-                                width=image_size,
-                                height=image_size,
                             ),
                             margin=ft.margin.only(bottom=30),
                         ),
@@ -553,9 +553,8 @@ class SignUpPage:
                 first_name=self.user_basic_info.first_name,
                 last_name=self.user_basic_info.last_name,
                 password=self.user_password.password,
+                phone_number=self.phone_number,
                 image=None,
-                # phone_number=self.phone_number,
-                # Добавим позже, когда сервер поддержит
             )
         except ValidationError as ve:
             error_messages = []
