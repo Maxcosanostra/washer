@@ -63,9 +63,10 @@ class UserPassword(BaseModel):
 
 class UserRegistration(BaseModel):
     username: str
-    first_name: str
-    last_name: str
     password: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone_number: Optional[str] = Field(None, alias='phone_number')
     image: Optional[bytes] = None
 
     @field_validator('username')
