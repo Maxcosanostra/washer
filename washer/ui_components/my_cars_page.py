@@ -96,11 +96,16 @@ class MyCarsPage:
         car_name = car.get('name', 'Название не указано')
         brand, model, generation, body_type = self.parse_car_name(car_name)
 
+        license_plate = car.get('license_plate', 'Номер не указан')
+        is_verified = car.get('is_verified', False)
+
         car_details = [
             ('Бренд', brand),
             ('Модель', model),
             ('Поколение', generation),
             ('Тип кузова', body_type),
+            ('Госномер', license_plate),
+            ('Подтвержден?', 'Да' if is_verified else 'Нет'),
         ]
 
         car_info_column = ft.Column(
@@ -298,6 +303,8 @@ class MyCarsPage:
             print(f'Ошибка при запросе автомобилей с сервера: {e}')
 
     def on_add_car_click(self, e):
+        self.page.client_storage.set('redirect_to', 'my_cars_page')
+
         from washer.ui_components.select_car_page import SelectCarPage
 
         SelectCarPage(
@@ -307,12 +314,7 @@ class MyCarsPage:
         )
 
     def on_car_saved(self, car):
-        if 'id' not in car and 'user_car_id' in car:
-            car['id'] = car['user_car_id']
-        self.cars.append(car)
-        self.page.clean()
-        self.page.add(self.create_cars_page())
-        self.page.update()
+        print(f'Сохранен новый автомобиль (ID={car.get("id")})')
 
     def on_delete_car(self, car_id):
         def confirm_delete(e):
