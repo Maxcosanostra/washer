@@ -807,25 +807,35 @@ class SelectCarPage:
         if self.selected_body_type:
             full_name += f' {self.selected_body_type}'
 
-        selected_car = {
-            'brand': self.selected_brand,
-            'model': self.selected_model,
-            'generation': generation_display or 'Не указано',
-            'body_type': self.selected_body_type or 'Не указано',
-            'configuration_id': self.selected_generation_id,
-            'body_type_id': self.selected_body_type_id,
-            'car_number': self.car_number,
+        selected_car_for_request = {
             'name': full_name,
+            'configuration_id': self.selected_generation_id,
+            'license_plate': self.car_number,
         }
 
         try:
-            response = self.api.create_user_car(selected_car)
+            response = self.api.create_user_car(selected_car_for_request)
             if response.status_code == 200:
                 self.show_success_message(
                     f'Автомобиль "{full_name}" успешно сохранен!'
                 )
                 self.selected_car = response.json()
-                self.selected_car.update(selected_car)
+
+                if not self.selected_car.get('name'):
+                    self.selected_car['name'] = full_name
+
+                self.selected_car.update(
+                    {
+                        'brand': self.selected_brand,
+                        'model': self.selected_model,
+                        'generation': generation_display or 'Не указано',
+                        'body_type': self.selected_body_type or 'Не указано',
+                        'configuration_id': self.selected_generation_id,
+                        'body_type_id': self.selected_body_type_id,
+                        'car_number': self.car_number,
+                    }
+                )
+
                 self.on_car_saved(self.selected_car)
 
                 redirect_to = self.page.client_storage.get('redirect_to')
@@ -839,19 +849,13 @@ class SelectCarPage:
                         'location_data'
                     )
 
-                    if (
-                        not car_wash
-                        or not username
-                        or not cars
-                        or not location_data
-                    ):
+                    if not (car_wash and username and cars and location_data):
                         self.show_error_message(
                             'Ошибка: данные для редиректа не найдены'
                         )
                         return
 
                     self.page.client_storage.remove('redirect_to')
-
                     BookingPage(
                         page=self.page,
                         car_wash=car_wash,
@@ -862,6 +866,9 @@ class SelectCarPage:
                 elif redirect_to == 'my_cars_page':
                     self.page.client_storage.remove('redirect_to')
                     self.return_to_cars_page()
+                else:
+                    self.return_to_cars_page()
+
             else:
                 error_message = response.text or 'Неизвестная ошибка'
                 self.show_error_message(f'Ошибка: {error_message}')
