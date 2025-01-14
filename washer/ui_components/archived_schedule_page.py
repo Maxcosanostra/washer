@@ -76,6 +76,18 @@ class ArchivedSchedulePage:
                     booking['box_name'] = (
                         box['name'] if box else 'Неизвестный бокс'
                     )
+
+                    user_car = booking.get('user_car')
+                    if user_car:
+                        booking['car_name'] = user_car.get(
+                            'name', 'Неизвестно'
+                        )
+                        booking['license_plate'] = user_car.get(
+                            'license_plate', '---'
+                        )
+                    else:
+                        booking['car_name'] = 'Неизвестно'
+                        booking['license_plate'] = '---'
             else:
                 print(
                     f'Ошибка загрузки букингов: '
@@ -117,8 +129,8 @@ class ArchivedSchedulePage:
                 overflow=ft.TextOverflow.CLIP,
             ),
             alignment=ft.alignment.center,
-            padding=ft.padding.only(bottom=10, left=30),
-            width=250,
+            padding=ft.padding.only(bottom=10, left=20),
+            width=200,
             height=80,
         )
 
@@ -127,25 +139,25 @@ class ArchivedSchedulePage:
                 ft.Text(
                     'Бокс',
                     weight=ft.FontWeight.BOLD,
-                    width=80,
+                    width=70,
                     text_align=ft.TextAlign.CENTER,
                 ),
                 ft.Text(
                     'Время',
                     weight=ft.FontWeight.BOLD,
-                    width=100,
+                    width=130,
                     text_align=ft.TextAlign.CENTER,
                 ),
                 ft.Text(
                     'Автомобиль',
                     weight=ft.FontWeight.BOLD,
-                    width=120,
+                    width=180,
                     text_align=ft.TextAlign.CENTER,
                 ),
                 ft.Text(
                     'Цена',
                     weight=ft.FontWeight.BOLD,
-                    width=80,
+                    width=70,
                     text_align=ft.TextAlign.CENTER,
                 ),
             ],
@@ -164,25 +176,28 @@ class ArchivedSchedulePage:
                 booking['end_datetime']
             ).strftime('%H:%M')
             car_name = booking.get('car_name', 'Неизвестно')
-            price = booking.get('price', 0)
+            license_plate = booking.get('license_plate', '---')
+            price = booking.get('total_price', 0)
 
             total_price += float(price) if price else 0
+
+            car_display = f'{car_name} ({license_plate})'
 
             row = ft.Row(
                 controls=[
                     ft.Text(
-                        box_name, width=80, text_align=ft.TextAlign.CENTER
+                        box_name, width=70, text_align=ft.TextAlign.CENTER
                     ),
                     ft.Text(
                         f'{start_time} - {end_time}',
-                        width=100,
+                        width=130,
                         text_align=ft.TextAlign.CENTER,
                     ),
                     ft.Text(
-                        car_name, width=120, text_align=ft.TextAlign.CENTER
+                        car_display, width=180, text_align=ft.TextAlign.CENTER
                     ),
                     ft.Text(
-                        f'₸{price}', width=80, text_align=ft.TextAlign.CENTER
+                        f'₸{price}', width=70, text_align=ft.TextAlign.CENTER
                     ),
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_AROUND,
@@ -200,15 +215,15 @@ class ArchivedSchedulePage:
                 ft.Text(
                     'Итого',
                     weight=ft.FontWeight.BOLD,
-                    width=80,
+                    width=70,
                     text_align=ft.TextAlign.CENTER,
                 ),
-                ft.Text('', width=100),
-                ft.Text('', width=120),
+                ft.Text('', width=130),
+                ft.Text('', width=180),
                 ft.Text(
                     f'₸{int(total_price)}',
                     weight=ft.FontWeight.BOLD,
-                    width=80,
+                    width=70,
                     text_align=ft.TextAlign.CENTER,
                 ),
             ],
@@ -225,16 +240,16 @@ class ArchivedSchedulePage:
                 on_click=on_delete_click,
                 bgcolor=ft.colors.RED,
                 color=ft.colors.WHITE,
-                width=250,
+                width=200,
             ),
-            padding=ft.padding.only(top=10, left=30),
+            padding=ft.padding.only(top=10, left=20),
         )
 
         rows.append(delete_button)
 
         return ft.Container(
-            width=400,
-            margin=ft.margin.only(left=-30),
+            width=700,
+            margin=ft.margin.only(left=-15),
             content=ft.ListView(
                 controls=rows, padding=ft.padding.all(10), spacing=5
             ),
