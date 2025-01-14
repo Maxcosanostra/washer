@@ -42,6 +42,18 @@ class AdminBookingProcessPage:
             disabled=False,
         )
 
+        self.notes_field = ft.TextField(
+            label=(
+                'Например: оставил вещи в салоне. '
+                'Переложите, пожалуйста, в багажник и тд..'
+            ),
+            hint_text='',
+            multiline=True,
+            width=300,
+            height=100,
+            border_radius=ft.border_radius.all(10),
+        )
+
         self.setup_snack_bar()
         self.show_confirmation_page()
 
@@ -121,10 +133,17 @@ class AdminBookingProcessPage:
             self.show_error_message('ID выбранного автомобиля недоступен.')
             return
 
+        # Получаем значение заметок из текстового поля
+        notes = (
+            self.notes_field.value.strip() if self.notes_field.value else ''
+        )
+
         booking_data = {
             'box_id': self.box_id,
             'user_car_id': user_car_id,
-            'is_exception': False,
+            'state': 'CREATED',
+            'addition_ids': [],
+            'notes': notes,
             'start_datetime': start_datetime,
             'end_datetime': end_datetime,
         }
@@ -305,33 +324,76 @@ class AdminBookingProcessPage:
             margin=ft.margin.only(bottom=20),
         )
 
-        back_button = ft.Container(
-            content=ft.Row(
-                [
-                    ft.IconButton(
-                        icon=ft.icons.ARROW_BACK,
-                        icon_size=30,
-                        on_click=lambda e: self.show_car_selection_page(),
-                    ),
-                    ft.Text('Назад', size=16),
-                ],
-                alignment=ft.MainAxisAlignment.START,
-            ),
-            margin=ft.margin.only(bottom=15),
+        wishes_header = ft.Text(
+            'Есть пожелания или комментарии? Добавьте ниже',
+            size=18,
+            weight=ft.FontWeight.BOLD,
+            text_align=ft.TextAlign.CENTER,
         )
 
-        self.page.add(
-            ft.Container(
-                content=ft.ListView(
-                    controls=[
-                        back_button,
-                        car_info_card,
-                        booking_info_card,
-                        self.confirm_button,
-                    ],
-                    spacing=20,
-                    padding=ft.padding.all(20),
-                ),
-                expand=True,
-            )
+        confirm_button = ft.ElevatedButton(
+            text='Подтвердить букинг',
+            on_click=self.on_confirm_booking,
+            width=300,
+            bgcolor=ft.colors.GREEN,
+            color=ft.colors.WHITE,
         )
+
+        back_button = ft.ElevatedButton(
+            text='Изменить',
+            on_click=lambda e: self.show_car_selection_page(),
+            width=300,
+            bgcolor=ft.colors.GREY_700,
+            color=ft.colors.WHITE,
+        )
+
+        self.page.appbar = ft.AppBar(
+            leading=ft.IconButton(
+                icon=ft.icons.ARROW_BACK,
+                on_click=lambda e: self.show_car_selection_page(),
+                icon_color=ft.colors.WHITE,
+                padding=ft.padding.only(left=10),
+            ),
+            title=None,
+            center_title=True,
+            bgcolor=ft.colors.SURFACE_VARIANT,
+            leading_width=40,
+        )
+
+        main_content = ft.Column(
+            [
+                ft.Text(
+                    'Пожалуйста, подтвердите свои данные',
+                    size=24,
+                    weight=ft.FontWeight.BOLD,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                booking_info_card,
+                car_info_card,
+                wishes_header,
+                ft.Container(
+                    content=self.notes_field,
+                    alignment=ft.alignment.center,
+                    padding=ft.padding.symmetric(vertical=10),
+                ),
+                confirm_button,
+                back_button,
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=10,
+        )
+
+        confirmation_container = ft.Container(
+            content=ft.ListView(
+                controls=[
+                    main_content,
+                ],
+                spacing=20,
+                padding=ft.padding.all(20),
+            ),
+            expand=True,
+        )
+
+        self.page.add(confirmation_container)
+        self.page.update()
