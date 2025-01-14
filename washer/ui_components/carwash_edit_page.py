@@ -73,8 +73,11 @@ class CarWashEditPage:
 
         if self.boxes_list:
             self.today_bookings = self.load_today_bookings()
+        else:
+            self.today_bookings = []
 
         self.hide_loading()
+
         self.page.add(self.create_edit_page())
         self.page.update()
 
@@ -228,10 +231,61 @@ class CarWashEditPage:
                 self.total_revenue = 0
         except Exception as e:
             print(
-                f'Ошибка при загрузке букингов '
-                f'для автомойки {car_wash_id}: {e}'
+                f'Ошибка при загрузке букингов для автомойки '
+                f'{car_wash_id}: {e}'
             )
             self.total_revenue = 0
+
+    def load_today_bookings(self):
+        car_wash_id = self.car_wash['id']
+        response = self.api.get_bookings(car_wash_id)
+        if response.status_code == 200:
+            all_bookings = response.json().get('data', [])
+            today = datetime.date.today().strftime('%Y-%m-%d')
+            today_bookings = [
+                booking
+                for booking in all_bookings
+                if booking['start_datetime'].startswith(today)
+            ]
+            for booking in today_bookings:
+                box = next(
+                    (
+                        bx
+                        for bx in self.boxes_list
+                        if bx['id'] == booking['box_id']
+                    ),
+                    None,
+                )
+                booking['box_name'] = (
+                    box['name'] if box else 'Неизвестный бокс'
+                )
+                if box is None:
+                    print(f"Не удалось найти бокс с ID: {booking['box_id']}")
+            return today_bookings
+        else:
+            print(
+                f'Ошибка загрузки букингов для автомойки {car_wash_id}: '
+                f'{response.status_code}, {response.text}'
+            )
+            return []
+
+    def load_boxes(self):
+        self.boxes_list = []
+        response = self.api.get_boxes(self.car_wash['id'])
+        if response.status_code == 200:
+            self.boxes_list = [
+                box
+                for box in response.json().get('data', [])
+                if box['car_wash_id'] == self.car_wash['id']
+            ]
+            print(
+                f'Боксы для автомойки {self.car_wash["id"]} успешно загружены.'
+            )
+        else:
+            print(
+                f'Ошибка загрузки боксов для автомойки '
+                f'{self.car_wash["id"]}: {response.text}'
+            )
 
     def create_edit_page(self):
         location_id = self.car_wash.get('location_id')
@@ -240,8 +294,8 @@ class CarWashEditPage:
         address = location.get('address', 'Неизвестный адрес')
 
         print(
-            f'Создаем страницу редактирования для города: '
-            f'{city}, адрес: {address}'
+            f'Создаем страницу редактирования '
+            f'для города: {city}, адрес: {address}'
         )
 
         location_display = f'{city}, {address}'
@@ -266,19 +320,27 @@ class CarWashEditPage:
             ),
             visible=self.show_change_button,
         )
-
         self.save_button = ft.TextButton(
             text='Сохранить',
             on_click=self.on_save_click,
             style=ft.ButtonStyle(color=ft.colors.WHITE),
             visible=self.show_save_button,
         )
-
         self.cancel_button = ft.TextButton(
             text='Отменить',
             on_click=self.on_cancel_click,
             style=ft.ButtonStyle(color=ft.colors.RED),
             visible=self.show_cancel_button,
+        )
+
+        self.booking_status_dashboard = ft.Container(
+            content=self.create_booking_status_dashboard(),
+            padding=ft.padding.symmetric(vertical=10),
+        )
+
+        self.created_bookings_dashboard = ft.Container(
+            content=self.create_created_bookings_section(),
+            padding=ft.padding.symmetric(vertical=10),
         )
 
         main_content = ft.ListView(
@@ -330,7 +392,9 @@ class CarWashEditPage:
                     alignment=ft.alignment.center,
                     padding=ft.padding.symmetric(vertical=10),
                 ),
-                self.create_booking_status_dashboard(),
+                self.created_bookings_dashboard,
+                ft.Divider(),
+                self.booking_status_dashboard,
                 ft.Divider(),
                 self.create_schedule_list_section(),
                 ft.Divider(),
@@ -354,68 +418,250 @@ class CarWashEditPage:
             alignment=ft.alignment.center,
         )
 
-    def load_today_bookings(self):
-        car_wash_id = None
-        try:
-            car_wash_id = self.car_wash['id']
-            response = self.api.get_bookings(car_wash_id)
-            if response and response.status_code == 200:
-                all_bookings = response.json().get('data', [])
-                today = datetime.date.today().strftime('%Y-%m-%d')
-                today_bookings = [
-                    booking
-                    for booking in all_bookings
-                    if booking['start_datetime'].startswith(today)
-                ]
-                for booking in today_bookings:
-                    box = next(
-                        (
-                            bx
-                            for bx in self.boxes_list
-                            if bx['id'] == booking['box_id']
-                        ),
-                        None,
-                    )
-                    booking['box_name'] = (
-                        box['name'] if box else 'Неизвестный бокс'
-                    )
-                    if box is None:
-                        print(
-                            f"Не удалось найти бокс с ID: {booking['box_id']}"
-                        )
+    def create_created_bookings_section(self):
+        section_header = ft.Text(
+            'Новые букинги', size=24, weight=ft.FontWeight.BOLD
+        )
+        bookings_container = ft.Column(controls=[], spacing=10, expand=True)
+        created_bookings = [
+            b for b in self.today_bookings if b.get('state') == 'CREATED'
+        ]
 
-                return today_bookings
-            else:
-                print(
-                    f'Ошибка загрузки букингов для автомойки {car_wash_id}: '
-                    f'{response.status_code if response else "No response"}, '
-                    f'{response.text if response else ""}'
+        if not created_bookings:
+            bookings_container.controls.append(
+                ft.Text(
+                    'Нет букингов',
+                    size=16,
+                    color=ft.colors.GREY,
+                    text_align=ft.TextAlign.CENTER,
                 )
-                return []
-        except Exception as e:
-            print(
-                f'Ошибка при загрузке букингов '
-                f'для автомойки {car_wash_id}: {e}'
-            )
-            return []
-
-    def load_boxes(self):
-        self.boxes_list = []
-        response = self.api.get_boxes(self.car_wash['id'])
-        if response.status_code == 200:
-            self.boxes_list = [
-                box
-                for box in response.json().get('data', [])
-                if box['car_wash_id'] == self.car_wash['id']
-            ]
-            print(
-                f'Боксы для автомойки {self.car_wash["id"]} успешно загружены.'
             )
         else:
-            print(
-                f'Ошибка загрузки боксов для автомойки '
-                f'{self.car_wash["id"]}: {response.text}'
+            for booking in created_bookings:
+                user_car = booking.get('user_car', {})
+                user_info = user_car.get('user', {})
+                first_name = user_info.get('first_name', 'Неизвестный')
+                last_name = user_info.get('last_name', 'Клиент')
+                full_name = f'{first_name} {last_name}'.strip()
+                phone_number = user_info.get(
+                    'phone_number', 'Неизвестный номер'
+                )
+
+                car_name = user_car.get('name', 'Неизвестный автомобиль')
+                license_plate = user_car.get(
+                    'license_plate', 'Неизвестный номер'
+                )
+
+                start_time = datetime.datetime.fromisoformat(
+                    booking['start_datetime']
+                ).strftime('%H:%M')
+                end_time = datetime.datetime.fromisoformat(
+                    booking['end_datetime']
+                ).strftime('%H:%M')
+                time_range = f'{start_time} - {end_time}'
+                box_name = booking.get('box_name', 'Неизвестный бокс')
+                total_price = booking.get('total_price', '0.00 ₸')
+                notes = booking.get('notes', '').strip()
+
+                confirm_button = ft.ElevatedButton(
+                    text='Подтвердить',
+                    on_click=lambda e,
+                    b_id=booking['id']: self.show_confirmation_dialog(b_id),
+                    bgcolor=ft.colors.ORANGE,
+                    color=ft.colors.WHITE,
+                )
+
+                booking_card = ft.Card(
+                    content=ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Text(
+                                    'Пользователь',
+                                    weight=ft.FontWeight.BOLD,
+                                    size=16,
+                                ),
+                                ft.Row(
+                                    [
+                                        ft.Icon(
+                                            ft.icons.PERSON,
+                                            size=20,
+                                            color=ft.colors.BLUE_600,
+                                        ),
+                                        ft.Text(
+                                            full_name,
+                                            width=200,
+                                            text_align=ft.TextAlign.LEFT,
+                                        ),
+                                    ]
+                                ),
+                                ft.Row(
+                                    [
+                                        ft.Icon(
+                                            ft.icons.PHONE,
+                                            size=20,
+                                            color=ft.colors.GREEN_600,
+                                        ),
+                                        ft.Text(
+                                            phone_number,
+                                            width=200,
+                                            text_align=ft.TextAlign.LEFT,
+                                        ),
+                                    ]
+                                ),
+                                ft.Divider(
+                                    thickness=1, color=ft.colors.GREY_300
+                                ),
+                                ft.Text(
+                                    'Информация о записи',
+                                    weight=ft.FontWeight.BOLD,
+                                    size=16,
+                                ),
+                                ft.Row(
+                                    [
+                                        ft.Icon(
+                                            ft.icons.ACCESS_TIME,
+                                            size=20,
+                                            color=ft.colors.ORANGE_600,
+                                        ),
+                                        ft.Text(
+                                            time_range,
+                                            width=200,
+                                            text_align=ft.TextAlign.LEFT,
+                                        ),
+                                    ]
+                                ),
+                                ft.Row(
+                                    [
+                                        ft.Icon(
+                                            ft.icons.INBOX,
+                                            size=20,
+                                            color=ft.colors.PURPLE_600,
+                                        ),
+                                        ft.Text(
+                                            box_name,
+                                            width=200,
+                                            text_align=ft.TextAlign.LEFT,
+                                        ),
+                                    ]
+                                ),
+                                ft.Row(
+                                    [
+                                        ft.Icon(
+                                            ft.icons.ATTACH_MONEY,
+                                            size=20,
+                                            color=ft.colors.GREEN_600,
+                                        ),
+                                        ft.Text(
+                                            f'{total_price}',
+                                            width=200,
+                                            text_align=ft.TextAlign.LEFT,
+                                        ),
+                                    ]
+                                ),
+                                ft.Row(
+                                    [
+                                        ft.Icon(
+                                            ft.icons.NOTE,
+                                            size=20,
+                                            color=ft.colors.RED_600,
+                                        ),
+                                        ft.Text(
+                                            notes if notes else 'Нет',
+                                            width=200,
+                                            text_align=ft.TextAlign.LEFT,
+                                        ),
+                                    ],
+                                    visible=bool(notes),
+                                ),
+                                ft.Divider(
+                                    thickness=1, color=ft.colors.GREY_300
+                                ),
+                                ft.Text(
+                                    'Автомобиль',
+                                    weight=ft.FontWeight.BOLD,
+                                    size=16,
+                                ),
+                                ft.Row(
+                                    [
+                                        ft.Icon(
+                                            ft.icons.DIRECTIONS_CAR,
+                                            size=20,
+                                            color=ft.colors.BLUE_GREY_600,
+                                        ),
+                                        ft.Text(
+                                            car_name,
+                                            width=200,
+                                            text_align=ft.TextAlign.LEFT,
+                                        ),
+                                    ]
+                                ),
+                                ft.Row(
+                                    [
+                                        ft.Icon(
+                                            ft.icons.NUMBERS,
+                                            size=20,
+                                            color=ft.colors.PINK_600,
+                                        ),
+                                        ft.Text(
+                                            license_plate,
+                                            width=200,
+                                            text_align=ft.TextAlign.LEFT,
+                                        ),
+                                    ]
+                                ),
+                                ft.Row(
+                                    [confirm_button],
+                                    alignment=ft.MainAxisAlignment.CENTER,
+                                ),
+                            ],
+                            spacing=10,
+                        ),
+                        padding=ft.padding.all(10),
+                    ),
+                    elevation=2,
+                )
+                bookings_container.controls.append(booking_card)
+
+        return ft.Column(
+            controls=[section_header, bookings_container],
+            spacing=10,
+        )
+
+    def on_confirm_booking(self, booking_id):
+        print(f'Подтверждение букинга ID: {booking_id}')
+        self.show_loading()
+        updated_data = {'state': 'ACCEPTED'}
+        response = self.api.update_booking(booking_id, updated_data)
+
+        if response and response.status_code == 200:
+            for booking in self.today_bookings:
+                if booking['id'] == booking_id:
+                    booking['state'] = 'ACCEPTED'
+                    break
+            self.show_success_message(
+                f'Букинг ID {booking_id} успешно подтвержден'
             )
+            self.update_booking_status_dashboard()
+            self.update_created_bookings_dashboard()
+        else:
+            print(
+                f'Ошибка при подтверждении букинга ID '
+                f'{booking_id}: {response.text if response else "No response"}'
+            )
+            self.show_error_message(
+                f'Ошибка при подтверждении букинга ID {booking_id}'
+            )
+
+        self.hide_loading()
+        self.page.update()
+
+    def update_created_bookings_dashboard(self):
+        print('Обновление таблицы новых букингов (CREATED)...')
+        self.created_bookings_dashboard.content = (
+            self.create_created_bookings_section()
+        )
+        self.created_bookings_dashboard.update()
+        print('Таблица новых букингов обновлена.')
 
     def create_booking_status_dashboard(self):
         header = ft.Row(
@@ -441,18 +687,19 @@ class CarWashEditPage:
                 ft.Text(
                     'Статус',
                     weight=ft.FontWeight.BOLD,
-                    width=90,
+                    width=150,
                     text_align=ft.TextAlign.CENTER,
                 ),
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         )
-
         rows = [header]
-        current_time = datetime.datetime.now()
+
+        filtered_bookings = [
+            b for b in self.today_bookings if b.get('state') != 'CREATED'
+        ]
         sorted_bookings = sorted(
-            getattr(self, 'today_bookings', []),
-            key=lambda b: b['start_datetime'],
+            filtered_bookings, key=lambda b: b['start_datetime']
         )
 
         if not sorted_bookings:
@@ -470,66 +717,260 @@ class CarWashEditPage:
             )
         else:
             for booking in sorted_bookings:
+                booking_id = booking.get('id')
                 start_time = datetime.datetime.fromisoformat(
                     booking['start_datetime']
-                )
+                ).strftime('%H:%M')
                 end_time = datetime.datetime.fromisoformat(
                     booking['end_datetime']
-                )
-
-                if current_time < start_time:
-                    status = 'В ожидании'
-                    color = '#FFD700'
-                elif start_time <= current_time <= end_time:
-                    status = 'В процессе'
-                    color = '#FFA500'
-                else:
-                    status = 'Завершено'
-                    color = '#32CD32'
-
+                ).strftime('%H:%M')
+                state = booking.get('state', 'CREATED').upper()
+                notes = booking.get('notes', '')
                 box_name = booking.get('box_name', 'Неизвестный бокс')
+
+                status_info = self.get_status_info(state)
+                display_text = status_info['text']
+
+                status_btn = ft.TextButton(
+                    text=display_text,
+                    style=ft.ButtonStyle(
+                        color={ft.MaterialState.DEFAULT: status_info['color']},
+                    ),
+                    on_click=lambda e,
+                    b_id=booking_id,
+                    c_notes=notes,
+                    st=state: self.create_radio_dialog(b_id, c_notes, st),
+                )
 
                 row = ft.Row(
                     controls=[
                         ft.Text(
-                            start_time.strftime('%H:%M'),
+                            start_time,
                             width=70,
                             text_align=ft.TextAlign.CENTER,
                         ),
                         ft.Text(
-                            end_time.strftime('%H:%M'),
-                            width=90,
-                            text_align=ft.TextAlign.CENTER,
+                            end_time, width=90, text_align=ft.TextAlign.CENTER
                         ),
                         ft.Text(
                             box_name, width=70, text_align=ft.TextAlign.CENTER
                         ),
-                        ft.Text(
-                            status,
-                            width=90,
-                            text_align=ft.TextAlign.CENTER,
-                            color=color,
-                        ),
+                        status_btn,
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 )
                 rows.append(row)
 
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Text(
-                        'Статус букингов', size=24, weight=ft.FontWeight.BOLD
-                    ),
-                    *rows,
-                ],
-                spacing=10,
-            ),
-            padding=ft.padding.symmetric(vertical=10),
+        return ft.Column(
+            controls=[
+                ft.Text('Статус букингов', size=24, weight=ft.FontWeight.BOLD)
+            ]
+            + rows,
+            spacing=10,
         )
 
-    def on_view_archived_schedule_click(self, e):
-        ArchivedSchedulePage(self.page, self.car_wash, self.locations)
+    def create_radio_dialog(self, booking_id, current_notes, current_state):
+        radio_values = [
+            ('CREATED', 'Новый'),
+            ('ACCEPTED', 'Подтвержден'),
+            ('STARTED', 'В процессе'),
+            ('COMPLETED', 'Завершено'),
+            ('EXCEPTION', 'Ошибка'),
+        ]
+
+        color_mapping = {
+            'CREATED': '#40E0D0',  # Бирюзовый
+            'ACCEPTED': '#87CEFA',  # Голубой
+            'STARTED': '#FFA500',  # Оранжевый
+            'COMPLETED': '#32CD32',  # Зеленый
+            'EXCEPTION': '#FF0000',  # Красный
+        }
+
+        initial_value = None
+        for val, _ in radio_values:
+            if val == current_state:
+                initial_value = val
+                break
+
+        def create_radio_line(value, label):
+            text_color = color_mapping.get(value, '#808080')
+
+            r = ft.Radio(value=value)
+            t = ft.Text(label, size=20, color=text_color)
+
+            def on_line_click(_):
+                radio_group.value = value
+                radio_group.update()
+
+            return ft.Container(
+                content=ft.Row(
+                    controls=[r, t],
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                padding=ft.padding.symmetric(vertical=5),
+                on_click=on_line_click,
+            )
+
+        lines = [create_radio_line(val, lbl) for val, lbl in radio_values]
+
+        radio_group = ft.RadioGroup(
+            content=ft.Column(lines), value=initial_value
+        )
+
+        save_button = ft.ElevatedButton(
+            text='Сохранить',
+            on_click=lambda e: self.on_save_radio_selection(
+                e, booking_id, radio_group.value, current_notes
+            ),
+        )
+
+        dialog = ft.AlertDialog(
+            title=ft.Text('Выбор статуса'),
+            content=ft.Column(
+                controls=[ft.Container(height=10), radio_group],
+                spacing=10,
+            ),
+            actions=[
+                save_button,
+                ft.TextButton(
+                    'Отмена', on_click=lambda _: self.close_dialog()
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+            modal=True,
+        )
+
+        self.page.dialog = dialog
+        dialog.open = True
+        self.page.update()
+
+    def on_save_radio_selection(self, e, booking_id, new_state, current_notes):
+        print(
+            f'[on_save_radio_selection] '
+            f'booking_id={booking_id}, new_state={new_state}'
+        )
+        self.close_dialog()
+        self.show_status_change_dialog(booking_id, new_state, current_notes)
+
+    def get_status_info(self, state):
+        status_mapping = {
+            'CREATED': {'text': 'Новый', 'color': '#40E0D0'},
+            'ACCEPTED': {'text': 'Подтвержден', 'color': '#87CEFA'},
+            'STARTED': {'text': 'В процессе', 'color': '#FFA500'},
+            'COMPLETED': {'text': 'Завершено', 'color': '#32CD32'},
+            'EXCEPTION': {'text': 'Ошибка', 'color': '#FF0000'},
+        }
+        return status_mapping.get(
+            state, {'text': 'Неизвестно', 'color': '#808080'}
+        )
+
+    def on_status_change(self, e, booking_id, current_notes):
+        new_state = e.control.value
+        self.show_status_change_dialog(booking_id, new_state, current_notes)
+
+    def show_status_change_dialog(self, booking_id, new_state, current_notes):
+        if new_state == 'COMPLETED':
+            existing_notes_text = ft.Text(
+                f'Существующие заметки: {current_notes}'
+                if current_notes
+                else 'Существующих заметок нет.',
+                size=14,
+                color=ft.colors.GREY,
+                selectable=True,
+            )
+            notes_field = ft.TextField(
+                label='Добавить заметки',
+                hint_text='Введите дополнительные заметки...',
+                multiline=True,
+                width=300,
+            )
+            dialog_content = ft.Column(
+                [
+                    ft.Text(
+                        f"Вы уверены, что хотите изменить статус "
+                        f"на '{self.get_status_info(new_state)['text']}'?"
+                    ),
+                    existing_notes_text,
+                    notes_field,
+                ],
+                spacing=10,
+            )
+        else:
+            dialog_content = ft.Text(
+                f"Вы уверены, что хотите изменить статус "
+                f"на '{self.get_status_info(new_state)['text']}'?"
+            )
+
+        save_button = ft.ElevatedButton(
+            text='Сохранить',
+            on_click=lambda _: self.confirm_status_change(
+                booking_id,
+                new_state,
+                notes_field.value if new_state == 'COMPLETED' else None,
+            ),
+        )
+        cancel_button = ft.TextButton(
+            text='Отмена',
+            on_click=lambda _: self.close_dialog(),
+        )
+        dialog = ft.AlertDialog(
+            title=ft.Text('Изменение статуса букинга'),
+            content=dialog_content,
+            actions=[save_button, cancel_button],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self.page.dialog = dialog
+        dialog.open = True
+        self.page.update()
+
+    def close_dialog(self):
+        if hasattr(self.page, 'dialog') and self.page.dialog:
+            self.page.dialog.open = False
+            self.page.update()
+
+    def confirm_status_change(self, booking_id, new_state, additional_notes):
+        if new_state == 'COMPLETED' and additional_notes:
+            existing_notes = next(
+                (
+                    booking['notes']
+                    for booking in self.today_bookings
+                    if booking['id'] == booking_id
+                ),
+                '',
+            )
+            if existing_notes:
+                updated_notes = existing_notes + '\n' + additional_notes
+            else:
+                updated_notes = additional_notes
+        else:
+            existing_notes = next(
+                (
+                    booking['notes']
+                    for booking in self.today_bookings
+                    if booking['id'] == booking_id
+                ),
+                '',
+            )
+            updated_notes = existing_notes
+
+        updated_data = {'state': new_state, 'notes': updated_notes}
+        response = self.api.update_booking(booking_id, updated_data)
+
+        if response and response.status_code == 200:
+            for booking in self.today_bookings:
+                if booking['id'] == booking_id:
+                    booking['state'] = new_state
+                    booking['notes'] = updated_notes
+                    break
+            self.close_dialog()
+            self.show_success_message('Статус успешно обновлён')
+            self.update_booking_status_dashboard()
+            if new_state != 'CREATED':
+                self.update_created_bookings_dashboard()
+        else:
+            self.close_dialog()
+            self.show_error_message('Ошибка при обновлении статуса')
+        self.page.update()
 
     def create_schedule_list_section(self):
         header = ft.Row(
@@ -689,9 +1130,7 @@ class CarWashEditPage:
                 border_radius=ft.border_radius.all(100),
             )
             self.update_button_visibility(
-                show_change=False,
-                show_save=True,
-                show_cancel=True,
+                show_change=False, show_save=True, show_cancel=True
             )
             self.page.update()
 
@@ -704,9 +1143,7 @@ class CarWashEditPage:
             border_radius=ft.border_radius.all(100),
         )
         self.update_button_visibility(
-            show_change=False,
-            show_save=False,
-            show_cancel=False,
+            show_change=False, show_save=False, show_cancel=False
         )
         self.page.update()
 
@@ -715,10 +1152,10 @@ class CarWashEditPage:
             self.show_loading()
             self.upload_image()
             self.update_button_visibility(
-                show_change=False,
-                show_save=False,
-                show_cancel=False,
+                show_change=False, show_save=False, show_cancel=False
             )
+            self.hide_loading()
+            self.page.update()
 
     def update_button_visibility(self, show_change, show_save, show_cancel):
         self.show_change_button = show_change
@@ -737,21 +1174,21 @@ class CarWashEditPage:
             }
         elif self.selected_image:
             try:
-                files = {'image': open(self.selected_image, 'rb')}
+                with open(self.selected_image, 'rb') as img_file:
+                    files = {'image': img_file}
             except FileNotFoundError:
                 self.hide_loading()
+                self.show_error_message('Файл изображения не найден.')
                 return
+
         new_values = {
             'name': self.car_wash['name'],
             'location_id': self.car_wash['location_id'],
         }
 
         response = self.api.update_car_wash(
-            self.car_wash['id'],
-            new_values=new_values,
-            files=files,
+            self.car_wash['id'], new_values=new_values, files=files
         )
-
         if response and response.status_code == 200:
             self.car_wash['image_link'] = response.json().get(
                 'image_link', self.car_wash['image_link']
@@ -764,11 +1201,13 @@ class CarWashEditPage:
                 border_radius=ft.border_radius.all(100),
             )
             self.page.update()
+            self.show_success_message('Изображение успешно обновлено.')
         else:
             print(
                 f'Ошибка при загрузке изображения: '
                 f'{response.text if response else "No response"}'
             )
+            self.show_error_message('Ошибка при загрузке изображения.')
 
         self.hide_loading()
 
@@ -789,3 +1228,85 @@ class CarWashEditPage:
 
         AdminPage.car_washes_cache = None
         AdminPage(self.page)
+
+    def on_view_archived_schedule_click(self, e):
+        ArchivedSchedulePage(self.page, self.car_wash, self.locations)
+
+    def show_confirmation_dialog(self, booking_id):
+        """
+        Отображает модальное окно подтверждения для подтверждения букинга.
+        """
+        dialog = ft.AlertDialog(
+            title=ft.Text('Подтверждение'),
+            content=ft.Text('Вы уверены, что хотите подтвердить этот букинг?'),
+            actions=[
+                ft.TextButton(
+                    text='Нет',
+                    on_click=lambda e: self.close_dialog(),
+                ),
+                ft.ElevatedButton(
+                    text='Да',
+                    bgcolor=ft.colors.ORANGE,
+                    color=ft.colors.WHITE,
+                    on_click=lambda e: self.confirm_booking_and_close(
+                        e, booking_id
+                    ),
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+            modal=True,
+        )
+
+        self.page.dialog = dialog
+        dialog.open = True
+        self.page.update()
+
+    def confirm_booking_and_close(self, event, booking_id):
+        """
+        Закрывает диалог и выполняет подтверждение букинга.
+        """
+        # Закрываем диалог
+        self.close_dialog()
+
+        # Выполняем подтверждение букинга
+        self.on_confirm_booking(booking_id)
+
+    def show_success_message(self, message):
+        self.page.snack_bar = ft.SnackBar(content=ft.Text(message), open=True)
+        self.page.snack_bar.open = True
+        self.page.update()
+
+    def update_booking_status_dashboard(self):
+        print('Обновление таблицы статусов букингов...')
+
+        # Перезагружаем / обновляем данные букингов
+        self.today_bookings = self.load_today_bookings()
+
+        # Заново создаём контент для booking_status_dashboard
+        self.booking_status_dashboard.content = (
+            self.create_booking_status_dashboard()
+        )
+
+        # Обновляем контейнер в UI
+        self.booking_status_dashboard.update()
+        print('Таблица статусов букингов обновлена.')
+
+    def show_error_message(self, message):
+        self.page.snack_bar = ft.SnackBar(
+            content=ft.Row(
+                controls=[
+                    ft.Icon(ft.icons.ERROR, color=ft.colors.RED),
+                    ft.Text(
+                        message, color=ft.colors.RED, weight=ft.FontWeight.BOLD
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.START,
+                spacing=10,
+            ),
+            bgcolor=ft.colors.WHITE,
+            action='Закрыть',
+            action_color=ft.colors.RED,
+            open=True,
+        )
+        self.page.snack_bar.open = True
+        self.page.update()
