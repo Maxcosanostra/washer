@@ -1,32 +1,181 @@
-from datetime import datetime
+import datetime
 
 import flet as ft
 
 from washer.api_requests import BackendApi
+
+BODY_TYPES = [
+    'внедорожник 5 дв',
+    'внедорожник 3 дв',
+    'седан 4 дв',
+    'хэтчбек 5 дв',
+    'хэтчбек 3 дв',
+    'универсал 5 дв',
+    'лифтбек 5 дв',
+    'фастбек 3 дв',
+    'купе 2 дв',
+    'кабриолет 2 дв',
+    'седан',
+    'хэтчбек',
+    'универсал',
+    'внедорожник',
+    'купе',
+    'кабриолет',
+    'минивэн',
+    'пикап',
+    'фургон',
+    'лимузин',
+    'тарга',
+    'родстер',
+    'комби',
+    'фастбек',
+    'лифтбек',
+    'спортивный',
+    'кроссовер',
+    'вэн',
+    'микроавтобус',
+    'минивен',
+]
+BODY_TYPES.sort(key=len, reverse=True)
+
+
+def remove_body_type_suffix(car_name: str) -> str:
+    """
+    Удаляет из конца строки любой тип кузова из BODY_TYPES, если найдётся.
+    Возвращает «очищенное» название без типа кузова.
+    """
+    name_cleaned = car_name.strip().rstrip('.').rstrip()
+    lowered = name_cleaned.lower()
+
+    for bt in BODY_TYPES:
+        if lowered.endswith(bt):
+            cut_len = len(bt)
+            name_without_bt = name_cleaned[: len(name_cleaned) - cut_len]
+            return name_without_bt.strip().rstrip('.').rstrip()
+
+    return car_name
 
 
 class MyBookingsPage:
     def __init__(self, page, api_url, car_wash, location_data):
         self.page = page
         self.api = BackendApi()
-        self.api.set_access_token(page.client_storage.get('access_token'))
+        self.api.set_access_token(self.page.client_storage.get('access_token'))
         self.api_url = api_url
         self.car_wash = car_wash
         self.location_data = location_data
         self.bookings = []
         self.completed_visible = False
-        self.completed_bookings_container = ft.Container(visible=False)
+
+        self.state_messages = {
+            'CREATED': 'Ожидаем приемки администратором',
+            'ACCEPTED': 'Ваша запись принята. Будем ждать Вас!',
+            'STARTED': 'Ваш автомобиль моется',
+            'COMPLETED': 'Запись завершена',
+            'EXCEPTION': 'Произошла ошибка при обработке записи',
+        }
+
+        self.state_colors = {
+            'CREATED': ft.colors.GREY_500,
+            'ACCEPTED': ft.colors.BLUE,
+            'STARTED': ft.colors.ORANGE,
+            'COMPLETED': ft.colors.GREEN,
+            'EXCEPTION': ft.colors.RED,
+        }
+
+        self.car_washes_dict = {}
+
+        self.boxes_dict = {}
 
         if self.page.navigation_bar:
             self.page.navigation_bar.selected_index = 0
 
         self.page.floating_action_button = None
-        # self.page.update()
-        # При включении self.page.update() AppBar скидывается некрасиво
-        # Но за то FAB скрывается красиво до загрузки страницы
+
+    def format_price(self, price_str):
+        try:
+            price = float(price_str)
+            return f'₸{price:,.2f}'.replace(',', ' ')
+        except ValueError:
+            return '₸0.00'
+
+    def format_datetime(self, datetime_str):
+        try:
+            dt = datetime.datetime.fromisoformat(
+                datetime_str.replace('Z', '+00:00')
+            )
+
+            months = [
+                'января',
+                'февраля',
+                'марта',
+                'апреля',
+                'мая',
+                'июня',
+                'июля',
+                'августа',
+                'сентября',
+                'октября',
+                'ноября',
+                'декабря',
+            ]
+            weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
+            day = dt.day
+            month = months[dt.month - 1]
+            weekday = weekdays[dt.weekday()]
+            time_str = dt.strftime('%H:%M')
+
+            return f'{day} {month} ({weekday}) в {time_str}'
+        except Exception as e:
+            print(f'Ошибка при форматировании даты и времени: {e}')
+            return datetime_str
+
+    def fetch_boxes(self):
+        response = self.api.get_boxes(car_wash_id=self.car_wash['id'])
+        if response and response.status_code == 200:
+            data = response.json().get('data', [])
+            self.boxes_dict = {box['id']: box['name'] for box in data}
+            print(f'Получено боксов: {self.boxes_dict}')
+        else:
+            status = response.status_code if response else 'No Response'
+            error_text = response.text if response else 'No Response'
+            print(f'Ошибка при получении боксов: {status} - {error_text}')
+            self.boxes_dict = {}
+
+    def fetch_car_washes(self):
+        page = 1
+        # limit = 100
+        while True:
+            response = self.api.get_car_washes(page=page)
+            if response and response.status_code == 200:
+                data = response.json().get('data', [])
+                if not data:
+                    break
+                for car_wash in data:
+                    car_wash_id = car_wash.get('id')
+                    name = car_wash.get('name', 'Без названия')
+                    image_link = car_wash.get('image_link', '')
+                    self.car_washes_dict[car_wash_id] = {
+                        'name': name,
+                        'image_link': image_link,
+                    }
+                if response.json().get('next') is None:
+                    break
+                page += 1
+            else:
+                status = response.status_code if response else 'No Response'
+                error_text = response.text if response else 'No Response'
+                print(
+                    f'Ошибка при получении автомоек: {status} - {error_text}'
+                )
+                break
 
     def open(self):
         self.page.drawer = None
+        self.completed_visible = False
+        self.fetch_boxes()
+        self.fetch_car_washes()
         self.load_user_bookings_from_server()
         self.page.clean()
         self.page.add(self.create_bookings_page())
@@ -49,73 +198,95 @@ class MyBookingsPage:
             center_title=True,
             bgcolor=ft.colors.PURPLE,
             leading_width=40,
-        )
-
-        active_bookings = [
-            booking
-            for booking in self.bookings
-            if datetime.fromisoformat(booking['start_datetime'])
-            > datetime.now()
-        ]
-
-        booking_content = [
-            self.create_booking_display(booking, active=True)
-            for booking in active_bookings
-        ]
-
-        completed_bookings = [
-            self.create_booking_display(booking, active=False)
-            for booking in self.bookings
-            if datetime.fromisoformat(booking['start_datetime'])
-            <= datetime.now()
-        ]
-
-        if not booking_content:
-            empty_image = ft.Container(
-                content=ft.Image(
-                    src='https://drive.google.com/uc?id=11B4mRtzpx2TjtO6X4t-nc5gdf_fHHEoK',
-                    width=300,
-                    height=300,
-                    fit=ft.ImageFit.COVER,
-                ),
-                padding=ft.padding.only(top=130),
-            )
-            empty_text = ft.Container(
-                content=ft.Text(
-                    'У вас пока нет активных записей',
-                    size=18,
-                    color=ft.colors.GREY_500,
-                    text_align=ft.TextAlign.CENTER,
-                ),
-                padding=ft.padding.only(top=20),
-            )
-            booking_content = [empty_image, empty_text]
-
-            booking_content.append(
-                ft.ElevatedButton(
-                    text='Давайте запишемся!',
-                    on_click=self.redirect_to_booking_page,
-                    bgcolor=ft.colors.PURPLE,
-                    color=ft.colors.WHITE,
-                    width=400,
+            actions=[
+                ft.IconButton(
+                    icon=ft.icons.AUTO_MODE_ROUNDED,
+                    tooltip='Показать завершенные записи'
+                    if not self.completed_visible
+                    else 'Скрыть завершенные записи',
+                    on_click=self.toggle_completed_visibility,
+                    icon_color=ft.colors.WHITE,
+                    padding=ft.padding.only(right=10),
                 )
-            )
-
-        toggle_button = ft.TextButton(
-            text='Показать завершенные записи'
-            if not self.completed_visible
-            else 'Скрыть завершенные записи',
-            on_click=self.toggle_completed_visibility,
+            ],
         )
-        booking_content.append(toggle_button)
 
-        self.completed_bookings_container.content = ft.Column(
-            controls=completed_bookings,
-            spacing=10,
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        )
-        booking_content.append(self.completed_bookings_container)
+        completed_states = ['COMPLETED']
+
+        booking_content = []
+
+        if self.completed_visible:
+            filtered_bookings = [
+                booking
+                for booking in self.bookings
+                if booking.get('state', '').upper() in completed_states
+            ]
+            booking_content = [
+                self.create_booking_display(booking, active=False)
+                for booking in filtered_bookings
+            ]
+
+            if not booking_content:
+                empty_image = ft.Container(
+                    content=ft.Image(
+                        src='https://drive.google.com/uc?id=11B4mRtzpx2TjtO6X4t-nc5gdf_fHHEoK',
+                        width=300,
+                        height=300,
+                        fit=ft.ImageFit.COVER,
+                    ),
+                    padding=ft.padding.only(top=130),
+                )
+                empty_text = ft.Container(
+                    content=ft.Text(
+                        'У вас пока нет завершённых записей',
+                        size=18,
+                        color=ft.colors.GREY_500,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    padding=ft.padding.only(top=20),
+                )
+                booking_content = [empty_image, empty_text]
+        else:
+            active_bookings = [
+                booking
+                for booking in self.bookings
+                if booking.get('state', '').upper() not in completed_states
+            ]
+            booking_content = [
+                self.create_booking_display(booking, active=True)
+                for booking in active_bookings
+            ]
+
+            if not booking_content:
+                empty_image = ft.Container(
+                    content=ft.Image(
+                        src='https://drive.google.com/uc?id=11B4mRtzpx2TjtO6X4t-nc5gdf_fHHEoK',
+                        width=300,
+                        height=300,
+                        fit=ft.ImageFit.COVER,
+                    ),
+                    padding=ft.padding.only(top=130),
+                )
+                empty_text = ft.Container(
+                    content=ft.Text(
+                        'У вас пока нет активных записей',
+                        size=18,
+                        color=ft.colors.GREY_500,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    padding=ft.padding.only(top=20),
+                )
+                booking_content = [empty_image, empty_text]
+
+                booking_content.append(
+                    ft.ElevatedButton(
+                        text='Давайте запишемся!',
+                        on_click=self.redirect_to_booking_page,
+                        bgcolor=ft.colors.PURPLE,
+                        color=ft.colors.WHITE,
+                        width=400,
+                    )
+                )
 
         return ft.Container(
             width=730,
@@ -131,71 +302,197 @@ class MyBookingsPage:
         )
 
     def create_booking_display(self, booking, active=True):
-        car_wash_name = self.car_wash.get('name', 'Автомойка не указана')
-        address = (
-            f"{self.location_data.get('city', 'Город не указан')}, "
-            f"{self.location_data.get('address', 'Адрес не указан')}"
+        loc = booking.get('location', {})
+        city = loc.get('city', 'Город не указан')
+        addr = loc.get('address', 'Адрес не указан')
+
+        user_car = booking.get('user_car', {})
+        raw_car_name = user_car.get('name', 'Автомобиль не указан')
+        car_name = remove_body_type_suffix(raw_car_name)
+
+        license_plate = user_car.get('license_plate', '—')
+
+        total_price = self.format_price(booking.get('total_price', '0.00'))
+        notes = booking.get('notes') or ''
+
+        state = booking.get('state', 'CREATED').upper()
+        additional_message_text = self.state_messages.get(
+            state, 'Неизвестное состояние записи'
         )
+
+        car_wash_id = booking.get('car_wash_id')
+        if not car_wash_id:
+            car_wash_id = loc.get('id')
+
+        car_wash_info = self.car_washes_dict.get(
+            car_wash_id, {'name': 'Автомойка не указана', 'image_link': ''}
+        )
+        car_wash_name = car_wash_info.get('name', 'Автомойка не указана')
+        image_link = car_wash_info.get('image_link', '')
+
+        print(f"Booking ID: {booking.get('id')}, Image Link: {image_link}")
+
+        if image_link:
+            image_src = image_link
+        else:
+            image_src = 'https://via.placeholder.com/50'
+
+        box_id = booking.get('box_id')
+        box_name = self.boxes_dict.get(box_id, f'Бокс #{box_id}')
 
         booking_details = [
             (
                 'Дата и время',
-                f"{booking['start_datetime'].split('T')[0]} в "
-                f"{booking['start_datetime'].split('T')[1][:5]}",
+                self.format_datetime(booking.get('start_datetime', '')),
             ),
-            ('Выбранный бокс', f"Бокс №{booking['box_id']}"),
-            ('Автомойка', car_wash_name),
-            ('Адрес', address),
-            ('Цена', f"₸{booking['price']}"),
+            ('Выбранный бокс', box_name),
+            ('Автомобиль', car_name),
+            ('Госномер', license_plate),
+            ('Цена', f'{total_price}'),
         ]
 
-        booking_info_column = ft.Column(
-            [
-                ft.Row(
-                    [
-                        ft.Text(label, weight=ft.FontWeight.BOLD, size=16),
-                        ft.Text(value, color=ft.colors.GREY_600, size=16),
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                )
-                for label, value in booking_details
-            ],
-            spacing=10,
-        )
+        message_color = self.state_colors.get(state, ft.colors.GREY_500)
 
-        additional_message = (
-            ft.Text(
-                'Мы ждем вас!' if active else '',
-                size=18,
-                color=ft.colors.GREY_500,
-                text_align=ft.TextAlign.CENTER,
-            )
-            if active
-            else None
-        )
-
-        cancel_button = (
-            ft.TextButton(
-                'Отменить букинг',
-                on_click=lambda e: self.on_delete_booking(booking['id']),
-                style=ft.ButtonStyle(
-                    color=ft.colors.RED_400,
-                    padding=ft.padding.symmetric(vertical=5),
+        booking_info_controls = [
+            ft.Row(
+                [
+                    ft.Text(
+                        car_wash_name,
+                        size=20,
+                        weight=ft.FontWeight.BOLD,
+                        text_align=ft.TextAlign.LEFT,
+                        expand=True,
+                    ),
+                    ft.Container(
+                        content=ft.Image(
+                            src=image_src,
+                            width=60,
+                            height=60,
+                            fit=ft.ImageFit.COVER,
+                        ),
+                        width=60,
+                        height=60,
+                        border_radius=ft.border_radius.all(30),
+                        alignment=ft.alignment.center,
+                        margin=ft.margin.only(bottom=-15),
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            ),
+            ft.Container(
+                content=ft.Text(
+                    f'{city}, {addr}',
+                    size=16,
+                    color=ft.colors.GREY_500,
+                    text_align=ft.TextAlign.CENTER,
                 ),
+                alignment=ft.alignment.center_left,
+                padding=ft.padding.only(top=-20),
+            ),
+            ft.Divider(color=ft.colors.GREY_300, height=20),
+        ]
+
+        for label, value in booking_details:
+            row = ft.Row(
+                [
+                    ft.Text(label, weight=ft.FontWeight.BOLD, size=16),
+                    ft.Text(value, color=ft.colors.GREY_600, size=16),
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             )
-            if active
-            else None
+            booking_info_controls.append(row)
+
+        if notes:
+            display_notes = notes if len(notes) <= 100 else notes[:100] + '...'
+            show_more = len(notes) > 100
+
+            notes_text = ft.Text(
+                f'Заметки: {display_notes}',
+                size=16,
+                color=ft.colors.GREY_700,
+                text_align=ft.TextAlign.LEFT,
+            )
+
+            if show_more:
+
+                def toggle_notes(
+                    e,
+                    notes=notes,
+                    display_notes=display_notes,
+                    notes_text=notes_text,
+                ):
+                    if notes_text.value.endswith('...'):
+                        notes_text.value = f'Заметки: {notes}'
+                        toggle_button.text = 'Скрыть'
+                    else:
+                        notes_text.value = f'Заметки: {display_notes}'
+                        toggle_button.text = 'Показать больше'
+                    notes_text.update()
+                    toggle_button.update()
+
+                toggle_button = ft.TextButton(
+                    text='Показать больше',
+                    on_click=toggle_notes,
+                    style=ft.ButtonStyle(
+                        color=ft.colors.BLUE,
+                        padding=ft.padding.symmetric(vertical=5),
+                    ),
+                )
+                booking_info_controls.append(notes_text)
+                booking_info_controls.append(toggle_button)
+            else:
+                booking_info_controls.append(notes_text)
+
+        booking_info_controls.append(
+            ft.Container(
+                content=ft.Text(
+                    additional_message_text,
+                    size=18,
+                    color=message_color,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                alignment=ft.alignment.center,
+            )
+        )
+
+        if state == 'STARTED':
+            loading_indicator = ft.ProgressBar(
+                width=200,
+                height=10,
+                color=ft.colors.ORANGE,
+                bgcolor=ft.colors.TRANSPARENT,
+            )
+            loading_container = ft.Container(
+                content=loading_indicator,
+                alignment=ft.alignment.center,
+                padding=ft.padding.only(top=10),
+            )
+            booking_info_controls.append(loading_container)
+
+        if active:
+            booking_info_controls.append(
+                ft.Divider(height=20, color=ft.colors.GREY_300)
+            )
+            booking_info_controls.append(
+                ft.TextButton(
+                    'Остались вопросы? Позвонить',
+                    on_click=lambda e: None,  # Логика будет добавлена позже
+                    style=ft.ButtonStyle(
+                        color=ft.colors.BLUE,
+                        padding=ft.padding.symmetric(vertical=5),
+                    ),
+                )
+            )
+
+        booking_info_column = ft.Column(
+            controls=booking_info_controls,
+            spacing=10,
         )
 
         return ft.Container(
             content=ft.Card(
                 content=ft.Container(
-                    content=ft.Column(
-                        [booking_info_column, ft.Divider()]
-                        + ([additional_message] if additional_message else [])
-                        + ([cancel_button] if cancel_button else []),
-                        spacing=15,
-                    ),
+                    content=booking_info_column,
                     padding=ft.padding.all(15),
                 ),
                 elevation=3,
@@ -208,33 +505,49 @@ class MyBookingsPage:
     def toggle_completed_visibility(self, e):
         self.completed_visible = not self.completed_visible
 
-        e.control.text = (
+        new_tooltip = (
             'Скрыть завершенные записи'
             if self.completed_visible
             else 'Показать завершенные записи'
         )
 
-        self.completed_bookings_container.visible = self.completed_visible
+        for action in self.page.appbar.actions:
+            if isinstance(action, ft.IconButton):
+                action.tooltip = new_tooltip
+                break
 
-        e.control.update()
+        self.page.clean()
+        self.page.add(self.create_bookings_page())
         self.page.update()
 
     def load_user_bookings_from_server(self):
         try:
-            user_id = self.page.client_storage.get('user_id')
-            if not user_id:
-                print('User ID не найден!')
-                return
-
-            response = self.api.get_user_bookings(user_id=user_id, limit=100)
+            response = self.api.get_all_bookings(
+                page=1, limit=100, order_by='id'
+            )
             if response is None:
-                print('Не удалось получить ответ от сервера.')
+                print('Не удалось получить ответ от сервера (None).')
                 return
 
             print(f'Ответ от сервера при загрузке букингов: {response.text}')
 
             if response.status_code == 200:
-                self.bookings = response.json().get('data', [])
+                all_bookings = response.json().get('data', [])
+
+                user_id = self.page.client_storage.get('user_id')
+                if user_id:
+                    try:
+                        user_id = int(user_id)
+                        all_bookings = [
+                            b
+                            for b in all_bookings
+                            if b.get('user_car', {}).get('user', {}).get('id')
+                            == user_id
+                        ]
+                    except ValueError:
+                        pass
+
+                self.bookings = all_bookings
             else:
                 print(
                     f'Ошибка при загрузке букингов с сервера: '
@@ -242,51 +555,6 @@ class MyBookingsPage:
                 )
         except Exception as e:
             print(f'Ошибка при запросе букингов с сервера: {e}')
-
-    def on_delete_booking(self, booking_id):
-        def confirm_delete(e):
-            self.page.dialog.open = False
-            self.page.update()
-            self.delete_booking_from_server(booking_id)
-
-        def cancel_delete(e):
-            self.page.dialog.open = False
-            self.page.update()
-
-        dlg_modal = ft.AlertDialog(
-            modal=True,
-            title=ft.Text('Подтверждение отмены'),
-            content=ft.Text('Вы уверены, что хотите отменить этот букинг?'),
-            actions=[
-                ft.TextButton('Да', on_click=confirm_delete),
-                ft.TextButton('Нет', on_click=cancel_delete),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-
-        self.page.dialog = dlg_modal
-        dlg_modal.open = True
-        self.page.update()
-
-    def delete_booking_from_server(self, booking_id):
-        try:
-            response = self.api.delete_booking(booking_id)
-            if response is None:
-                print('Не удалось получить ответ от сервера.')
-                return
-
-            if response.status_code == 200:
-                self.bookings = [
-                    b for b in self.bookings if b['id'] != booking_id
-                ]
-                self.page.clean()
-                self.page.add(self.create_bookings_page())
-                self.page.update()
-                print(f'Букинг с ID {booking_id} успешно удален.')
-            else:
-                print(f'Ошибка при удалении букинга: {response.text}')
-        except Exception as e:
-            print(f'Ошибка при удалении букинга: {e}')
 
     def redirect_to_booking_page(self, e):
         self.page.appbar = None
