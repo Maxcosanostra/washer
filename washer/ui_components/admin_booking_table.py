@@ -29,6 +29,8 @@ class AdminBookingTable:
         self.bookings = []
         self.loaded_days = set()
 
+        self.booking_colors = {}
+
         app_bar = ft.AppBar(
             leading=ft.Row(
                 controls=[
@@ -50,6 +52,7 @@ class AdminBookingTable:
         self.load_boxes()
         self.load_available_times(datetime.date.today())
         self.load_bookings()
+        self.assign_colors_to_created_bookings()
         self.load_schedules()
 
         if self.selected_date and self.selected_date not in self.loaded_days:
@@ -62,6 +65,9 @@ class AdminBookingTable:
         self.page.clean()
         self.page.add(app_bar)
         self.page.add(self.create_booking_page())
+
+    def handle_booking_click(self, e, booking):
+        self.open_booking_details_dialog(booking)
 
     def on_car_saved(self, car_data):
         print(f'Сохраненные данные автомобиля: {car_data}')
@@ -99,6 +105,9 @@ class AdminBookingTable:
                         booking['last_name'] = ''
                         booking['phone_number'] = '---'
 
+                    # Корректное присвоение состояния букинга
+                    booking['state'] = booking.get('state', 'CREATED').upper()
+
                 print(
                     f"Загружено букингов: {len(self.bookings)} "
                     f"для автомойки {self.car_wash['id']}"
@@ -111,6 +120,21 @@ class AdminBookingTable:
                 )
         except Exception as e:
             print(f'Ошибка при загрузке букингов: {e}')
+
+    def assign_colors_to_created_bookings(self):
+        """Назначает цвета букингам со статусом CREATED,"""
+        """чередуя между GREY_500 и GREY_400."""
+        self.booking_colors = {}
+        created_bookings = [
+            b for b in self.bookings if b['state'] == 'CREATED'
+        ]
+        for i, booking in enumerate(created_bookings):
+            color = ft.colors.GREY_500 if i % 2 == 0 else ft.colors.GREY_400
+            self.booking_colors[booking['id']] = color
+        print(
+            f'Назначено цветов для '
+            f'{len(self.booking_colors)} букингов со статусом CREATED.'
+        )
 
     def generate_timeslots(self, start_time_str, end_time_str):
         start_time = datetime.datetime.strptime(
@@ -210,7 +234,7 @@ class AdminBookingTable:
         if not self.schedule_data:
             print('Нет расписаний для отображения.')
             return ft.Text(
-                'Нет доступных расписований.',
+                'Нет доступных расписаний.',
                 size=18,
                 text_align=ft.TextAlign.CENTER,
             )
@@ -222,8 +246,8 @@ class AdminBookingTable:
             day_of_week = schedule.get('day_of_week')
             schedule_date = self.dates_storage.get(day_of_week)
             formatted_date = schedule_date.strftime('%d %B')
-            # Отображаем только дату без дня недели
-            day_with_date = f'{formatted_date}'
+            day_name = self.get_day_name(day_of_week)
+            day_with_date = f'{day_name} ({formatted_date})'
 
             if self.selected_date and schedule_date == self.selected_date:
                 selected_index = i
@@ -353,11 +377,6 @@ class AdminBookingTable:
 
         skip_slots = {}
 
-        box_booking_counts = {box['id']: 0 for box in self.boxes_list}
-
-        def handle_booking_click(e, booking):
-            self.open_booking_details_dialog(booking)
-
         for time in timeslots:
             row_controls = [
                 ft.Text(
@@ -375,6 +394,15 @@ class AdminBookingTable:
 
                 if box_id in skip_slots:
                     booking, occupied_color = skip_slots[box_id]
+
+                    booking_state = booking.get('state', 'CREATED').upper()
+                    if booking_state == 'CREATED':
+                        occupied_color = self.booking_colors.get(
+                            booking['id'], ft.colors.GREY_500
+                        )
+                    else:
+                        status_info = self.get_status_info(booking_state)
+                        occupied_color = status_info['color']
 
                     row_controls.append(
                         ft.Container(
@@ -401,9 +429,8 @@ class AdminBookingTable:
                             expand=True,
                             height=80,
                             border=black_border_bottom,
-                            on_click=lambda e, b=booking: handle_booking_click(
-                                e, b
-                            ),
+                            on_click=lambda e,
+                            b=booking: self.handle_booking_click(e, b),
                         )
                     )
 
@@ -425,12 +452,15 @@ class AdminBookingTable:
                 )
 
                 if booking:
-                    booking_count = box_booking_counts[box_id]
-                    occupied_color = (
-                        ft.colors.GREY_500
-                        if booking_count % 2 == 0
-                        else ft.colors.GREY_400
-                    )
+                    booking_state = booking.get('state', 'CREATED').upper()
+
+                    if booking_state == 'CREATED':
+                        occupied_color = self.booking_colors.get(
+                            booking['id'], ft.colors.GREY_500
+                        )
+                    else:
+                        status_info = self.get_status_info(booking_state)
+                        occupied_color = status_info['color']
 
                     user_full_name = (
                         f"{booking.get('first_name', '')} "
@@ -472,9 +502,8 @@ class AdminBookingTable:
                             alignment=ft.alignment.center,
                             expand=True,
                             height=80,
-                            on_click=lambda e, b=booking: handle_booking_click(
-                                e, b
-                            ),
+                            on_click=lambda e,
+                            b=booking: self.handle_booking_click(e, b),
                         )
                     )
 
@@ -497,8 +526,6 @@ class AdminBookingTable:
                     )
                     if duration_slots > 1:
                         skip_slots[box_id] = (booking, occupied_color)
-
-                    box_booking_counts[box_id] += 1
 
                 else:
                     box_times = self.available_times.get(
@@ -548,7 +575,7 @@ class AdminBookingTable:
                                 height=80,
                                 border=black_border_bottom,
                                 on_click=lambda e,
-                                b=booking: handle_booking_click(e, b)
+                                b=booking: self.handle_booking_click(e, b)
                                 if b
                                 else None,
                             )
@@ -652,7 +679,8 @@ class AdminBookingTable:
                 ]
                 print(f'Букинг с ID {booking_id} успешно удалён.')
 
-                # Получаем активную вкладку
+                self.assign_colors_to_created_bookings()
+
                 booking_tabs = self.page.controls[
                     1
                 ]  # Предполагается, что Tabs на позиции 1
@@ -664,6 +692,7 @@ class AdminBookingTable:
 
                 self.load_available_times(schedule_date)
                 self.load_bookings()
+                self.assign_colors_to_created_bookings()
 
                 schedule = self.schedule_data[selected_index]
                 timeslots = self.generate_timeslots(
@@ -743,3 +772,14 @@ class AdminBookingTable:
         from washer.ui_components.carwash_edit_page import CarWashEditPage
 
         CarWashEditPage(self.page, self.car_wash, self.locations)
+
+    def get_status_info(self, state):
+        status_mapping = {
+            'ACCEPTED': {'text': 'Подтвержден', 'color': '#87CEFA'},
+            'STARTED': {'text': 'В процессе', 'color': '#FFA500'},
+            'COMPLETED': {'text': 'Завершено', 'color': '#32CD32'},
+            'EXCEPTION': {'text': 'Ошибка', 'color': '#FF0000'},
+        }
+        return status_mapping.get(
+            state, {'text': 'Неизвестно', 'color': '#808080'}
+        )
