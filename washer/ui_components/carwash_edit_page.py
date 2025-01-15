@@ -207,7 +207,9 @@ class CarWashEditPage:
                 for booking in bookings_data:
                     booking_date = booking.get('start_datetime', '')
                     end_time_str = booking.get('end_datetime', '')
-                    if end_time_str:
+                    status = booking.get('state', '').upper()
+
+                    if end_time_str and status == 'COMPLETED':
                         end_time = datetime.datetime.fromisoformat(
                             end_time_str
                         )
