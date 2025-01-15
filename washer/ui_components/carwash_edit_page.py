@@ -215,7 +215,7 @@ class CarWashEditPage:
                             booking_date.startswith(current_date_str)
                             and end_time < current_time
                         ):
-                            price = float(booking.get('price', 0))
+                            price = float(booking.get('total_price', 0))
                             total_revenue += price
                 self.total_revenue = total_revenue
                 print(
@@ -760,6 +760,20 @@ class CarWashEditPage:
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 )
                 rows.append(row)
+
+                if state == 'STARTED':
+                    progress_bar = ft.ProgressBar(
+                        width=600,
+                        height=10,
+                        color=ft.colors.ORANGE,
+                        bgcolor=ft.colors.TRANSPARENT,
+                        value=None,
+                    )
+                    progress_container = ft.Container(
+                        content=progress_bar,
+                        padding=ft.padding.only(top=5, bottom=10),
+                    )
+                    rows.append(progress_container)
 
         return ft.Column(
             controls=[
