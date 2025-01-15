@@ -484,6 +484,27 @@ class MyBookingsPage:
                 )
             )
 
+            booking_id = booking.get('id', 'Неизвестен')
+            booking_info_controls.append(
+                ft.Text(
+                    f'ID записи: {booking_id}',
+                    size=12,
+                    color=ft.colors.GREY_500,
+                    text_align=ft.TextAlign.CENTER,
+                )
+            )
+
+        if state == 'COMPLETED':
+            booking_id = booking.get('id', 'Неизвестен')
+            booking_info_controls.append(
+                ft.Text(
+                    f'ID записи: {booking_id}',
+                    size=12,
+                    color=ft.colors.GREY_500,
+                    text_align=ft.TextAlign.CENTER,
+                )
+            )
+
         booking_info_column = ft.Column(
             controls=booking_info_controls,
             spacing=10,
