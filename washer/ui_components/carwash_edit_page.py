@@ -508,6 +508,24 @@ class CarWashEditPage:
                     color=ft.colors.WHITE,
                 )
 
+                decline_button = ft.TextButton(
+                    text='Отказать',
+                    on_click=lambda e,
+                    b_id=booking['id']: self.show_decline_dialog(b_id),
+                    style=ft.ButtonStyle(color=ft.colors.RED),
+                )
+
+                buttons_column = ft.Column(
+                    controls=[
+                        confirm_button,
+                        ft.Container(height=5),
+                        decline_button,
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=0,
+                )
+
                 booking_card = ft.Card(
                     content=ft.Container(
                         content=ft.Column(
@@ -646,10 +664,7 @@ class CarWashEditPage:
                                         ),
                                     ]
                                 ),
-                                ft.Row(
-                                    [confirm_button],
-                                    alignment=ft.MainAxisAlignment.CENTER,
-                                ),
+                                buttons_column,
                             ],
                             spacing=10,
                         ),
@@ -1361,4 +1376,63 @@ class CarWashEditPage:
             open=True,
         )
         self.page.snack_bar.open = True
+        self.page.update()
+
+    def show_decline_dialog(self, booking_id):
+        """
+        Отображает модальное окно подтверждения для отказа от букинга.
+        """
+        dialog = ft.AlertDialog(
+            title=ft.Text('Отказ от букинга'),
+            content=ft.Text(
+                'Вы уверены, что хотите отказаться от этого букинга?'
+            ),
+            actions=[
+                ft.TextButton(
+                    text='Нет',
+                    on_click=lambda e: self.close_dialog(),
+                ),
+                ft.ElevatedButton(
+                    text='Да',
+                    bgcolor=ft.colors.RED,
+                    color=ft.colors.WHITE,
+                    on_click=lambda e: self.confirm_decline_booking(
+                        booking_id
+                    ),
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+            modal=True,
+        )
+
+        self.page.dialog = dialog
+        dialog.open = True
+        self.page.update()
+
+    def confirm_decline_booking(self, booking_id):
+        self.close_dialog()
+        self.show_loading()
+
+        response = self.api.delete_booking(booking_id)
+
+        if response and response.status_code == 200:
+            self.today_bookings = [
+                booking
+                for booking in self.today_bookings
+                if booking['id'] != booking_id
+            ]
+            self.show_success_message(
+                f'Букинг ID {booking_id} успешно удалён.'
+            )
+            self.update_created_bookings_dashboard()
+        else:
+            print(
+                f'Ошибка при удалении букинга ID {booking_id}: '
+                f'{response.text if response else "No response"}'
+            )
+            self.show_error_message(
+                f'Ошибка при удалении букинга ID {booking_id}.'
+            )
+
+        self.hide_loading()
         self.page.update()
