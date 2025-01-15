@@ -224,6 +224,17 @@ class CarWashEditPage:
                     f'Общая выручка для автомойки '
                     f'{car_wash_id}: {self.total_revenue} ₸'
                 )
+
+                if hasattr(self, 'total_revenue_text'):
+                    if self.total_revenue > 0:
+                        self.total_revenue_text.value = (
+                            f'Общая выручка: {self.total_revenue} ₸'
+                        )
+                    else:
+                        self.total_revenue_text.value = (
+                            'Нет завершённых букингов для отображения выручки'
+                        )
+                    self.total_revenue_text.update()
             else:
                 print(
                     f'Ошибка загрузки букингов для автомойки {car_wash_id}: '
@@ -231,12 +242,20 @@ class CarWashEditPage:
                     f'{response.text if response else ""}'
                 )
                 self.total_revenue = 0
+                if hasattr(self, 'total_revenue_text'):
+                    self.total_revenue_text.value = 'Ошибка загрузки выручки'
+                    self.total_revenue_text.color = ft.colors.RED_500
+                    self.total_revenue_text.update()
         except Exception as e:
             print(
                 f'Ошибка при загрузке букингов для автомойки '
                 f'{car_wash_id}: {e}'
             )
             self.total_revenue = 0
+            if hasattr(self, 'total_revenue_text'):
+                self.total_revenue_text.value = 'Ошибка загрузки выручки'
+                self.total_revenue_text.color = ft.colors.RED_500
+                self.total_revenue_text.update()
 
     def load_today_bookings(self):
         car_wash_id = self.car_wash['id']
@@ -345,6 +364,39 @@ class CarWashEditPage:
             padding=ft.padding.symmetric(vertical=10),
         )
 
+        if self.total_revenue > 0:
+            self.total_revenue_text = ft.Text(
+                f'Общая выручка: {self.total_revenue} ₸',
+                size=40,
+                weight=ft.FontWeight.BOLD,
+                text_align=ft.TextAlign.CENTER,
+            )
+            self.total_revenue_card = ft.Container(
+                content=ft.Card(
+                    content=ft.Container(
+                        content=self.total_revenue_text,
+                        padding=ft.padding.all(20),
+                        alignment=ft.alignment.center,
+                    ),
+                    elevation=2,
+                    width=300,
+                ),
+                alignment=ft.alignment.center,
+                padding=ft.padding.symmetric(vertical=10),
+            )
+        else:
+            self.total_revenue_text = ft.Text(
+                'Нет завершённых букингов для отображения выручки',
+                size=16,
+                color=ft.colors.GREY_500,
+                text_align=ft.TextAlign.CENTER,
+            )
+            self.total_revenue_card = ft.Container(
+                content=self.total_revenue_text,
+                alignment=ft.alignment.center,
+                padding=ft.padding.symmetric(vertical=10),
+            )
+
         main_content = ft.ListView(
             controls=[
                 ft.Container(height=10),
@@ -376,24 +428,7 @@ class CarWashEditPage:
                     padding=ft.padding.only(bottom=5),
                 ),
                 ft.Divider(),
-                ft.Container(
-                    content=ft.Card(
-                        content=ft.Container(
-                            content=ft.Text(
-                                f'{self.total_revenue} ₸',
-                                size=40,
-                                weight=ft.FontWeight.BOLD,
-                                text_align=ft.TextAlign.CENTER,
-                            ),
-                            padding=ft.padding.all(20),
-                            alignment=ft.alignment.center,
-                        ),
-                        elevation=2,
-                        width=300,
-                    ),
-                    alignment=ft.alignment.center,
-                    padding=ft.padding.symmetric(vertical=10),
-                ),
+                self.total_revenue_card,
                 self.created_bookings_dashboard,
                 ft.Divider(),
                 self.booking_status_dashboard,
@@ -980,6 +1015,7 @@ class CarWashEditPage:
                     break
             self.close_dialog()
             self.show_success_message('Статус успешно обновлён')
+            self.load_total_revenue()
             self.update_booking_status_dashboard()
             if new_state != 'CREATED':
                 self.update_created_bookings_dashboard()
