@@ -226,14 +226,8 @@ class CarWashEditPage:
                 )
 
                 if hasattr(self, 'total_revenue_text'):
-                    if self.total_revenue > 0:
-                        self.total_revenue_text.value = (
-                            f'Общая выручка: {self.total_revenue} ₸'
-                        )
-                    else:
-                        self.total_revenue_text.value = (
-                            'Нет завершённых букингов для отображения выручки'
-                        )
+                    self.total_revenue_text.value = f'{self.total_revenue} ₸'
+                    self.total_revenue_text.color = ft.colors.WHITE
                     self.total_revenue_text.update()
             else:
                 print(
@@ -243,8 +237,8 @@ class CarWashEditPage:
                 )
                 self.total_revenue = 0
                 if hasattr(self, 'total_revenue_text'):
-                    self.total_revenue_text.value = 'Ошибка загрузки выручки'
-                    self.total_revenue_text.color = ft.colors.RED_500
+                    self.total_revenue_text.value = '0 ₸'
+                    self.total_revenue_text.color = ft.colors.WHITE
                     self.total_revenue_text.update()
         except Exception as e:
             print(
@@ -253,8 +247,8 @@ class CarWashEditPage:
             )
             self.total_revenue = 0
             if hasattr(self, 'total_revenue_text'):
-                self.total_revenue_text.value = 'Ошибка загрузки выручки'
-                self.total_revenue_text.color = ft.colors.RED_500
+                self.total_revenue_text.value = '0 ₸'
+                self.total_revenue_text.color = ft.colors.WHITE
                 self.total_revenue_text.update()
 
     def load_today_bookings(self):
@@ -364,38 +358,26 @@ class CarWashEditPage:
             padding=ft.padding.symmetric(vertical=10),
         )
 
-        if self.total_revenue > 0:
-            self.total_revenue_text = ft.Text(
-                f'Общая выручка: {self.total_revenue} ₸',
-                size=40,
-                weight=ft.FontWeight.BOLD,
-                text_align=ft.TextAlign.CENTER,
-            )
-            self.total_revenue_card = ft.Container(
-                content=ft.Card(
-                    content=ft.Container(
-                        content=self.total_revenue_text,
-                        padding=ft.padding.all(20),
-                        alignment=ft.alignment.center,
-                    ),
-                    elevation=2,
-                    width=300,
+        self.total_revenue_text = ft.Text(
+            f'{self.total_revenue} ₸',
+            size=40,
+            weight=ft.FontWeight.BOLD,
+            text_align=ft.TextAlign.CENTER,
+            color=ft.colors.WHITE,
+        )
+        self.total_revenue_card = ft.Container(
+            content=ft.Card(
+                content=ft.Container(
+                    content=self.total_revenue_text,
+                    padding=ft.padding.all(20),
+                    alignment=ft.alignment.center,
                 ),
-                alignment=ft.alignment.center,
-                padding=ft.padding.symmetric(vertical=10),
-            )
-        else:
-            self.total_revenue_text = ft.Text(
-                'Нет завершённых букингов для отображения выручки',
-                size=16,
-                color=ft.colors.GREY_500,
-                text_align=ft.TextAlign.CENTER,
-            )
-            self.total_revenue_card = ft.Container(
-                content=self.total_revenue_text,
-                alignment=ft.alignment.center,
-                padding=ft.padding.symmetric(vertical=10),
-            )
+                elevation=2,
+                width=300,
+            ),
+            alignment=ft.alignment.center,
+            padding=ft.padding.symmetric(vertical=10),
+        )
 
         main_content = ft.ListView(
             controls=[
