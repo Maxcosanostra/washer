@@ -465,6 +465,7 @@ class CarWashEditPage:
                 phone_number = user_info.get(
                     'phone_number', 'Неизвестный номер'
                 )
+                user_id = user_info.get('id', None)
 
                 car_name = user_car.get('name', 'Неизвестный автомобиль')
                 license_plate = user_car.get(
@@ -508,146 +509,155 @@ class CarWashEditPage:
                     spacing=0,
                 )
 
+                booking_controls = [
+                    ft.Text(
+                        'Пользователь',
+                        weight=ft.FontWeight.BOLD,
+                        size=16,
+                    ),
+                    ft.Row(
+                        [
+                            ft.Icon(
+                                ft.icons.PERSON,
+                                size=20,
+                                color=ft.colors.BLUE_600,
+                            ),
+                            ft.Text(
+                                full_name,
+                                width=200,
+                                text_align=ft.TextAlign.LEFT,
+                            ),
+                        ]
+                    ),
+                ]
+
+                if user_id != 1:
+                    booking_controls.extend(
+                        [
+                            ft.Row(
+                                [
+                                    ft.Icon(
+                                        ft.icons.PHONE,
+                                        size=20,
+                                        color=ft.colors.GREEN_600,
+                                    ),
+                                    ft.Text(
+                                        phone_number,
+                                        width=200,
+                                        text_align=ft.TextAlign.LEFT,
+                                    ),
+                                ]
+                            ),
+                        ]
+                    )
+
+                booking_controls.extend(
+                    [
+                        ft.Divider(thickness=1, color=ft.colors.GREY_300),
+                        ft.Text(
+                            'Информация о записи',
+                            weight=ft.FontWeight.BOLD,
+                            size=16,
+                        ),
+                        ft.Row(
+                            [
+                                ft.Icon(
+                                    ft.icons.ACCESS_TIME,
+                                    size=20,
+                                    color=ft.colors.ORANGE_600,
+                                ),
+                                ft.Text(
+                                    time_range,
+                                    width=200,
+                                    text_align=ft.TextAlign.LEFT,
+                                ),
+                            ]
+                        ),
+                        ft.Row(
+                            [
+                                ft.Icon(
+                                    ft.icons.INBOX,
+                                    size=20,
+                                    color=ft.colors.PURPLE_600,
+                                ),
+                                ft.Text(
+                                    box_name,
+                                    width=200,
+                                    text_align=ft.TextAlign.LEFT,
+                                ),
+                            ]
+                        ),
+                        ft.Row(
+                            [
+                                ft.Icon(
+                                    ft.icons.ATTACH_MONEY,
+                                    size=20,
+                                    color=ft.colors.GREEN_600,
+                                ),
+                                ft.Text(
+                                    f'{total_price}',
+                                    width=200,
+                                    text_align=ft.TextAlign.LEFT,
+                                ),
+                            ]
+                        ),
+                        ft.Row(
+                            [
+                                ft.Icon(
+                                    ft.icons.NOTE,
+                                    size=20,
+                                    color=ft.colors.RED_600,
+                                ),
+                                ft.Text(
+                                    notes if notes else 'Нет',
+                                    width=200,
+                                    text_align=ft.TextAlign.LEFT,
+                                ),
+                            ],
+                            visible=bool(notes),
+                        ),
+                        ft.Divider(thickness=1, color=ft.colors.GREY_300),
+                        ft.Text(
+                            'Автомобиль',
+                            weight=ft.FontWeight.BOLD,
+                            size=16,
+                        ),
+                        ft.Row(
+                            [
+                                ft.Icon(
+                                    ft.icons.DIRECTIONS_CAR,
+                                    size=20,
+                                    color=ft.colors.BLUE_GREY_600,
+                                ),
+                                ft.Text(
+                                    car_name,
+                                    width=200,
+                                    text_align=ft.TextAlign.LEFT,
+                                ),
+                            ]
+                        ),
+                        ft.Row(
+                            [
+                                ft.Icon(
+                                    ft.icons.NUMBERS,
+                                    size=20,
+                                    color=ft.colors.PINK_600,
+                                ),
+                                ft.Text(
+                                    license_plate,
+                                    width=200,
+                                    text_align=ft.TextAlign.LEFT,
+                                ),
+                            ]
+                        ),
+                        buttons_column,
+                    ]
+                )
+
                 booking_card = ft.Card(
                     content=ft.Container(
                         content=ft.Column(
-                            controls=[
-                                ft.Text(
-                                    'Пользователь',
-                                    weight=ft.FontWeight.BOLD,
-                                    size=16,
-                                ),
-                                ft.Row(
-                                    [
-                                        ft.Icon(
-                                            ft.icons.PERSON,
-                                            size=20,
-                                            color=ft.colors.BLUE_600,
-                                        ),
-                                        ft.Text(
-                                            full_name,
-                                            width=200,
-                                            text_align=ft.TextAlign.LEFT,
-                                        ),
-                                    ]
-                                ),
-                                ft.Row(
-                                    [
-                                        ft.Icon(
-                                            ft.icons.PHONE,
-                                            size=20,
-                                            color=ft.colors.GREEN_600,
-                                        ),
-                                        ft.Text(
-                                            phone_number,
-                                            width=200,
-                                            text_align=ft.TextAlign.LEFT,
-                                        ),
-                                    ]
-                                ),
-                                ft.Divider(
-                                    thickness=1, color=ft.colors.GREY_300
-                                ),
-                                ft.Text(
-                                    'Информация о записи',
-                                    weight=ft.FontWeight.BOLD,
-                                    size=16,
-                                ),
-                                ft.Row(
-                                    [
-                                        ft.Icon(
-                                            ft.icons.ACCESS_TIME,
-                                            size=20,
-                                            color=ft.colors.ORANGE_600,
-                                        ),
-                                        ft.Text(
-                                            time_range,
-                                            width=200,
-                                            text_align=ft.TextAlign.LEFT,
-                                        ),
-                                    ]
-                                ),
-                                ft.Row(
-                                    [
-                                        ft.Icon(
-                                            ft.icons.INBOX,
-                                            size=20,
-                                            color=ft.colors.PURPLE_600,
-                                        ),
-                                        ft.Text(
-                                            box_name,
-                                            width=200,
-                                            text_align=ft.TextAlign.LEFT,
-                                        ),
-                                    ]
-                                ),
-                                ft.Row(
-                                    [
-                                        ft.Icon(
-                                            ft.icons.ATTACH_MONEY,
-                                            size=20,
-                                            color=ft.colors.GREEN_600,
-                                        ),
-                                        ft.Text(
-                                            f'{total_price}',
-                                            width=200,
-                                            text_align=ft.TextAlign.LEFT,
-                                        ),
-                                    ]
-                                ),
-                                ft.Row(
-                                    [
-                                        ft.Icon(
-                                            ft.icons.NOTE,
-                                            size=20,
-                                            color=ft.colors.RED_600,
-                                        ),
-                                        ft.Text(
-                                            notes if notes else 'Нет',
-                                            width=200,
-                                            text_align=ft.TextAlign.LEFT,
-                                        ),
-                                    ],
-                                    visible=bool(notes),
-                                ),
-                                ft.Divider(
-                                    thickness=1, color=ft.colors.GREY_300
-                                ),
-                                ft.Text(
-                                    'Автомобиль',
-                                    weight=ft.FontWeight.BOLD,
-                                    size=16,
-                                ),
-                                ft.Row(
-                                    [
-                                        ft.Icon(
-                                            ft.icons.DIRECTIONS_CAR,
-                                            size=20,
-                                            color=ft.colors.BLUE_GREY_600,
-                                        ),
-                                        ft.Text(
-                                            car_name,
-                                            width=200,
-                                            text_align=ft.TextAlign.LEFT,
-                                        ),
-                                    ]
-                                ),
-                                ft.Row(
-                                    [
-                                        ft.Icon(
-                                            ft.icons.NUMBERS,
-                                            size=20,
-                                            color=ft.colors.PINK_600,
-                                        ),
-                                        ft.Text(
-                                            license_plate,
-                                            width=200,
-                                            text_align=ft.TextAlign.LEFT,
-                                        ),
-                                    ]
-                                ),
-                                buttons_column,
-                            ],
+                            controls=booking_controls,
                             spacing=10,
                         ),
                         padding=ft.padding.all(10),
