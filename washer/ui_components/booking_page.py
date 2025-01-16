@@ -375,6 +375,9 @@ class BookingPage:
         self.schedule_list = []
         self.available_dates = []
 
+        self.available_additions = []
+        self.selected_addition_ids = []
+
         self.car_dropdown_disabled = False
         self.box_dropdown_disabled = True
         self.time_dropdown_container_disabled = True
@@ -403,6 +406,7 @@ class BookingPage:
         self.page.overlay.append(self.loading_overlay)
         self.page.overlay.append(self.snack_bar)
         self.nearest_time_selected = False
+
         self.create_elements()
 
         self.page.adaptive = True
@@ -459,7 +463,7 @@ class BookingPage:
                     content=ft.Column(
                         [
                             self.calendar,
-                            self.select_nearest_time_button,  # Новая кнопка
+                            self.select_nearest_time_button,
                             self.or_text,
                             self.box_dropdown,
                             self.time_dropdown_container,
@@ -480,6 +484,19 @@ class BookingPage:
                         [
                             self.service_image_container,
                             self.complex_wash_section,
+                            ft.Column(
+                                [
+                                    ft.Text(
+                                        'Дополнительные услуги:',
+                                        size=18,
+                                        weight=ft.FontWeight.BOLD,
+                                        color=ft.colors.GREY_600,
+                                        text_align=ft.TextAlign.LEFT,
+                                    ),
+                                    self.additions_container,
+                                ],
+                                spacing=10,
+                            ),
                             self.price_text,
                         ],
                         spacing=10,
@@ -523,6 +540,7 @@ class BookingPage:
 
         self.load_schedules()
         self.load_boxes()
+        self.load_additions()
         self.page.drawer = None
 
     def create_car_wash_card(self):
@@ -632,7 +650,7 @@ class BookingPage:
             ),
             alignment=ft.alignment.center,
             padding=ft.padding.symmetric(vertical=10),
-            visible=True,  # Сделать видимым по умолчанию
+            visible=True,
         )
 
         self.time_dropdown_container = ft.Column(
@@ -652,6 +670,20 @@ class BookingPage:
             size=18,
             weight=ft.FontWeight.BOLD,
             color=ft.colors.GREY_600,
+        )
+
+        self.price_text = ft.Text(
+            'Стоимость: ₸0',
+            size=32,
+            weight=ft.FontWeight.BOLD,
+            color=ft.colors.GREY,
+        )
+
+        self.additions_container = ft.Column(
+            [],
+            spacing=5,
+            key='additions_container',
+            disabled=True,
         )
 
         self.complex_wash_section = ft.Column(
@@ -696,13 +728,6 @@ class BookingPage:
                 ),
             ],
             spacing=10,
-        )
-
-        self.price_text = ft.Text(
-            'Стоимость: ₸0',
-            size=32,
-            weight=ft.FontWeight.BOLD,
-            color=ft.colors.GREY,
         )
 
         self.book_button = ft.ElevatedButton(
@@ -1211,6 +1236,8 @@ class BookingPage:
         finally:
             self.updating_panels = False
 
+        self.update_service_selection_state()
+
         self.page.update()
 
     def reset_calendar_selection(self):
@@ -1317,7 +1344,7 @@ class BookingPage:
             self.hide_loading()
 
     def show_price(self):
-        if self.complex_wash_checkbox.value:
+        if self.complex_wash_checkbox.value or self.selected_addition_ids:
             self.price_text.value = f'Стоимость: ₸{int(self.car_price)}'
             self.price_text.color = None
             self.book_button.disabled = False
@@ -1325,7 +1352,7 @@ class BookingPage:
             self.price_text.value = 'Стоимость: ₸0'
             self.price_text.color = ft.colors.GREY
             self.book_button.disabled = True
-        self.page.update()
+        self.price_text.update()
 
     def on_box_select(self, e):
         if self.nearest_time_selected:
@@ -1360,6 +1387,8 @@ class BookingPage:
             self.update_expansion_panel_list()
         finally:
             self.updating_panels = False
+
+        self.update_service_selection_state()
 
         self.page.update()
 
@@ -1415,6 +1444,8 @@ class BookingPage:
                 self.update_expansion_panel_list()
             finally:
                 self.updating_panels = False
+
+        self.update_service_selection_state()
 
         self.page.update()
 
@@ -1719,6 +1750,8 @@ class BookingPage:
             bgcolor=ft.colors.GREEN,
         )
 
+        self.update_service_selection_state()
+
     def on_complex_wash_change(self, e):
         if self.complex_wash_checkbox.value:
             self.complex_wash_text.color = ft.colors.BLUE
@@ -1884,9 +1917,13 @@ class BookingPage:
             and self.selected_car_id
             and self.selected_date
         ):
-            if not self.complex_wash_checkbox.value:
+            if (
+                not self.complex_wash_checkbox.value
+                and not self.selected_addition_ids
+            ):
                 self.show_snack_bar(
                     'Пожалуйста, активируйте чекбокс "Комплексная мойка" '
+                    'или выберите дополнительные услуги '
                     'для отображения стоимости.'
                 )
                 return
@@ -1913,7 +1950,7 @@ class BookingPage:
                     'box_id': int(self.selected_box_id),
                     'user_car_id': int(self.selected_car_id),
                     'state': 'CREATED',
-                    'addition_ids': [],
+                    'addition_ids': self.selected_addition_ids,
                     'notes': notes,
                     'start_datetime': start_datetime,
                     'end_datetime': end_datetime,
@@ -2210,8 +2247,8 @@ class BookingPage:
                     ]
                     self.time_dropdown_container.disabled = False
                     self.book_button.disabled = True
-                    self.complex_wash_checkbox.disabled = False
                     self.complex_wash_checkbox.value = False
+                    self.complex_wash_checkbox.disabled = False
                     self.price_text.value = 'Стоимость: ₸0'
 
                     self.nearest_time_selected = True
@@ -2254,6 +2291,8 @@ class BookingPage:
             self.update_nearest_time_button_style()
             self.page.update()
 
+        self.update_service_selection_state()
+
     def get_nearest_time_button_style(self):
         if self.nearest_time_selected:
             return ft.ButtonStyle(
@@ -2280,3 +2319,90 @@ class BookingPage:
             self.get_nearest_time_button_style()
         )
         self.select_nearest_time_button.update()
+
+    def load_additions(self):
+        car_wash_id = self.car_wash.get('id')
+        if not car_wash_id:
+            print('ID автомойки не найден.')
+            return
+
+        response = self.api.get_additions(car_wash_id)
+        if response.status_code == 200:
+            data = response.json().get('data', [])
+            self.available_additions = data
+            print(
+                f'Получены дополнительные услуги: {self.available_additions}'
+            )
+            self.populate_additions()
+        else:
+            print(
+                f'Ошибка при загрузке дополнительных услуг: '
+                f'{response.status_code}, {response.text}'
+            )
+
+    def populate_additions(self):
+        if not self.additions_container:
+            print('Не удалось найти контейнер для дополнительных услуг.')
+            return
+
+        self.additions_container.controls.clear()
+
+        for addition in self.available_additions:
+            print(f'Добавляем чекбокс для услуги: {addition["name"]}')
+            label_text = (
+                f"{addition['name']} " f"(+₸{int(float(addition['price']))})"
+            )
+            checkbox = ft.Checkbox(
+                label=label_text,
+                value=False,
+                on_change=lambda e,
+                addition_id=addition['id'],
+                price=float(addition['price']): self.on_addition_toggle(
+                    e, addition_id, price
+                ),
+            )
+            self.additions_container.controls.append(checkbox)
+
+        self.additions_container.update()
+
+    def on_addition_toggle(
+        self, e: ft.ControlEvent, addition_id: int, price: float
+    ):
+        if e.control.value:
+            if addition_id not in self.selected_addition_ids:
+                self.selected_addition_ids.append(addition_id)
+                self.car_price += price
+                print(
+                    f'Добавлена услуга ID {addition_id}. '
+                    f'Новая цена: {self.car_price}'
+                )
+        else:
+            if addition_id in self.selected_addition_ids:
+                self.selected_addition_ids.remove(addition_id)
+                self.car_price -= price
+                print(
+                    f'Удалена услуга ID {addition_id}. '
+                    f'Новая цена: {self.car_price}'
+                )
+
+        self.show_price()
+
+    def update_service_selection_state(self):
+        if (
+            self.selected_car_id is not None
+            and self.selected_box_id is not None
+            and self.selected_date is not None
+            and self.selected_time is not None
+        ):
+            self.complex_wash_checkbox.disabled = False
+            self.additions_container.disabled = False
+        else:
+            self.complex_wash_checkbox.disabled = True
+            self.additions_container.disabled = True
+            self.complex_wash_checkbox.value = False
+            self.selected_addition_ids.clear()
+            self.price_text.value = 'Стоимость: ₸0'
+
+        self.complex_wash_checkbox.update()
+        self.additions_container.update()
+        self.price_text.update()
