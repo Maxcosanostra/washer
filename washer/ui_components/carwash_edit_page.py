@@ -1014,8 +1014,7 @@ class CarWashEditPage:
             self.show_success_message('Статус успешно обновлён')
             self.load_total_revenue()
             self.update_booking_status_dashboard()
-            if new_state != 'CREATED':
-                self.update_created_bookings_dashboard()
+            self.update_created_bookings_dashboard()
         else:
             self.close_dialog()
             self.show_error_message('Ошибка при обновлении статуса')
