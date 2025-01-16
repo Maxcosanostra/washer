@@ -895,7 +895,6 @@ class BookingPage:
                 f"{selected_car.get('model', 'Неизвестная модель')}"
             )
             brand, model, generation, body_type = self.parse_car_name(car_name)
-
         else:
             car_name = 'Не выбран'
             brand, model, generation, body_type = (
@@ -1010,13 +1009,13 @@ class BookingPage:
             text_align=ft.TextAlign.CENTER,
         )
 
-        wishes_field = ft.TextField(
+        self.wishes_field = ft.TextField(
             label=(
                 'Например: оставил вещи в салоне. '
                 'Переложите, пожалуйста, в багажник и тд..'
             ),
             hint_text='',
-            # multiline=True,
+            multiline=True,
             width=500,
             height=100,
             border_radius=ft.border_radius.all(10),
@@ -1062,7 +1061,11 @@ class BookingPage:
                 booking_info_card,
                 car_info_card,
                 wishes_header,
-                wishes_field,
+                ft.Container(
+                    content=self.wishes_field,
+                    alignment=ft.alignment.center,
+                    padding=ft.padding.symmetric(vertical=10),
+                ),
                 confirm_button,
                 back_button,
             ],
@@ -1888,16 +1891,30 @@ class BookingPage:
                 )
                 return
             try:
-                start_datetime = self.selected_time.isoformat()
+                if not isinstance(self.selected_time, datetime):
+                    raise ValueError(
+                        'Selected time is not a valid datetime object.'
+                    )
 
+                start_datetime = self.selected_time.isoformat(
+                    timespec='seconds'
+                )
                 end_datetime = (
-                    self.selected_time + timedelta(hours=2)  # Исправлено
-                ).isoformat()
+                    self.selected_time + timedelta(hours=2)
+                ).isoformat(timespec='seconds')
+
+                notes = (
+                    self.wishes_field.value.strip()
+                    if hasattr(self, 'wishes_field')
+                    else ''
+                )
 
                 booking_data = {
-                    'box_id': self.selected_box_id,
-                    'user_car_id': self.selected_car_id,
-                    'is_exception': False,
+                    'box_id': int(self.selected_box_id),
+                    'user_car_id': int(self.selected_car_id),
+                    'state': 'CREATED',
+                    'addition_ids': [],
+                    'notes': notes,
                     'start_datetime': start_datetime,
                     'end_datetime': end_datetime,
                 }
@@ -1908,7 +1925,7 @@ class BookingPage:
                 response = self.api.create_booking(booking_data)
                 self.hide_loading()
 
-                if response.status_code == 200:
+                if response.status_code in [200, 201]:
                     print('Букинг успешно создан!')
                     self.show_success_page()
                 else:
@@ -1928,6 +1945,11 @@ class BookingPage:
             except ValueError as ve:
                 print(f'Ошибка при создании букинга: {ve}')
                 self.show_snack_bar('Произошла ошибка при обработке данных.')
+            except Exception as ex:
+                print(f'Неизвестная ошибка при создании букинга: {ex}')
+                self.show_snack_bar(
+                    'Произошла неизвестная ошибка. Попробуйте позже.'
+                )
         else:
             print('Выберите бокс, автомобиль, дату и время для букинга.')
             self.show_snack_bar(
