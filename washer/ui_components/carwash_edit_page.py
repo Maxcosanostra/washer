@@ -601,6 +601,36 @@ class CarWashEditPage:
                                 ),
                             ]
                         ),
+                    ]
+                )
+
+                additions = booking.get('additions', [])
+                if additions:
+                    additional_services = ', '.join(
+                        [addition['name'] for addition in additions]
+                    )
+                    booking_controls.extend(
+                        [
+                            ft.Row(
+                                [
+                                    ft.Icon(
+                                        ft.icons.ADD,
+                                        size=20,
+                                        color=ft.colors.BLUE_600,
+                                    ),
+                                    ft.Text(
+                                        additional_services,
+                                        width=200,
+                                        text_align=ft.TextAlign.LEFT,
+                                    ),
+                                ],
+                                visible=True,
+                            ),
+                        ]
+                    )
+
+                booking_controls.extend(
+                    [
                         ft.Row(
                             [
                                 ft.Icon(
