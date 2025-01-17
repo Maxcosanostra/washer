@@ -944,6 +944,12 @@ class BookingPage:
         )
         price = f'₸{int(self.car_price)}'
 
+        additional_services = [
+            addition['name']
+            for addition in self.available_additions
+            if addition['id'] in self.selected_addition_ids
+        ]
+
         booking_details = [
             ('Бокс', box_name),
             ('Дата', formatted_date),
@@ -951,6 +957,11 @@ class BookingPage:
             ('Цена', price),
             ('Услуга', 'Комплексная мойка'),
         ]
+
+        if additional_services:
+            booking_details.append(
+                ('Дополнительно', ', '.join(additional_services))
+            )
 
         booking_info_column = ft.Column(
             [
