@@ -89,20 +89,23 @@ class BoxManagementPage:
             response = self.api.get_bookings(self.car_wash['id'])
             if response.status_code == 200:
                 bookings_data = response.json().get('data', [])
-                current_date = datetime.date.today()
-                current_time = datetime.datetime.now()
-                return [
+
+                completed_today_bookings = [
                     booking
                     for booking in bookings_data
-                    if booking['box_id'] == box['id']
-                    and booking['start_datetime'].startswith(
-                        current_date.strftime('%Y-%m-%d')
+                    if (
+                        booking['box_id'] == box['id']
+                        and booking.get('state') == 'COMPLETED'
+                        and self.is_booking_today(
+                            booking.get('start_datetime')
+                        )
                     )
-                    and datetime.datetime.fromisoformat(
-                        booking['end_datetime']
-                    )
-                    < current_time
                 ]
+                print(
+                    f'Найдено завершенных букингов на сегодня: '
+                    f'{completed_today_bookings}'
+                )
+                return completed_today_bookings
             else:
                 print(
                     f'Ошибка загрузки букингов: '
@@ -111,6 +114,16 @@ class BoxManagementPage:
         except Exception as e:
             print(f'Ошибка при загрузке букингов: {e}')
         return []
+
+    def is_booking_today(self, start_datetime_str):
+        try:
+            start_datetime = datetime.datetime.fromisoformat(
+                start_datetime_str
+            )
+            return start_datetime.date() == datetime.date.today()
+        except ValueError:
+            print(f"Некорректный формат даты начала: '{start_datetime_str}'")
+            return False
 
     def create_box_management_tabs(self):
         self.tab_contents = {}
