@@ -351,6 +351,13 @@ class MyBookingsPage:
             ('Цена', f'{total_price}'),
         ]
 
+        additions = booking.get('additions', [])
+        if additions:
+            additional_services = ', '.join(
+                [addition['name'] for addition in additions]
+            )
+            booking_details.append(('Доп.услуги', additional_services))
+
         message_color = self.state_colors.get(state, ft.colors.GREY_500)
 
         booking_info_controls = [
