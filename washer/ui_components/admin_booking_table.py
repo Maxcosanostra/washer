@@ -404,21 +404,74 @@ class AdminBookingTable:
                         status_info = self.get_status_info(booking_state)
                         occupied_color = status_info['color']
 
+                    additions = booking.get('additions', [])
+                    if additions:
+                        additional_services = ', '.join(
+                            [addition['name'] for addition in additions]
+                        )
+                    else:
+                        additional_services = None
+
+                    notes = booking.get('notes', '').strip()
+                    has_notes = bool(notes)
+
+                    cell_content = [
+                        ft.Text(
+                            f"₸{booking.get('total_price', '0')}",
+                            size=14,
+                            text_align=ft.TextAlign.CENTER,
+                            overflow=ft.TextOverflow.ELLIPSIS,
+                        ),
+                    ]
+
+                    if additional_services:
+                        cell_content.append(
+                            ft.Row(
+                                [
+                                    ft.Icon(
+                                        ft.icons.ADD,
+                                        size=16,
+                                        color=ft.colors.BLUE_600,
+                                    ),
+                                    ft.Text(
+                                        additional_services,
+                                        size=14,
+                                        text_align=ft.TextAlign.CENTER,
+                                        overflow=ft.TextOverflow.ELLIPSIS,
+                                        expand=True,
+                                    ),
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER,
+                                spacing=5,
+                            )
+                        )
+
+                    if has_notes:
+                        cell_content.append(
+                            ft.Row(
+                                [
+                                    ft.Icon(
+                                        ft.icons.NOTE,
+                                        size=16,
+                                        color=ft.colors.RED_600,
+                                    ),
+                                    ft.Text(
+                                        notes,
+                                        size=14,
+                                        text_align=ft.TextAlign.CENTER,
+                                        overflow=ft.TextOverflow.ELLIPSIS,
+                                        expand=True,
+                                    ),
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER,
+                                spacing=5,
+                            )
+                        )
+
                     row_controls.append(
                         ft.Container(
                             content=ft.Column(
-                                [
-                                    ft.Text(
-                                        f"₸{booking.get('total_price', '0')}",
-                                        size=14,
-                                        text_align=ft.TextAlign.CENTER,
-                                    ),
-                                    ft.Text(
-                                        booking.get('phone_number', '---'),
-                                        size=14,
-                                        text_align=ft.TextAlign.CENTER,
-                                    ),
-                                ],
+                                cell_content,
                                 alignment=ft.MainAxisAlignment.CENTER,
                                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                                 spacing=2,
@@ -544,6 +597,7 @@ class AdminBookingTable:
                                     'Свободно',
                                     size=14,
                                     text_align=ft.TextAlign.CENTER,
+                                    overflow=ft.TextOverflow.ELLIPSIS,
                                 ),
                                 bgcolor=color,
                                 padding=ft.padding.all(5),
@@ -567,6 +621,7 @@ class AdminBookingTable:
                                     'Не актуально',
                                     size=14,
                                     text_align=ft.TextAlign.CENTER,
+                                    overflow=ft.TextOverflow.ELLIPSIS,
                                 ),
                                 bgcolor=color,
                                 padding=ft.padding.all(5),
@@ -575,7 +630,7 @@ class AdminBookingTable:
                                 height=80,
                                 border=black_border_bottom,
                                 on_click=lambda e,
-                                b=booking: self.handle_booking_click(e, b)
+                                b=None: self.handle_booking_click(e, b)
                                 if b
                                 else None,
                             )
@@ -605,10 +660,19 @@ class AdminBookingTable:
         phone_number = booking.get('phone_number', '---')
         car_name = booking.get('car_name', 'Неизвестно')
         price = booking.get('total_price', 'Не указана')
+        additions = booking.get('additions', [])
+        notes = booking.get('notes', '').strip()
 
         full_name = (
             f'{first_name} {last_name}'.strip() if last_name else first_name
         )
+
+        additional_services = (
+            ', '.join([addition['name'] for addition in additions])
+            if additions
+            else None
+        )
+        has_notes = bool(notes)
 
         def confirm_delete(e):
             self.page.close(confirm_dialog)
@@ -633,16 +697,63 @@ class AdminBookingTable:
             actions_alignment=ft.MainAxisAlignment.END,
         )
 
+        details_controls = [
+            self.create_detail_row(ft.icons.PERSON, full_name),
+            self.create_detail_row(ft.icons.DIRECTIONS_CAR, car_name),
+            self.create_detail_row(ft.icons.MONEY, f'₸{price}'),
+            self.create_detail_row(ft.icons.PHONE, phone_number),
+        ]
+
+        if additional_services:
+            details_controls.append(
+                ft.Row(
+                    [
+                        ft.Icon(
+                            ft.icons.ADD,
+                            size=20,
+                            color=ft.colors.BLUE_600,
+                        ),
+                        ft.Text(
+                            additional_services,
+                            size=16,
+                            text_align=ft.TextAlign.LEFT,
+                            overflow=ft.TextOverflow.ELLIPSIS,
+                            expand=True,
+                            max_lines=None,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    spacing=10,
+                    visible=True,
+                )
+            )
+
+        if has_notes:
+            details_controls.append(
+                ft.Row(
+                    [
+                        ft.Icon(
+                            ft.icons.NOTE,
+                            size=20,
+                            color=ft.colors.RED_600,
+                        ),
+                        ft.Text(
+                            notes,
+                            size=16,
+                            text_align=ft.TextAlign.LEFT,
+                            overflow=ft.TextOverflow.CLIP,
+                            expand=True,
+                            max_lines=None,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    spacing=10,
+                    visible=True,
+                )
+            )
+
         details_dialog = ft.AlertDialog(
-            title=ft.Text('Детали букинга'),
-            content=ft.Column(
-                [
-                    self.create_detail_row(ft.icons.PERSON, full_name),
-                    self.create_detail_row(ft.icons.DIRECTIONS_CAR, car_name),
-                    self.create_detail_row(ft.icons.MONEY, f'₸{price}'),
-                    self.create_detail_row(ft.icons.PHONE, phone_number),
-                ]
-            ),
+            content=ft.Column(details_controls),
             actions=[
                 ft.TextButton(
                     'Удалить',
