@@ -147,34 +147,66 @@ class BoxManagementPage:
         total_revenue = 0
 
         for index, booking in enumerate(bookings, start=1):
-            service_name = booking.get('service_name', 'Не указано')
-            price = round(float(booking.get('price', 0)))
-            time = datetime.datetime.strptime(
-                booking.get('start_datetime', 'Не указано'),
-                '%Y-%m-%dT%H:%M:%S',
-            ).strftime('%H:%M')
-            total_revenue += price
+            user_car = booking.get('user_car', {})
+            car_name = user_car.get('name', 'Не указано')
+            license_plate = user_car.get('license_plate', 'Не указано')
+
+            total_price_str = booking.get('total_price', '0.00')
+            try:
+                total_price = round(float(total_price_str))
+            except ValueError:
+                total_price = 0
+                print(
+                    f"Некорректная цена '{total_price_str}' "
+                    f"для букинга ID {booking.get('id')}."
+                )
+
+            start_datetime_str = booking.get('start_datetime', '')
+            try:
+                start_time = datetime.datetime.fromisoformat(
+                    start_datetime_str
+                ).strftime('%H:%M')
+            except ValueError:
+                start_time = 'Не указано'
+                print(
+                    f"Некорректное время начала '{start_datetime_str}' "
+                    f"для букинга ID {booking.get('id')}."
+                )
+
+            total_revenue += total_price
 
             booking_rows.append(
                 ft.Row(
                     controls=[
                         ft.Text(
-                            f'{index}. {time}',
+                            f'{index}. {start_time}',
                             expand=1,
                             text_align=ft.TextAlign.LEFT,
                         ),
-                        ft.Text(
-                            service_name,
+                        ft.Column(
+                            controls=[
+                                ft.Text(
+                                    car_name,
+                                    expand=2,
+                                    text_align=ft.TextAlign.LEFT,
+                                ),
+                                ft.Text(
+                                    license_plate,
+                                    expand=2,
+                                    text_align=ft.TextAlign.LEFT,
+                                ),
+                            ],
+                            spacing=2,
                             expand=2,
-                            text_align=ft.TextAlign.LEFT,
                         ),
                         ft.Text(
-                            f'{price} ₸',
+                            f'{total_price} ₸',
                             expand=1,
                             text_align=ft.TextAlign.RIGHT,
                         ),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 )
             )
 
@@ -182,17 +214,8 @@ class BoxManagementPage:
         net_profit = total_revenue - salary
 
         rows = [
-            ft.Container(
-                content=ft.Text(
-                    f"Бокс: {box['name']}",
-                    size=24,
-                    weight=ft.FontWeight.BOLD,
-                    text_align=ft.TextAlign.CENTER,
-                ),
-                alignment=ft.alignment.center,
-                padding=ft.padding.only(bottom=10),
-            ),
             *booking_rows,
+            ft.Divider(thickness=1, color=ft.colors.GREY_300),
             ft.Row(
                 controls=[
                     ft.Text(
