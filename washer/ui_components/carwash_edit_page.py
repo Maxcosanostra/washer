@@ -203,22 +203,16 @@ class CarWashEditPage:
                 bookings_data = response.json().get('data', [])
                 current_date_str = datetime.date.today().strftime('%Y-%m-%d')
                 total_revenue = 0
-                current_time = datetime.datetime.now()
                 for booking in bookings_data:
                     booking_date = booking.get('start_datetime', '')
-                    end_time_str = booking.get('end_datetime', '')
                     status = booking.get('state', '').upper()
 
-                    if end_time_str and status == 'COMPLETED':
-                        end_time = datetime.datetime.fromisoformat(
-                            end_time_str
-                        )
-                        if (
-                            booking_date.startswith(current_date_str)
-                            and end_time < current_time
-                        ):
-                            price = float(booking.get('total_price', 0))
-                            total_revenue += price
+                    if status == 'COMPLETED' and booking_date.startswith(
+                        current_date_str
+                    ):
+                        price = float(booking.get('total_price', 0))
+                        total_revenue += price
+
                 self.total_revenue = total_revenue
                 print(
                     f'Общая выручка для автомойки '
