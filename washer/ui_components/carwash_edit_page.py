@@ -23,6 +23,7 @@ class CarWashEditPage:
         self.original_image = self.car_wash['image_link']
         self.body_type_dict = {}
         self.total_revenue = 0
+        self.total_monthly_revenue = 0
         self.boxes_list = []
         self.show_change_button = False
         self.show_save_button = False
@@ -70,6 +71,7 @@ class CarWashEditPage:
         self.load_body_types()
         self.load_schedules()
         self.load_total_revenue()
+        self.load_monthly_revenue()
 
         if self.boxes_list:
             self.today_bookings = self.load_today_bookings()
@@ -194,6 +196,10 @@ class CarWashEditPage:
             target_date = current_date + datetime.timedelta(days=delta_days)
             self.dates_storage[day_of_week] = target_date.strftime('%Y-%m-%d')
 
+    def update_revenue(self):
+        self.load_total_revenue()
+        self.load_monthly_revenue()
+
     def load_total_revenue(self):
         car_wash_id = None
         try:
@@ -213,14 +219,15 @@ class CarWashEditPage:
                         price = float(booking.get('total_price', 0))
                         total_revenue += price
 
-                self.total_revenue = total_revenue
+                self.total_revenue = int(total_revenue)
+                formatted_revenue = self.format_currency(self.total_revenue)
                 print(
                     f'Общая выручка для автомойки '
-                    f'{car_wash_id}: {self.total_revenue} ₸'
+                    f'{car_wash_id}: {formatted_revenue} ₸'
                 )
 
                 if hasattr(self, 'total_revenue_text'):
-                    self.total_revenue_text.value = f'{self.total_revenue} ₸'
+                    self.total_revenue_text.value = f'{formatted_revenue} ₸'
                     self.total_revenue_text.color = ft.colors.WHITE
                     self.total_revenue_text.update()
             else:
@@ -244,6 +251,67 @@ class CarWashEditPage:
                 self.total_revenue_text.value = '0 ₸'
                 self.total_revenue_text.color = ft.colors.WHITE
                 self.total_revenue_text.update()
+
+    def load_monthly_revenue(self):
+        car_wash_id = None
+        try:
+            car_wash_id = self.car_wash['id']
+            response = self.api.get_bookings(car_wash_id)
+            if response and response.status_code == 200:
+                bookings_data = response.json().get('data', [])
+                today = datetime.date.today()
+                first_day_of_month = today.replace(day=1)
+                current_month_str = first_day_of_month.strftime('%Y-%m')
+
+                total_monthly_revenue = 0
+                for booking in bookings_data:
+                    booking_date = booking.get('start_datetime', '')
+                    status = booking.get('state', '').upper()
+
+                    if status == 'COMPLETED' and booking_date.startswith(
+                        current_month_str
+                    ):
+                        price = float(booking.get('total_price', 0))
+                        total_monthly_revenue += price
+
+                self.total_monthly_revenue = int(
+                    total_monthly_revenue
+                )  # Округляем до целого числа
+                formatted_monthly_revenue = self.format_currency(
+                    self.total_monthly_revenue
+                )
+                print(
+                    f'Месячная выручка для автомойки '
+                    f'{car_wash_id}: {formatted_monthly_revenue} ₸'
+                )
+
+                if hasattr(self, 'monthly_revenue_text'):
+                    self.monthly_revenue_text.value = (
+                        f'{formatted_monthly_revenue} ₸'
+                    )
+                    self.monthly_revenue_text.color = ft.colors.WHITE
+                    self.monthly_revenue_text.update()
+            else:
+                print(
+                    f'Ошибка загрузки букингов для автомойки {car_wash_id}: '
+                    f'{response.status_code if response else "No response"}, '
+                    f'{response.text if response else ""}'
+                )
+                self.total_monthly_revenue = 0
+                if hasattr(self, 'monthly_revenue_text'):
+                    self.monthly_revenue_text.value = '0 ₸'
+                    self.monthly_revenue_text.color = ft.colors.WHITE
+                    self.monthly_revenue_text.update()
+        except Exception as e:
+            print(
+                f'Ошибка при загрузке букингов для автомойки '
+                f'{car_wash_id}: {e}'
+            )
+            self.total_monthly_revenue = 0
+            if hasattr(self, 'monthly_revenue_text'):
+                self.monthly_revenue_text.value = '0 ₸'
+                self.monthly_revenue_text.color = ft.colors.WHITE
+                self.monthly_revenue_text.update()
 
     def load_today_bookings(self):
         car_wash_id = self.car_wash['id']
@@ -352,9 +420,51 @@ class CarWashEditPage:
             padding=ft.padding.symmetric(vertical=10),
         )
 
+        self.monthly_revenue_label = ft.Text(
+            'За месяц:',
+            size=14,
+            weight=ft.FontWeight.NORMAL,
+            text_align=ft.TextAlign.CENTER,
+            color=ft.colors.WHITE,
+        )
+        self.monthly_revenue_text = ft.Text(
+            f'{self.format_currency(self.total_monthly_revenue)} ₸',
+            size=24,
+            weight=ft.FontWeight.BOLD,
+            text_align=ft.TextAlign.CENTER,
+            color=ft.colors.WHITE,
+        )
+        self.monthly_revenue_card = ft.Container(
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            self.monthly_revenue_label,
+                            self.monthly_revenue_text,
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    padding=ft.padding.all(8),
+                    alignment=ft.alignment.center,
+                ),
+                elevation=2,
+                width=180,
+            ),
+            alignment=ft.alignment.center,
+            padding=ft.padding.symmetric(vertical=10),
+        )
+
+        self.total_revenue_label = ft.Text(
+            'За день:',
+            size=14,
+            weight=ft.FontWeight.NORMAL,
+            text_align=ft.TextAlign.CENTER,
+            color=ft.colors.WHITE,
+        )
         self.total_revenue_text = ft.Text(
-            f'{self.total_revenue} ₸',
-            size=40,
+            f'{self.format_currency(self.total_revenue)} ₸',
+            size=24,
             weight=ft.FontWeight.BOLD,
             text_align=ft.TextAlign.CENTER,
             color=ft.colors.WHITE,
@@ -362,15 +472,31 @@ class CarWashEditPage:
         self.total_revenue_card = ft.Container(
             content=ft.Card(
                 content=ft.Container(
-                    content=self.total_revenue_text,
-                    padding=ft.padding.all(20),
+                    content=ft.Column(
+                        controls=[
+                            self.total_revenue_label,
+                            self.total_revenue_text,
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    padding=ft.padding.all(8),
                     alignment=ft.alignment.center,
                 ),
                 elevation=2,
-                width=300,
+                width=180,
             ),
             alignment=ft.alignment.center,
             padding=ft.padding.symmetric(vertical=10),
+        )
+
+        self.revenue_cards_row = ft.Row(
+            controls=[
+                self.monthly_revenue_card,
+                self.total_revenue_card,
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            spacing=5,
         )
 
         main_content = ft.ListView(
@@ -404,7 +530,7 @@ class CarWashEditPage:
                     padding=ft.padding.only(bottom=5),
                 ),
                 ft.Divider(),
-                self.total_revenue_card,
+                self.revenue_cards_row,
                 self.created_bookings_dashboard,
                 ft.Divider(),
                 self.booking_status_dashboard,
@@ -711,6 +837,7 @@ class CarWashEditPage:
             )
             self.update_booking_status_dashboard()
             self.update_created_bookings_dashboard()
+            self.update_revenue()
         else:
             print(
                 f'Ошибка при подтверждении букинга ID '
@@ -1049,6 +1176,7 @@ class CarWashEditPage:
             self.load_total_revenue()
             self.update_booking_status_dashboard()
             self.update_created_bookings_dashboard()
+            self.update_revenue()
         else:
             self.close_dialog()
             self.show_error_message('Ошибка при обновлении статуса')
@@ -1440,6 +1568,7 @@ class CarWashEditPage:
                 f'Букинг ID {booking_id} успешно удалён.'
             )
             self.update_created_bookings_dashboard()
+            self.update_revenue()  # Добавлен вызов для обновления выручки
         else:
             print(
                 f'Ошибка при удалении букинга ID {booking_id}: '
@@ -1451,3 +1580,6 @@ class CarWashEditPage:
 
         self.hide_loading()
         self.page.update()
+
+    def format_currency(self, value):
+        return f'{int(value):,}'.replace(',', ' ')
