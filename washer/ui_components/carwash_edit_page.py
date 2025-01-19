@@ -46,6 +46,15 @@ class CarWashEditPage:
             center_title=True,
             bgcolor=ft.colors.SURFACE_VARIANT,
             leading_width=100,
+            actions=[
+                ft.IconButton(
+                    icon=ft.icons.HISTORY,
+                    tooltip='Архив расписаний',
+                    on_click=self.on_view_archived_schedule_click,
+                    icon_color='#ef7b00',
+                    padding=ft.padding.only(right=10),
+                )
+            ],
         )
 
         self.loading_overlay = ft.Container(
@@ -141,6 +150,7 @@ class CarWashEditPage:
         self.dates_storage = {}
         self.today_bookings = []
         self.total_revenue = 0
+        self.total_monthly_revenue = 0  # Сброс месячной выручки
         print(f'Данные сброшены для автомойки {self.car_wash["id"]}.')
 
     def show_loading(self):
@@ -537,12 +547,6 @@ class CarWashEditPage:
                 ft.Divider(),
                 self.create_schedule_list_section(),
                 ft.Divider(),
-                ft.TextButton(
-                    text='Архив расписаний',
-                    on_click=self.on_view_archived_schedule_click,
-                    style=ft.ButtonStyle(color='#ef7b00'),
-                    expand=True,
-                ),
             ],
             spacing=5,
             padding=ft.padding.only(right=15),
