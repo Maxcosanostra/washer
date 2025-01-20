@@ -841,7 +841,6 @@ class CarWashEditPage:
             )
             self.update_booking_status_dashboard()
             self.update_created_bookings_dashboard()
-            self.update_revenue()
         else:
             print(
                 f'Ошибка при подтверждении букинга ID '
@@ -1142,45 +1141,46 @@ class CarWashEditPage:
             self.page.update()
 
     def confirm_status_change(self, booking_id, new_state, additional_notes):
+        booking_to_update = next(
+            (
+                booking
+                for booking in self.today_bookings
+                if booking['id'] == booking_id
+            ),
+            None,
+        )
+        if not booking_to_update:
+            self.show_error_message('Букинг не найден.')
+            self.page.update()
+            return
+
+        old_state = booking_to_update.get('state', '').upper()
+
         if new_state == 'COMPLETED' and additional_notes:
-            existing_notes = next(
-                (
-                    booking['notes']
-                    for booking in self.today_bookings
-                    if booking['id'] == booking_id
-                ),
-                '',
-            )
+            existing_notes = booking_to_update.get('notes', '')
             if existing_notes:
                 updated_notes = existing_notes + '\n' + additional_notes
             else:
                 updated_notes = additional_notes
         else:
-            existing_notes = next(
-                (
-                    booking['notes']
-                    for booking in self.today_bookings
-                    if booking['id'] == booking_id
-                ),
-                '',
-            )
-            updated_notes = existing_notes
+            updated_notes = booking_to_update.get('notes', '')
 
         updated_data = {'state': new_state, 'notes': updated_notes}
         response = self.api.update_booking(booking_id, updated_data)
 
         if response and response.status_code == 200:
-            for booking in self.today_bookings:
-                if booking['id'] == booking_id:
-                    booking['state'] = new_state
-                    booking['notes'] = updated_notes
-                    break
+            booking_to_update['state'] = new_state
+            booking_to_update['notes'] = updated_notes
+
             self.close_dialog()
             self.show_success_message('Статус успешно обновлён')
+
             self.load_total_revenue()
             self.update_booking_status_dashboard()
             self.update_created_bookings_dashboard()
-            self.update_revenue()
+
+            if old_state == 'COMPLETED' or new_state == 'COMPLETED':
+                self.update_revenue()
         else:
             self.close_dialog()
             self.show_error_message('Ошибка при обновлении статуса')
@@ -1557,6 +1557,24 @@ class CarWashEditPage:
         self.page.update()
 
     def confirm_decline_booking(self, booking_id):
+        booking_to_delete = next(
+            (
+                booking
+                for booking in self.today_bookings
+                if booking['id'] == booking_id
+            ),
+            None,
+        )
+        if not booking_to_delete:
+            self.hide_loading()
+            self.show_error_message('Букинг не найден.')
+            self.page.update()
+            return
+
+        was_completed = (
+            booking_to_delete.get('state', '').upper() == 'COMPLETED'
+        )
+
         self.close_dialog()
         self.show_loading()
 
@@ -1572,7 +1590,9 @@ class CarWashEditPage:
                 f'Букинг ID {booking_id} успешно удалён.'
             )
             self.update_created_bookings_dashboard()
-            self.update_revenue()  # Добавлен вызов для обновления выручки
+
+            if was_completed:
+                self.update_revenue()
         else:
             print(
                 f'Ошибка при удалении букинга ID {booking_id}: '
