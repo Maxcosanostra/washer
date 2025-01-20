@@ -929,6 +929,7 @@ class CarWashEditPage:
                 status_info = self.get_status_info(state)
                 display_text = status_info['text']
 
+                # Обработка клика по кнопке статуса
                 status_btn = ft.TextButton(
                     text=display_text,
                     style=ft.ButtonStyle(
@@ -938,8 +939,10 @@ class CarWashEditPage:
                     b_id=booking_id,
                     c_notes=notes,
                     st=state: self.create_radio_dialog(b_id, c_notes, st),
+                    tooltip=display_text,  # Подсказка с полным текстом
                 )
 
+                # Создаем строку букинга
                 row = ft.Row(
                     controls=[
                         ft.Text(
@@ -957,7 +960,17 @@ class CarWashEditPage:
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 )
-                rows.append(row)
+
+                # Оборачиваем строку в Container для кликабельности
+                clickable_row = ft.Container(
+                    content=row,
+                    on_click=lambda e,
+                    b=booking: self.open_booking_details_dialog(b),
+                    bgcolor=ft.colors.TRANSPARENT,
+                    padding=ft.padding.symmetric(vertical=0, horizontal=0),
+                    margin=ft.margin.symmetric(vertical=0, horizontal=0),
+                )
+                rows.append(clickable_row)
 
                 if state == 'STARTED':
                     progress_bar = ft.ProgressBar(
@@ -1607,3 +1620,161 @@ class CarWashEditPage:
 
     def format_currency(self, value):
         return f'{int(value):,}'.replace(',', ' ')
+
+    def open_booking_details_dialog(self, booking):
+        first_name = (
+            booking.get('user_car', {})
+            .get('user', {})
+            .get('first_name', 'Неизвестен')
+        )
+        last_name = (
+            booking.get('user_car', {}).get('user', {}).get('last_name', '')
+        )
+        phone_number = (
+            booking.get('user_car', {})
+            .get('user', {})
+            .get('phone_number', '---')
+        )
+        car_name = booking.get('user_car', {}).get('name', 'Неизвестно')
+        license_plate = booking.get('user_car', {}).get('license_plate', '---')
+        price = booking.get('total_price', 'Не указана')
+        additions = booking.get('additions', [])
+        notes = booking.get('notes', '').strip()
+
+        full_name = (
+            f'{first_name} {last_name}'.strip() if last_name else first_name
+        )
+
+        additional_services = (
+            ', '.join([addition['name'] for addition in additions])
+            if additions
+            else None
+        )
+        has_notes = bool(notes)
+
+        def confirm_delete(e):
+            self.page.close(confirm_dialog)
+            self.delete_booking(booking['id'])
+
+        def cancel_delete(e):
+            self.page.close(confirm_dialog)
+
+        def open_confirm_dialog(e):
+            self.page.dialog = confirm_dialog
+            confirm_dialog.open = True
+            self.page.update()
+
+        confirm_dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text('Подтверждение удаления'),
+            content=ft.Text('Вы уверены, что хотите удалить этот букинг?'),
+            actions=[
+                ft.TextButton('Да', on_click=confirm_delete),
+                ft.TextButton('Нет', on_click=cancel_delete),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        details_controls = [
+            self.create_detail_row(ft.icons.PERSON, full_name),
+            self.create_detail_row(ft.icons.DIRECTIONS_CAR, car_name),
+            self.create_detail_row(ft.icons.NUMBERS, license_plate),
+            self.create_detail_row(ft.icons.MONEY, f'₸{price}'),
+            self.create_detail_row(ft.icons.PHONE, phone_number),
+        ]
+
+        if additional_services:
+            details_controls.append(
+                ft.Row(
+                    [
+                        ft.Icon(
+                            ft.icons.ADD,
+                            size=20,
+                            color=ft.colors.BLUE_600,
+                        ),
+                        ft.Text(
+                            additional_services,
+                            size=16,
+                            text_align=ft.TextAlign.LEFT,
+                            overflow=ft.TextOverflow.ELLIPSIS,
+                            expand=True,
+                            max_lines=None,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    spacing=10,
+                    visible=True,
+                )
+            )
+
+        if has_notes:
+            details_controls.append(
+                ft.Row(
+                    [
+                        ft.Icon(
+                            ft.icons.NOTE,
+                            size=20,
+                            color=ft.colors.RED_600,
+                        ),
+                        ft.Text(
+                            notes,
+                            size=16,
+                            text_align=ft.TextAlign.LEFT,
+                            overflow=ft.TextOverflow.CLIP,
+                            expand=True,
+                            max_lines=None,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    spacing=10,
+                    visible=True,
+                )
+            )
+
+        details_dialog = ft.AlertDialog(
+            content=ft.Column(details_controls),
+            actions=[
+                ft.TextButton(
+                    'Удалить',
+                    on_click=open_confirm_dialog,
+                    style=ft.ButtonStyle(color=ft.colors.RED),
+                ),
+                ft.TextButton(
+                    'Закрыть',
+                    on_click=lambda e: self.page.close(details_dialog),
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self.page.dialog = details_dialog
+        details_dialog.open = True
+        self.page.update()
+
+    def create_detail_row(self, icon, text):
+        return ft.Row(
+            controls=[
+                ft.Icon(icon, size=20),
+                ft.Text(text, size=16, expand=True),
+            ],
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=10,
+        )
+
+    def delete_booking(self, booking_id: int):
+        try:
+            response = self.api.delete_booking(booking_id)
+            if response.status_code == 200:
+                self.today_bookings = [
+                    b for b in self.today_bookings if b['id'] != booking_id
+                ]
+                self.show_success_message(
+                    f'Букинг ID {booking_id} успешно удалён.'
+                )
+                self.update_booking_status_dashboard()
+            else:
+                print(f'Ошибка удаления букинга: {response.text}')
+                self.show_error_message('Ошибка при удалении букинга.')
+        except Exception as e:
+            print(f'Ошибка при удалении букинга: {e}')
+            self.show_error_message('Произошла ошибка при удалении букинга.')
+        self.page.update()
