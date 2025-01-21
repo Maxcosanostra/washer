@@ -57,7 +57,7 @@ class AdminPage:
         self.page.clean()
         self.page.add(self.create_admin_page())
         self.page.overlay.append(self.loading_overlay)
-
+        self.page.navigation_bar = None
         self.load_car_washes()
 
     def create_admin_page(self):
