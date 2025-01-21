@@ -138,7 +138,8 @@ class CarWashEditPage:
         elif selected_index == 1:
             self.on_schedule_button_click(None)
         elif selected_index == 2:
-            return
+            self.page.clean()
+            CarWashEditPage(self.page, self.car_wash, self.locations)
         elif selected_index == 3:
             self.on_boxes_button_click(None)
         elif selected_index == 4:
