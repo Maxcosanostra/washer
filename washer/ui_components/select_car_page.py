@@ -11,11 +11,10 @@ def format_plate_with_spaces(raw: str) -> str:
 
 
 class SelectCarPage:
-    def __init__(self, page: ft.Page, on_car_saved, redirect_to=None):
+    def __init__(self, page: ft.Page, on_car_saved):
         self.page = page
         self.api_url = config.api_url
-        self.on_car_saved = on_car_saved
-        self.redirect_to = redirect_to
+        self.on_car_saved = on_car_saved  # Callback для перенаправления
 
         self.brands_dict = {}
         self.full_brands_list = []
@@ -837,38 +836,6 @@ class SelectCarPage:
                 )
 
                 self.on_car_saved(self.selected_car)
-
-                redirect_to = self.page.client_storage.get('redirect_to')
-                if redirect_to == 'booking_page':
-                    from washer.ui_components.booking_page import BookingPage
-
-                    car_wash = self.page.client_storage.get('car_wash_data')
-                    username = self.page.client_storage.get('username')
-                    cars = self.page.client_storage.get('cars')
-                    location_data = self.page.client_storage.get(
-                        'location_data'
-                    )
-
-                    if not (car_wash and username and cars and location_data):
-                        self.show_error_message(
-                            'Ошибка: данные для редиректа не найдены'
-                        )
-                        return
-
-                    self.page.client_storage.remove('redirect_to')
-                    BookingPage(
-                        page=self.page,
-                        car_wash=car_wash,
-                        username=username,
-                        cars=cars,
-                        location_data=location_data,
-                    )
-                elif redirect_to == 'my_cars_page':
-                    self.page.client_storage.remove('redirect_to')
-                    self.return_to_cars_page()
-                else:
-                    self.return_to_cars_page()
-
             else:
                 error_message = response.text or 'Неизвестная ошибка'
                 self.show_error_message(f'Ошибка: {error_message}')
@@ -905,3 +872,11 @@ class SelectCarPage:
             cars=[],
             on_car_saved_callback=self.on_car_saved,
         ).open()
+
+    def return_to_wash_selection_page(self, e=None):
+        self.page.appbar = None
+        from washer.ui_components.wash_selection_page import WashSelectionPage
+
+        WashSelectionPage(
+            self.page, username=self.page.client_storage.get('username')
+        )
