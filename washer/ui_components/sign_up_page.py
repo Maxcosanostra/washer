@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from washer.api_requests import BackendApi
 from washer.models.user import UserBasicInfo, UserPassword, UserRegistration
+from washer.ui_components.add_car_prompt_page import AddCarPromptPage
 
 
 class SignUpPage:
@@ -557,15 +558,7 @@ class SignUpPage:
                 image=None,
             )
         except ValidationError as ve:
-            error_messages = []
-            for error in ve.errors():
-                msg = error['msg']
-                prefix = 'Value error, '
-                if msg.startswith(prefix):
-                    msg = msg[len(prefix) :]
-                error_messages.append(msg)
-            error_text = '\n'.join(error_messages)
-            self.show_snack_bar(error_text, bgcolor=ft.colors.RED)
+            self.display_validation_errors(ve)
             return
 
         if self.selected_image:
@@ -603,7 +596,10 @@ class SignUpPage:
             user_info = self.api.get_logged_user()
             if 'id' in user_info:
                 self.page.client_storage.set('user_id', user_info['id'])
-            self.open_wash_selection_page()
+
+            AddCarPromptPage(
+                page=self.page, username=self.user_basic_info.username
+            )
         else:
             try:
                 error_detail = response.json().get('detail', response.text)
