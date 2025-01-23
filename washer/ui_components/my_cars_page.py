@@ -3,6 +3,7 @@ import re
 import flet as ft
 
 from washer.api_requests import BackendApi
+from washer.ui_components.select_car_page import SelectCarPage
 
 
 class MyCarsPage:
@@ -153,7 +154,7 @@ class MyCarsPage:
                 elevation=3,
             ),
             width=700,
-            padding=ft.padding.all(5),
+            # padding=ft.padding.all(5),
             margin=ft.margin.only(bottom=20),
         )
 
@@ -303,18 +304,17 @@ class MyCarsPage:
             print(f'Ошибка при запросе автомобилей с сервера: {e}')
 
     def on_add_car_click(self, e):
-        self.page.client_storage.set('redirect_to', 'my_cars_page')
-
-        from washer.ui_components.select_car_page import SelectCarPage
-
         SelectCarPage(
             page=self.page,
-            on_car_saved=self.on_car_saved,
-            redirect_to='my_cars_page',
+            on_car_saved=self.on_car_saved,  # Callback для перенаправления
         )
 
     def on_car_saved(self, car):
         print(f'Сохранен новый автомобиль (ID={car.get("id")})')
+        self.load_user_cars_from_server()
+        self.page.clean()
+        self.page.add(self.create_cars_page())
+        self.page.update()
 
     def on_delete_car(self, car_id):
         def confirm_delete(e):
