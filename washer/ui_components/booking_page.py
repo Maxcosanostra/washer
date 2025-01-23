@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 import flet as ft
 
 from washer.api_requests import BackendApi
+from washer.ui_components.select_car_page import SelectCarPage
 
 date_class: dict[int, str] = {
     0: 'Пн',
@@ -2005,19 +2006,7 @@ class BookingPage:
             )
 
     def on_add_car_click(self, e):
-        from washer.ui_components.select_car_page import SelectCarPage
-
-        self.page.client_storage.set('redirect_to', 'booking_page')
-        self.page.client_storage.set('car_wash_data', self.car_wash)
-        self.page.client_storage.set('username', self.username)
-        self.page.client_storage.set('cars', self.cars)
-        self.page.client_storage.set('location_data', self.location_data)
-
-        SelectCarPage(
-            page=self.page,
-            on_car_saved=self.on_car_saved,
-            redirect_to='booking_page',
-        )
+        SelectCarPage(page=self.page, on_car_saved=self.on_car_saved)
 
     def on_car_saved(self, car):
         if 'id' not in car and 'user_car_id' in car:
@@ -2025,20 +2014,28 @@ class BookingPage:
 
         self.cars.append(car)
 
+        # Добавляем опцию в выпадающий список
         self.car_dropdown.options.append(
             ft.dropdown.Option(
                 text=(
                     f"{car.get('brand', 'Неизвестный бренд')} "
                     f"{car.get('model', 'Неизвестная модель')}"
                 ),
-                key=str(car['id']),
+                key=str(car.get('id')),
             )
         )
-        self.car_dropdown.value = str(car['id'])
+
+        # Выбираем недавно добавленный автомобиль
+        # Нужно добавить логику не просто отображения выбранного авто
+        # в дропдауне, а чтобы он был действительно выбран
+        # self.car_dropdown.value = str(car.get('id'))
 
         self.page.client_storage.set('cars', self.cars)
 
         self.update_add_car_button()
+
+        self.page.clean()
+        self.page.add(self.main_container)
         self.page.update()
 
     def load_boxes(self):
