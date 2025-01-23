@@ -1,15 +1,16 @@
 import flet as ft
 
 from washer.api_requests import BackendApi
+from washer.ui_components.account_edit_page import AccountEditPage
+from washer.ui_components.password_change_page import PasswordChangePage
 from washer.ui_components.sign_in_page import SignInPage
 
 
 class AccountSettingsPage:
-    def __init__(self, page: ft.Page):
+    def __init__(self, page: ft.Page, api: BackendApi = None):
         self.page = page
-        self.api = BackendApi()
+        self.api = api if api else BackendApi()
         self.user_data = {}
-        self.edit_mode = False
 
         self.setup_snack_bar()
 
@@ -31,112 +32,77 @@ class AccountSettingsPage:
         self.load_user_data()
 
     def initialize_controls(self):
-        self.username_text = ft.Text(
-            self.user_data.get('username', ''),
-            size=30,
-            weight=ft.FontWeight.BOLD,
-            color=None,
-            text_align=ft.TextAlign.CENTER,
-        )
-
-        self.username_label = ft.Text(
-            'Имя пользователя',
-            size=16,
-            weight=ft.FontWeight.BOLD,
-            color=ft.colors.GREY_700,
-            visible=False,
-        )
-
-        self.username_field = ft.TextField(
-            value=self.user_data.get('username', ''),
-            width=300,
-            text_size=15,
-            height=40,
-            border_radius=ft.border_radius.all(30),
-            content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
-            icon=ft.icons.PERSON,
-            filled=True,
-            border_color=ft.colors.GREY_300,
-            visible=False,
-        )
-
-        self.first_name_label = ft.Text(
-            'ИМЯ',
-            size=16,
-            weight=ft.FontWeight.BOLD,
-            color=ft.colors.GREY_700,
-            visible=False,
-        )
-        self.first_name_field = ft.TextField(
-            value=self.user_data.get('first_name', ''),
-            width=300,
-            text_size=15,
-            height=40,
-            border_radius=ft.border_radius.all(30),
-            content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
-            icon=ft.icons.BADGE,
-            filled=True,
-            border_color=ft.colors.GREY_300,
-            read_only=True,
-        )
-
-        self.last_name_label = ft.Text(
-            'ФАМИЛИЯ',
-            size=16,
-            weight=ft.FontWeight.BOLD,
-            color=ft.colors.GREY_700,
-            visible=False,
-        )
-        self.last_name_field = ft.TextField(
-            value=self.user_data.get('last_name', ''),
-            width=300,
-            text_size=15,
-            height=40,
-            border_radius=ft.border_radius.all(30),
-            content_padding=ft.Padding(left=20, top=5, right=10, bottom=5),
-            icon=ft.icons.BADGE,
-            filled=True,
-            border_color=ft.colors.GREY_300,
-            read_only=True,
-        )
-
-        self.password_label = ft.Text(
-            'Пароль',
-            size=16,
-            weight=ft.FontWeight.BOLD,
-            color=ft.colors.GREY_700,
-            visible=False,
-        )
-
-        self.password_field = ft.TextField(
-            value='',
-            password=True,
-            can_reveal_password=True,
-            width=300,
-            text_size=15,
-            height=40,
-            border_radius=ft.border_radius.all(30),
-            icon=ft.icons.LOCK,
-            filled=True,
-            border_color=ft.colors.GREY_300,
-            hint_text='Оставьте пустым, если не хотите менять',
-            hint_style=ft.TextStyle(color=ft.colors.GREY_500),
-            read_only=True,
-        )
-
-        self.cancel_button = ft.TextButton(
-            text='Отмена',
-            icon=ft.icons.CANCEL,
-            on_click=self.cancel_edit_mode,
-            visible=False,
-        )
-
         self.change_avatar_button = ft.ElevatedButton(
             text='Изменить фото профиля',
             icon=ft.icons.CAMERA_ALT,
             on_click=self.on_avatar_click,
             width=300,
-            visible=False,
+            visible=True,
+        )
+
+        self.account_button = self.create_navigation_button(
+            icon=ft.icons.ACCOUNT_CIRCLE,
+            text='Учетная запись',
+            on_click=self.open_account_edit_page,
+            icon_bg_color=ft.colors.BLUE_200,
+        )
+
+        self.password_button = self.create_navigation_button(
+            icon=ft.icons.LOCK,
+            text='Пароль',
+            on_click=self.open_password_change_page,
+            icon_bg_color=ft.colors.ORANGE_300,
+        )
+
+        self.phone_button = self.create_navigation_button(
+            icon=ft.icons.PHONE,
+            text='Номер телефона',
+            on_click=self.on_phone_click,
+            icon_bg_color=ft.colors.GREEN_200,
+        )
+
+        self.about_button = self.create_navigation_button(
+            icon=ft.icons.INFO,
+            text='О приложении',
+            on_click=self.open_about_page,
+            icon_bg_color=ft.colors.GREEN_300,
+        )
+
+        self.delete_account_button = self.create_navigation_button(
+            icon=ft.icons.DELETE,
+            text='Удалить аккаунт',
+            on_click=self.on_delete_account_click,
+            icon_bg_color=ft.colors.RED,
+        )
+
+    def create_navigation_button(
+        self, icon, text, on_click, icon_bg_color=ft.colors.WHITE
+    ):
+        return ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Container(
+                        content=ft.Icon(icon, color=ft.colors.WHITE),
+                        bgcolor=icon_bg_color,
+                        width=25,
+                        height=25,
+                        border_radius=ft.border_radius.all(8),
+                        alignment=ft.alignment.center,
+                    ),
+                    ft.Text(
+                        text,
+                        size=16,
+                        weight=ft.FontWeight.BOLD,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.START,
+                spacing=10,
+            ),
+            on_click=on_click,
+            width=700,
+            bgcolor=ft.colors.TRANSPARENT,
+            padding=ft.padding.symmetric(vertical=15, horizontal=20),
+            border_radius=ft.border_radius.all(8),
         )
 
     def load_user_data(self):
@@ -153,14 +119,14 @@ class AccountSettingsPage:
             if avatar_url:
                 self.avatar_container.content = ft.Image(
                     src=avatar_url,
-                    width=200,
-                    height=200,
+                    width=100,
+                    height=100,
                     fit=ft.ImageFit.COVER,
-                    border_radius=ft.border_radius.all(100),
+                    border_radius=ft.border_radius.all(50),
                 )
             else:
                 self.avatar_container.content = ft.Icon(
-                    ft.icons.PERSON, size=200, color=ft.colors.GREY
+                    ft.icons.PERSON, size=100, color=ft.colors.GREY
                 )
             self.show_account_settings()
         else:
@@ -187,12 +153,6 @@ class AccountSettingsPage:
         if self.page.navigation_bar:
             self.page.navigation_bar.selected_index = 3
         self.page.appbar = ft.AppBar(
-            leading=ft.IconButton(
-                icon=ft.icons.ARROW_BACK,
-                on_click=self.return_to_profile,
-                icon_color=ft.colors.WHITE,
-                padding=ft.padding.only(left=10, top=5, bottom=5),
-            ),
             title=ft.Text(
                 'Настройки аккаунта',
                 size=20,
@@ -201,30 +161,58 @@ class AccountSettingsPage:
             ),
             center_title=True,
             bgcolor=ft.colors.BLUE,
-            leading_width=40,
-            actions=[
-                ft.IconButton(
-                    icon=ft.icons.EDIT
-                    if not self.edit_mode
-                    else ft.icons.CHECK,
-                    on_click=self.save_changes
-                    if self.edit_mode
-                    else self.toggle_edit_mode,
-                    icon_color=ft.colors.WHITE,
-                    tooltip='Сохранить' if self.edit_mode else 'Редактировать',
-                    padding=ft.padding.only(top=5, bottom=5, right=10),
-                )
-            ],
+            actions=[],
         )
 
-        avatar_section = ft.Column(
-            controls=[
-                self.avatar_container,
-                self.change_avatar_button,
-            ],
-            alignment=ft.MainAxisAlignment.START,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=10,
+        profile_card = self.create_profile_card()
+
+        buttons_card_1 = ft.Card(
+            content=ft.Column(
+                controls=[
+                    self.account_button,
+                    ft.Container(
+                        content=ft.Divider(
+                            height=1,
+                            color=ft.colors.GREY,
+                            thickness=1,
+                        ),
+                        margin=ft.margin.only(left=55),
+                    ),
+                    self.password_button,
+                    ft.Container(
+                        content=ft.Divider(
+                            height=1,
+                            color=ft.colors.GREY,
+                            thickness=1,
+                        ),
+                        margin=ft.margin.only(left=55),
+                    ),
+                    self.phone_button,
+                ],
+                spacing=0,
+            ),
+            width=700,
+            elevation=3,
+        )
+
+        buttons_card_2 = ft.Card(
+            content=ft.Column(
+                controls=[
+                    self.about_button,
+                    ft.Container(
+                        content=ft.Divider(
+                            height=1,
+                            color=ft.colors.GREY,
+                            thickness=1,
+                        ),
+                        margin=ft.margin.only(left=55),
+                    ),
+                    self.delete_account_button,
+                ],
+                spacing=0,
+            ),
+            width=700,
+            elevation=3,
         )
 
         self.page.clean()
@@ -232,163 +220,80 @@ class AccountSettingsPage:
             ft.Container(
                 content=ft.Column(
                     controls=[
-                        avatar_section,
-                        self.username_text,
-                        self.username_label,
-                        self.username_field,
-                        ft.Container(height=10),
-                        self.first_name_label,
-                        self.first_name_field,
-                        self.last_name_label,
-                        self.last_name_field,
-                        self.password_label,
-                        self.password_field,
-                        ft.Container(height=10),
-                        ft.Row(
-                            controls=[
-                                self.cancel_button,
-                            ],
-                            alignment=ft.MainAxisAlignment.CENTER,
-                            spacing=10,
-                        ),
+                        profile_card,
+                        ft.Container(height=20),
+                        buttons_card_1,
+                        ft.Container(height=15),
+                        buttons_card_2,
                     ],
                     alignment=ft.MainAxisAlignment.START,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=10,
                 ),
-                padding=ft.padding.all(20),
-                width=400,
+                width=730,
                 alignment=ft.alignment.center,
             )
         )
 
-        self.update_controls()
         self.page.update()
 
-    def update_controls(self):
-        if (
-            not self.page.appbar
-            or not self.page.appbar.actions
-            or len(self.page.appbar.actions) == 0
-        ):
-            print('AppBar или его действия не установлены.')
-            return
-
-        self.username_text.value = self.user_data.get('username', '')
-        self.username_field.value = self.user_data.get('username', '')
-        self.first_name_field.value = self.user_data.get('first_name', '')
-        self.last_name_field.value = self.user_data.get('last_name', '')
-        self.password_field.value = ''
-
-        self.username_label.visible = self.edit_mode
-        self.password_label.visible = self.edit_mode
-        self.first_name_label.visible = self.edit_mode
-        self.last_name_label.visible = self.edit_mode
-
-        self.username_text.visible = not self.edit_mode
-        self.username_field.visible = self.edit_mode
-
-        self.first_name_field.read_only = not self.edit_mode
-        self.last_name_field.read_only = not self.edit_mode
-        self.password_field.read_only = not self.edit_mode
-
-        self.change_avatar_button.visible = self.edit_mode
-        self.cancel_button.visible = self.edit_mode
-
-        if self.edit_mode:
-            self.page.appbar.actions[0].icon = ft.icons.CHECK
-            self.page.appbar.actions[0].tooltip = 'Сохранить'
-        else:
-            self.page.appbar.actions[0].icon = ft.icons.EDIT
-            self.page.appbar.actions[0].tooltip = 'Редактировать'
-
-        print(f'Update Controls: edit_mode={self.edit_mode}')
-        print(f'username_label.visible={self.username_label.visible}')
-        print(f'password_label.visible={self.password_label.visible}')
-        print(f'first_name_label.visible={self.first_name_label.visible}')
-        print(f'last_name_label.visible={self.last_name_label.visible}')
-
-        self.page.update()
-
-    def toggle_edit_mode(self, e):
-        self.edit_mode = not self.edit_mode
-        print(
-            f'Режим редактирования: '
-            f'{"ВКЛЮЧЕН" if self.edit_mode else "ВЫКЛЮЧЕН"}'
+    def create_profile_card(self):
+        return ft.Container(
+            width=730,
+            alignment=ft.alignment.center,
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Container(
+                                content=self.avatar_container,
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(top=50),
+                            ),
+                            ft.Container(
+                                content=ft.Text(
+                                    self.user_data.get('username', ''),
+                                    size=20,
+                                    weight=ft.FontWeight.BOLD,
+                                ),
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(top=10),
+                            ),
+                            ft.Container(
+                                content=self.change_avatar_button,
+                                alignment=ft.alignment.center,
+                                padding=ft.padding.only(top=10),
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.START,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=ft.padding.all(20),
+                    height=250,
+                ),
+                elevation=3,
+            ),
+            margin=ft.margin.only(bottom=20),
         )
-        self.update_controls()
-
-    def save_changes(self, e=None):
-        print('Сохранение изменений через AppBar.')
-        self.update_user_data(
-            self.username_field.value,
-            self.first_name_field.value,
-            self.last_name_field.value,
-            self.password_field.value,
-        )
-        self.edit_mode = False
-        self.update_controls()
-
-    def cancel_edit_mode(self, e):
-        print('Отмена режима редактирования.')
-        self.edit_mode = False
-        self.update_controls()
-        self.load_user_data()
-
-    def update_user_data(self, username, first_name, last_name, password):
-        new_values = {
-            'username': username or self.user_data.get('username'),
-            'first_name': first_name or self.user_data.get('first_name'),
-            'last_name': last_name or self.user_data.get('last_name'),
-            'role_id': 2,
-        }
-
-        if password:
-            new_values['password'] = password
-
-        try:
-            response = self.api.update_user_data(
-                self.user_data['id'], new_values
-            )
-        except Exception as e:
-            error_message = f'Ошибка при обновлении данных: {str(e)}'
-            print(error_message)
-            self.show_error_message(error_message)
-            return
-
-        if response and response.get('status_code') == 200:
-            print('Данные успешно обновлены')
-            self.show_success_message('Данные успешно обновлены')
-            self.load_user_data()
-        else:
-            error_message = response.get('error', 'Неизвестная ошибка')
-            print(f'Ошибка при обновлении данных: {error_message}')
-            self.show_error_message(
-                f'Ошибка при обновлении данных: {error_message}'
-            )
 
     def create_avatar_container(self):
         return ft.Container(
-            content=ft.Icon(ft.icons.PERSON, size=200, color=ft.colors.GREY),
+            content=ft.Icon(ft.icons.PERSON, size=100, color=ft.colors.GREY),
             alignment=ft.alignment.center,
-            padding=20,
+            margin=ft.margin.only(top=-50),
             on_click=self.on_avatar_click,
-            width=200,
-            height=200,
+            width=100,
+            height=100,
         )
 
     def create_file_picker(self):
         return ft.FilePicker(on_result=self.on_picture_select)
 
     def on_avatar_click(self, e):
-        if self.edit_mode:
-            self.file_picker.pick_files(
-                allow_multiple=False, allowed_extensions=['png', 'jpg', 'jpeg']
-            )
-        else:
-            self.show_error_message(
-                'Сначала нажмите на иконку редактирования.'
-            )
+        self.file_picker.pick_files(
+            allow_multiple=False, allowed_extensions=['png', 'jpg', 'jpeg']
+        )
 
     def on_picture_select(self, e: ft.FilePickerResultEvent):
         if e.files:
@@ -397,10 +302,10 @@ class AccountSettingsPage:
                 self.selected_image_bytes = file.content
                 self.avatar_container.content = ft.Image(
                     src=ft.ImageSource.bytes(self.selected_image_bytes),
-                    width=200,
-                    height=200,
+                    width=100,
+                    height=100,
                     fit=ft.ImageFit.COVER,
-                    border_radius=ft.border_radius.all(100),
+                    border_radius=ft.border_radius.all(50),
                 )
                 self.page.update()
                 self.upload_avatar_to_server()
@@ -421,15 +326,17 @@ class AccountSettingsPage:
         try:
             response = self.api.update_user_with_avatar(
                 user_id=user_id,
+                new_values={},
                 image_bytes=self.selected_image_bytes,
             )
-            if response and response.get('status_code') == 200:
+            if response and response.status_code == 200:
                 print('Аватар успешно обновлен.')
                 self.show_success_message('Аватар успешно обновлен!')
                 self.load_user_data()
             else:
-                error_text = response.get(
-                    'error', 'Неизвестная ошибка при обновлении аватара.'
+                error_text = (
+                    response.text
+                    or 'Неизвестная ошибка при обновлении аватара.'
                 )
                 print(f'Ошибка при обновлении аватара: {error_text}')
                 self.show_error_message(
@@ -479,3 +386,44 @@ class AccountSettingsPage:
 
     def show_error_message(self, message: str):
         self.show_snack_bar(message, bgcolor=ft.colors.RED)
+
+    def open_account_edit_page(self, e):
+        print('Opening AccountEditPage')
+        AccountEditPage(
+            self.page, self.user_data, self.on_account_updated, self.api
+        )
+
+    def on_account_updated(self):
+        # Callback после обновления учетной записи
+        self.load_user_data()
+
+    def open_password_change_page(self, e):
+        print('Opening PasswordChangePage')
+        PasswordChangePage(
+            self.page, self.user_data, self.on_password_changed, self.api
+        )
+
+    def on_password_changed(self):
+        # Callback после смены пароля
+        self.show_success_message('Пароль успешно изменен.')
+
+    def on_phone_click(self, e):
+        print("Кнопка 'Номер телефона' нажата")
+        # Пока без логики, можно добавить заглушку или оставить пустым
+        pass
+
+    def on_logout_click(self, e):
+        self.page.client_storage.clear()
+        self.redirect_to_sign_in_page()
+
+    def on_delete_account_click(self, e):
+        print('Delete Account button clicked')
+        # Логика удаления аккаунта будет добавлена позже
+        self.show_error_message(
+            'Функция удаления аккаунта пока не реализована.'
+        )
+
+    def open_about_page(self, e):
+        print("Открыта кнопка 'О приложении'")
+        # Пока без логики. В будущем можно добавить диалог или новую страницу.
+        pass
