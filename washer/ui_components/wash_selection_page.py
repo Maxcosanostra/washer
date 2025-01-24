@@ -333,10 +333,73 @@ class WashSelectionPage:
         self.update_wash_list(filtered_washes)
 
     def update_wash_list(self, washes):
-        self.car_washes_list.controls = [
-            self.create_car_wash_card(wash) for wash in washes
-        ]
+        if not washes:
+            no_results_message = self.create_no_results_message()
+            self.car_washes_list.controls = [no_results_message]
+        else:
+            self.car_washes_list.controls = [
+                self.create_car_wash_card(wash) for wash in washes
+            ]
         self.car_washes_list.update()
+
+    def create_no_results_message(self):
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text(
+                        'Такой автомойки не найдено...',
+                        size=18,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.colors.RED_600,
+                    ),
+                    ft.Text(
+                        'Вы владелец или хотите видеть ее здесь '
+                        'как клиент? - Обратитесь в службу поддержки.',
+                        size=16,
+                        color=ft.colors.GREY_700,
+                    ),
+                    ft.ElevatedButton(
+                        'Связаться со службой поддержки',
+                        icon=ft.icons.CONTACT_SUPPORT,
+                        on_click=self.on_support_click,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=10,
+            ),
+            alignment=ft.alignment.center,
+            padding=20,
+        )
+
+    def on_support_click(self, e):
+        import urllib.parse
+        import webbrowser
+
+        support_email = 'support@wexy.com'
+
+        subject = 'Запрос по поиску автомойки'
+
+        body = (
+            'Здравствуйте,\n\n'
+            'Я не смог найти нужную автомойку. '
+            'Пожалуйста, помогите.\n\n'
+            'Спасибо!'
+        )
+
+        encoded_subject = urllib.parse.quote(subject)
+        encoded_body = urllib.parse.quote(body)
+
+        mailto_link = (
+            f'mailto:{support_email}'
+            f'?subject={encoded_subject}'
+            f'&body={encoded_body}'
+        )
+
+        try:
+            webbrowser.open(mailto_link)
+        except Exception as error:
+            print(f'Не удалось открыть почтовый клиент: {error}')
 
     def create_wash_list(self):
         return [self.create_car_wash_card(wash) for wash in self.car_washes]
