@@ -424,6 +424,7 @@ class WashSelectionPage:
             slots_text = 'Свободных боксов на сегодня нет'
 
         return ft.Container(
+            on_click=lambda e: self.on_booking_click(car_wash),
             content=ft.Card(
                 content=ft.Container(
                     content=ft.Stack(
@@ -433,9 +434,16 @@ class WashSelectionPage:
                                     src=image_link,
                                     fit=ft.ImageFit.COVER,
                                     width=float('inf'),
+                                    height=170,
                                 ),
-                                height=170,
-                                alignment=ft.alignment.center,
+                                border_radius=ft.border_radius.only(
+                                    top_left=12,
+                                    top_right=12,
+                                    bottom_left=0,
+                                    bottom_right=0,
+                                ),
+                                clip_behavior=ft.ClipBehavior.HARD_EDGE,
+                                alignment=ft.alignment.top_center,
                             ),
                             ft.Container(
                                 content=ft.Text(
@@ -466,30 +474,35 @@ class WashSelectionPage:
                                 top=10,
                                 bgcolor='#80E0E0E0',
                             ),
-                            ft.Text(
-                                f"{car_wash['name']}",
-                                weight=ft.FontWeight.BOLD,
-                                size=24,
-                                text_align=ft.TextAlign.CENTER,
-                                top=170,
+                            ft.Container(
+                                content=ft.Text(
+                                    f"{car_wash['name']}",
+                                    weight=ft.FontWeight.BOLD,
+                                    size=24,
+                                    text_align=ft.TextAlign.CENTER,
+                                ),
+                                alignment=ft.alignment.center_left,
+                                padding=ft.padding.only(top=175, left=5),
                             ),
-                            ft.Text(
-                                location_address,
-                                text_align=ft.TextAlign.CENTER,
-                                color=ft.colors.GREY,
-                                size=16,
-                                top=203,
+                            ft.Container(
+                                content=ft.Text(
+                                    location_address,
+                                    text_align=ft.TextAlign.CENTER,
+                                    color=ft.colors.GREY,
+                                    size=16,
+                                ),
+                                alignment=ft.alignment.center_left,
+                                padding=ft.padding.only(top=205, left=5),
                             ),
                         ]
                     ),
-                    height=240,
-                    padding=ft.padding.all(8),
+                    # height=240,
+                    padding=ft.padding.all(0),
+                    width=float('inf'),
                 ),
-                elevation=3,
+                elevation=10,
             ),
             alignment=ft.alignment.center,
-            width=400,
-            on_click=lambda e, wash=car_wash: self.on_booking_click(wash),
         )
 
     def on_booking_click(self, car_wash):
