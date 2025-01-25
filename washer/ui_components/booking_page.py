@@ -565,8 +565,15 @@ class BookingPage:
                                     src=image_link,
                                     fit=ft.ImageFit.COVER,
                                     width=float('inf'),
+                                    height=170,
                                 ),
-                                height=170,
+                                border_radius=ft.border_radius.only(
+                                    top_left=12,
+                                    top_right=12,
+                                    bottom_left=0,
+                                    bottom_right=0,
+                                ),
+                                clip_behavior=ft.ClipBehavior.HARD_EDGE,
                                 alignment=ft.alignment.center,
                             ),
                             ft.Container(
@@ -576,8 +583,8 @@ class BookingPage:
                                     size=24,
                                     text_align=ft.TextAlign.CENTER,
                                 ),
-                                alignment=ft.alignment.center,
-                                padding=ft.padding.only(top=170),
+                                alignment=ft.alignment.center_left,
+                                padding=ft.padding.only(top=175, left=5),
                             ),
                             ft.Container(
                                 content=ft.Text(
@@ -586,19 +593,17 @@ class BookingPage:
                                     color=ft.colors.GREY,
                                     size=16,
                                 ),
-                                alignment=ft.alignment.center,
-                                padding=ft.padding.only(top=200),
+                                alignment=ft.alignment.center_left,
+                                padding=ft.padding.only(top=205, left=5),
                             ),
                         ]
                     ),
-                    padding=ft.padding.all(8),
+                    padding=ft.padding.all(0),
                     width=float('inf'),
                 ),
                 elevation=3,
             ),
             alignment=ft.alignment.center,
-            padding=ft.padding.all(0),
-            expand=True,
         )
 
     def create_elements(self):
@@ -612,7 +617,7 @@ class BookingPage:
 
         self.car_dropdown = ft.Dropdown(
             width=700,
-            hint_text='Выберите автомобиль',
+            hint_text='Нажмите здесь чтобы выбрать',
             options=self.load_user_cars(),
             on_change=self.on_car_select,
             disabled=self.car_dropdown_disabled,
