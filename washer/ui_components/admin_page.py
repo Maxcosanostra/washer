@@ -148,42 +148,58 @@ class AdminPage:
         address = location.get('address', 'Unknown Address')
         location_display = f'{city}, {address}'
 
+        car_wash_name = car_wash.get('name', 'Автомойка')
+
         return ft.Container(
+            on_click=lambda e: self.open_car_wash_edit_page(car_wash),
             content=ft.Card(
+                elevation=10,
                 content=ft.Container(
-                    content=ft.Column(
+                    width=float('inf'),
+                    padding=ft.padding.all(0),
+                    content=ft.Stack(
                         [
                             ft.Container(
                                 content=ft.Image(
                                     src=image_link,
                                     fit=ft.ImageFit.COVER,
                                     width=float('inf'),
+                                    height=170,
                                 ),
-                                height=200,
+                                border_radius=ft.border_radius.only(
+                                    top_left=12,
+                                    top_right=12,
+                                    bottom_left=0,
+                                    bottom_right=0,
+                                ),
+                                clip_behavior=ft.ClipBehavior.HARD_EDGE,
                                 alignment=ft.alignment.center,
                             ),
-                            ft.Text(
-                                f"{car_wash['name']}",
-                                weight=ft.FontWeight.BOLD,
-                                size=24,
-                                text_align=ft.TextAlign.CENTER,
+                            ft.Container(
+                                content=ft.Text(
+                                    car_wash_name,
+                                    weight=ft.FontWeight.BOLD,
+                                    size=24,
+                                    text_align=ft.TextAlign.CENTER,
+                                ),
+                                alignment=ft.alignment.center_left,
+                                padding=ft.padding.only(top=175, left=5),
                             ),
-                            ft.Text(
-                                location_display,
-                                text_align=ft.TextAlign.CENTER,
-                                color=ft.colors.GREY,
-                                size=16,
+                            ft.Container(
+                                content=ft.Text(
+                                    location_display,
+                                    text_align=ft.TextAlign.CENTER,
+                                    color=ft.colors.GREY,
+                                    size=16,
+                                ),
+                                alignment=ft.alignment.center_left,
+                                padding=ft.padding.only(top=205, left=5),
                             ),
-                        ],
-                        spacing=10,
+                        ]
                     ),
-                    padding=ft.padding.all(10),
-                    on_click=lambda e: self.open_car_wash_edit_page(car_wash),
                 ),
-                elevation=3,
             ),
             alignment=ft.alignment.center,
-            width=400,
         )
 
     def open_car_wash_edit_page(self, car_wash):
