@@ -13,46 +13,32 @@ class WashSelectionPage:
 
     def __init__(self, page: ft.Page, username: str = None):
         self.page = page
-        self.api = BackendApi()
-        self.api.set_access_token(self.page.client_storage.get('access_token'))
-        self.username = username or self.page.client_storage.get('username')
-        self.api_url = config.api_url
-        self.avatar_container = self.create_avatar_container()
-        self.car_washes = []
-
+        self.page.clean()
         self.page.adaptive = True
-        self.page.scroll = 'adaptive'
 
+        self.api = BackendApi()
         access_token = self.page.client_storage.get('access_token')
-        if not access_token:
-            print('Access token not found, redirecting to login.')
+        if access_token:
+            self.api.set_access_token(access_token)
+        else:
+            print('Access token not found -> redirect to SignIn')
             self.redirect_to_sign_in_page()
             return
 
-        self.page.clean()
+        self.username = username or self.page.client_storage.get('username')
+        self.api_url = config.api_url
 
-        self.page.appbar = self.create_app_bar_with_drawer()
-        self.page.drawer = self.create_navigation_drawer()
-
-        self.progress_bar = ft.ProgressBar(width=400, visible=False)
-
-        self.car_washes_list = ft.ListView(controls=[], padding=0, spacing=0)
-
+        self.car_washes = []
         self.search_bar = self.create_search_bar()
         self.search_bar.visible = False
 
-        self.main_container = self.create_main_container()
-        self.page.add(
-            self.main_container,
-            ft.Container(self.progress_bar, alignment=ft.alignment.center),
-        )
+        self.car_washes_list = ft.Column(spacing=10)
+        self.progress_bar = ft.ProgressBar(width=400, visible=False)
 
-        self.progress_bar.visible = True
-        self.page.update()
+        self.page.appbar = self.create_app_bar_with_drawer()
 
-        self.load_car_washes()
-
-        self.progress_bar.visible = False
+        self.avatar_container = self.create_avatar_container()
+        self.page.drawer = self.create_navigation_drawer()
 
         self.page.floating_action_button = ft.FloatingActionButton(
             icon=ft.icons.SEARCH,
@@ -63,28 +49,84 @@ class WashSelectionPage:
         self.page.navigation_bar = ft.NavigationBar(
             destinations=[
                 ft.NavigationBarDestination(
-                    icon=ft.icons.EVENT_NOTE,
-                    label='Записи',
+                    icon=ft.icons.EVENT_NOTE, label='Записи'
                 ),
                 ft.NavigationBarDestination(
-                    icon=ft.icons.HOME,
-                    label='Главная',
+                    icon=ft.icons.HOME, label='Главная'
                 ),
                 ft.NavigationBarDestination(
-                    icon=ft.icons.CAR_REPAIR,
-                    label='Мои автомобили',
+                    icon=ft.icons.CAR_REPAIR, label='Мои автомобили'
                 ),
             ],
             selected_index=1,
             on_change=self.on_navigation_change,
         )
 
+        content_list_view = ft.ListView(
+            controls=[
+                ft.Container(height=10),
+                ft.Container(
+                    content=ft.Text(
+                        'Автомойки',
+                        weight=ft.FontWeight.BOLD,
+                        size=24,
+                        text_align=ft.TextAlign.LEFT,
+                    ),
+                    margin=ft.margin.only(top=20),
+                ),
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            self.search_bar,
+                            self.car_washes_list,
+                        ],
+                        spacing=10,
+                    ),
+                    expand=True,
+                ),
+            ],
+            padding=ft.padding.only(top=10, bottom=10),
+            spacing=10,
+        )
+
+        self.main_container = ft.Container(
+            content=content_list_view,
+            margin=ft.margin.only(top=-10),
+            expand=True,
+            width=730,
+            alignment=ft.alignment.center,
+        )
+
+        self.page.add(
+            self.main_container,
+            ft.Container(self.progress_bar, alignment=ft.alignment.center),
+        )
+
+        self.progress_bar.visible = True
+        self.page.update()
+        self.load_car_washes()
+        self.progress_bar.visible = False
         self.page.update()
 
-    def reload_page(self):
-        username = self.username
-        self.page.clean()
-        WashSelectionPage(self.page, username)
+    def create_app_bar_with_drawer(self):
+        return ft.AppBar(
+            leading=ft.IconButton(
+                icon=ft.icons.MENU,
+                on_click=self.open_drawer,
+            ),
+            title=ft.Container(
+                content=ft.Text(
+                    'Wexy!',
+                    font_family='LavishlyYours',
+                    size=32,
+                    weight=ft.FontWeight.BOLD,
+                    color=None,
+                ),
+                margin=ft.margin.only(top=-9),
+            ),
+            center_title=True,
+            bgcolor=None,
+        )
 
     def create_navigation_drawer(self):
         drawer = ft.NavigationDrawer(
@@ -134,30 +176,9 @@ class WashSelectionPage:
         )
         return drawer
 
-    def create_app_bar_with_drawer(self):
-        return ft.AppBar(
-            leading=ft.IconButton(
-                icon=ft.icons.MENU,
-                on_click=self.open_drawer,
-            ),
-            title=ft.Container(
-                content=ft.Text(
-                    'Wexy!',
-                    font_family='LavishlyYours',
-                    size=32,
-                    weight=ft.FontWeight.BOLD,
-                    color=None,
-                ),
-                margin=ft.margin.only(top=-9),
-                # Слегка поднимаем текст через отрицательный отступ
-            ),
-            center_title=True,
-            bgcolor=None,
-        )
-
     def open_drawer(self, e):
         self.page.drawer.open = True
-        self.page.update()  # Обновляем страницу
+        self.page.update()
 
     def on_drawer_dismiss(self, e):
         print('NavigationDrawer закрыт')
@@ -183,159 +204,27 @@ class WashSelectionPage:
         elif selected == 3:
             self.logout()
 
-        if self.page.drawer:
-            print(
-                f'NavigationDrawer после обработки выбора: '
-                f'{self.page.drawer.open}'
-            )
+    def load_car_washes(self):
+        if WashSelectionPage.car_washes_cache:
+            print('Using cached car washes data')
+            self.car_washes = WashSelectionPage.car_washes_cache
+            self.update_wash_list_with_slots(self.car_washes)
+            return
 
-    def open_settings_page(self):
-        AccountSettingsPage(self.page)
-        self.page.update()
-
-    def open_my_finances_page(self):
-        my_finance_page = MyFinancePage(self.page)
-        my_finance_page.open()
-
-        if hasattr(self.page, 'navigation_bar'):
-            self.page.navigation_bar.selected_index = 3
-        self.page.update()
-
-    def logout(self):
-        self.page.client_storage.clear()
-        self.redirect_to_sign_in_page()
-
-    def create_avatar_container(self):
-        avatar_url = self.get_avatar_from_server()
-
-        if avatar_url:
-            avatar_content = ft.Image(
-                src=avatar_url,
-                width=50,
-                height=50,
-                border_radius=ft.border_radius.all(25),
-                fit=ft.ImageFit.COVER,
-            )
-        else:
-            avatar_content = ft.Container(
-                content=ft.Icon(
-                    ft.icons.PERSON, size=50, color=ft.colors.GREY
-                ),
-                width=50,
-                height=50,
-                border_radius=ft.border_radius.all(25),
-                bgcolor=ft.colors.GREY_200,
-                alignment=ft.alignment.center,
-            )
-
-        return ft.Container(
-            content=avatar_content,
-            alignment=ft.alignment.center,
-            padding=10,
-            on_click=self.on_avatar_click,
-        )
-
-    def get_avatar_from_server(self):
-        response = self.api.get_user_avatar()
+        response = self.api.get_car_washes(page=1)
         if response.status_code == 200:
-            user_data = response.json()
-            return user_data.get('image_link')
+            self.car_washes = response.json().get('data', [])
+            WashSelectionPage.car_washes_cache = self.car_washes
+            self.update_wash_list_with_slots(self.car_washes)
         else:
             print(
-                f'Error fetching avatar: '
+                f'Error loading car washes: '
                 f'{response.status_code}, {response.text}'
             )
-            return None
 
-    def on_avatar_click(self, e=None):
-        from washer.ui_components.profile_page import ProfilePage
-
-        ProfilePage(self.page)
-
-    def create_main_container(self):
-        search_and_list_container = ft.Container(
-            content=ft.Column(
-                controls=[
-                    self.search_bar,
-                    self.car_washes_list,
-                ],
-                spacing=10,
-            ),
-            expand=True,
-        )
-
-        return ft.Container(
-            content=ft.ListView(
-                controls=[
-                    ft.Container(
-                        content=ft.Text(
-                            'Автомойки',
-                            weight=ft.FontWeight.BOLD,
-                            size=24,
-                            text_align=ft.TextAlign.LEFT,
-                        ),
-                        margin=ft.margin.only(top=20),
-                    ),
-                    search_and_list_container,
-                ],
-                padding=ft.padding.only(top=10, bottom=10),
-                spacing=10,
-            ),
-            margin=ft.margin.only(top=20),
-            expand=True,
-            width=730,
-            alignment=ft.alignment.center,
-        )
-
-    def create_search_bar(self):
-        return ft.Container(
-            content=ft.Card(
-                content=ft.Container(
-                    content=ft.TextField(
-                        prefix=ft.Icon(
-                            ft.icons.SEARCH, size=20, color=ft.colors.GREY
-                        ),
-                        label='Найти автомойку...',
-                        label_style=ft.TextStyle(
-                            size=14, color=ft.colors.GREY
-                        ),
-                        width=730,
-                        height=50,
-                        border=ft.InputBorder.NONE,
-                        border_radius=ft.border_radius.all(15),
-                        bgcolor=ft.colors.TRANSPARENT,
-                        border_color=ft.colors.TRANSPARENT,
-                        filled=False,
-                        on_change=self.on_search_text_change,
-                    ),
-                    alignment=ft.alignment.center,
-                    padding=ft.padding.all(0),
-                ),
-                elevation=0,
-                width=730,
-            ),
-            alignment=ft.alignment.center,
-            padding=ft.padding.all(0),
-            width=730,
-        )
-
-    def on_fab_click(self, e):
-        self.search_bar.visible = not self.search_bar.visible
-        self.page.update()
-
-    def on_search_text_change(self, e):
-        search_text = e.control.value.lower()
-        filtered_washes = [
-            wash
-            for wash in self.car_washes
-            if search_text in wash['name'].lower()
-        ]
-        self.update_wash_list(filtered_washes)
-
-    def update_wash_list(self, washes):
+    def update_wash_list_with_slots(self, washes):
         if not washes:
-            no_results_message = self.create_no_results_message()
-            self.car_washes_list.controls = [no_results_message]
+            self.car_washes_list.controls = [self.create_no_results_message()]
         else:
             self.car_washes_list.controls = [
                 self.create_car_wash_card(wash) for wash in washes
@@ -353,7 +242,7 @@ class WashSelectionPage:
                         color=ft.colors.RED_600,
                     ),
                     ft.Text(
-                        'Вы владелец или хотите видеть ее здесь '
+                        'Вы владелец или хотите видеть её здесь '
                         'как клиент? - Обратитесь в службу поддержки.',
                         size=16,
                         color=ft.colors.GREY_700,
@@ -377,16 +266,13 @@ class WashSelectionPage:
         import webbrowser
 
         support_email = 'support@wexy.com'
-
         subject = 'Запрос по поиску автомойки'
-
         body = (
             'Здравствуйте,\n\n'
             'Я не смог найти нужную автомойку. '
             'Пожалуйста, помогите.\n\n'
             'Спасибо!'
         )
-
         encoded_subject = urllib.parse.quote(subject)
         encoded_body = urllib.parse.quote(body)
 
@@ -401,9 +287,6 @@ class WashSelectionPage:
         except Exception as error:
             print(f'Не удалось открыть почтовый клиент: {error}')
 
-    def create_wash_list(self):
-        return [self.create_car_wash_card(wash) for wash in self.car_washes]
-
     def create_car_wash_card(self, car_wash):
         image_link = car_wash.get('image_link', 'assets/spa_logo.png')
         location_id = car_wash.get('location_id')
@@ -412,19 +295,23 @@ class WashSelectionPage:
         )
         location_address = (
             f"{location_data['city']}, {location_data['address']}"
-            if location_data
+            if (
+                location_data
+                and 'city' in location_data
+                and 'address' in location_data
+            )
             else 'Адрес недоступен'
         )
 
         available_slots = self.get_available_slots(car_wash['id'])
-
-        if available_slots > 0:
-            slots_text = 'Есть свободные боксы'
-        else:
-            slots_text = 'Свободных боксов на сегодня нет'
+        slots_text = (
+            'Есть свободные боксы'
+            if available_slots > 0
+            else 'Свободных боксов на сегодня нет'
+        )
 
         return ft.Container(
-            on_click=lambda e: self.on_booking_click(car_wash),
+            on_click=lambda e, w=car_wash: self.on_booking_click(w),
             content=ft.Card(
                 content=ft.Container(
                     content=ft.Stack(
@@ -523,30 +410,18 @@ class WashSelectionPage:
         )
         self.page.update()
 
-    def load_car_washes(self):
-        """Загружает данные автомоек и обновляет список на странице"""
-        if WashSelectionPage.car_washes_cache:
-            print('Using cached car washes data')
-            self.car_washes = WashSelectionPage.car_washes_cache
-            self.update_wash_list_with_slots(self.car_washes)
-            return
-
-        response = self.api.get_car_washes(page=1)
+    def load_location_data(self, location_id):
+        response = self.api.get_location_data(location_id)
         if response.status_code == 200:
-            self.car_washes = response.json().get('data', [])
-            WashSelectionPage.car_washes_cache = self.car_washes
-            self.update_wash_list_with_slots(self.car_washes)
+            location = response.json()
+            print(f'Location data for location_id {location_id}: {location}')
+            return location
         else:
             print(
                 f'Error loading car washes: '
                 f'{response.status_code}, {response.text}'
             )
-
-    def update_wash_list_with_slots(self, washes):
-        self.car_washes_list.controls = [
-            self.create_car_wash_card(wash) for wash in washes
-        ]
-        self.car_washes_list.update()
+            return None
 
     def get_available_slots(self, car_wash_id, date=None):
         if date is None:
@@ -590,24 +465,56 @@ class WashSelectionPage:
 
         return total_available
 
-    def load_location_data(self, location_id):
-        """Загрузка данных о локации по её ID"""
-        response = self.api.get_location_data(location_id)
-        if response.status_code == 200:
-            location = response.json()
-            print(f'Location data for location_id {location_id}: {location}')
-            return location
+    def create_search_bar(self):
+        return ft.Container(
+            content=ft.Card(
+                content=ft.Container(
+                    content=ft.TextField(
+                        prefix=ft.Icon(
+                            ft.icons.SEARCH, size=20, color=ft.colors.GREY
+                        ),
+                        label='Найти автомойку...',
+                        label_style=ft.TextStyle(
+                            size=14, color=ft.colors.GREY
+                        ),
+                        width=730,
+                        height=50,
+                        border=ft.InputBorder.NONE,
+                        border_radius=ft.border_radius.all(15),
+                        bgcolor=ft.colors.TRANSPARENT,
+                        border_color=ft.colors.TRANSPARENT,
+                        filled=False,
+                        on_change=self.on_search_text_change,
+                    ),
+                    alignment=ft.alignment.center,
+                    padding=ft.padding.all(0),
+                ),
+                elevation=0,
+                width=730,
+            ),
+            alignment=ft.alignment.center,
+            padding=ft.padding.all(0),
+            width=730,
+        )
+
+    def on_search_text_change(self, e):
+        search_text = e.control.value.lower()
+        filtered_washes = [
+            wash
+            for wash in self.car_washes
+            if search_text in wash['name'].lower()
+        ]
+        if not filtered_washes:
+            self.car_washes_list.controls = [self.create_no_results_message()]
         else:
-            print(
-                f'Failed to fetch location: '
-                f'{response.status_code}, {response.text}'
-            )
-            return None
+            self.car_washes_list.controls = [
+                self.create_car_wash_card(wash) for wash in filtered_washes
+            ]
+        self.car_washes_list.update()
 
-    def redirect_to_sign_in_page(self):
-        from washer.ui_components.sign_in_page import SignInPage
-
-        SignInPage(self.page)
+    def on_fab_click(self, e):
+        self.search_bar.visible = not self.search_bar.visible
+        self.page.update()
 
     def on_navigation_change(self, e):
         selected_index = e.control.selected_index
@@ -623,11 +530,11 @@ class WashSelectionPage:
         self.page.update()
 
     def open_my_bookings_page(self):
-        from washer.ui_components.my_bookings_page import MyBookingsPage
-
         if not self.car_washes:
             print('Car washes data is not loaded yet.')
             return
+
+        from washer.ui_components.my_bookings_page import MyBookingsPage
 
         selected_car_wash = self.car_washes[0]
         location_data = self.load_location_data(
@@ -642,8 +549,8 @@ class WashSelectionPage:
         )
         my_bookings_page.open()
 
-        self.page.navigation_bar.selected_index = 0
-        self.page.update()
+        if self.page.navigation_bar:
+            self.page.navigation_bar.selected_index = 0
 
     def open_my_cars_page(self):
         from washer.ui_components.my_cars_page import MyCarsPage
@@ -656,5 +563,77 @@ class WashSelectionPage:
         )
         my_cars_page.open()
 
-        self.page.navigation_bar.selected_index = 2
+        if self.page.navigation_bar:
+            self.page.navigation_bar.selected_index = 2
+
+    def reload_page(self):
+        username = self.username
+        self.page.clean()
+        WashSelectionPage(self.page, username)
+
+    def open_my_finances_page(self):
+        my_finance_page = MyFinancePage(self.page)
+        my_finance_page.open()
+
+        if hasattr(self.page, 'navigation_bar'):
+            self.page.navigation_bar.selected_index = 3
         self.page.update()
+
+    def open_settings_page(self):
+        AccountSettingsPage(self.page)
+        self.page.update()
+
+    def logout(self):
+        self.page.client_storage.clear()
+        self.redirect_to_sign_in_page()
+
+    def redirect_to_sign_in_page(self):
+        from washer.ui_components.sign_in_page import SignInPage
+
+        SignInPage(self.page)
+
+    def create_avatar_container(self):
+        avatar_url = self.get_avatar_from_server()
+        if avatar_url:
+            avatar_content = ft.Image(
+                src=avatar_url,
+                width=50,
+                height=50,
+                border_radius=ft.border_radius.all(25),
+                fit=ft.ImageFit.COVER,
+            )
+        else:
+            avatar_content = ft.Container(
+                content=ft.Icon(
+                    ft.icons.PERSON, size=50, color=ft.colors.GREY
+                ),
+                width=50,
+                height=50,
+                border_radius=ft.border_radius.all(25),
+                bgcolor=ft.colors.GREY_200,
+                alignment=ft.alignment.center,
+            )
+
+        return ft.Container(
+            content=avatar_content,
+            alignment=ft.alignment.center,
+            padding=10,
+            on_click=self.on_avatar_click,
+        )
+
+    def get_avatar_from_server(self):
+        response = self.api.get_user_avatar()
+        if response.status_code == 200:
+            user_data = response.json()
+            return user_data.get('image_link')
+        else:
+            print(
+                f'Error fetching avatar: '
+                f'{response.status_code}, {response.text}'
+            )
+            return None
+
+    def on_avatar_click(self, e=None):
+        from washer.ui_components.profile_page import ProfilePage
+
+        ProfilePage(self.page)
