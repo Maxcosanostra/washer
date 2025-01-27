@@ -385,8 +385,8 @@ class BookingPage:
         self.book_button_disabled = True
 
         self.expanded_panels = [True, False, False]
-
         self.updating_panels = False
+        self.nearest_time_selected = False
 
         self.loading_overlay = ft.Container(
             content=ft.ProgressRing(),
@@ -406,12 +406,10 @@ class BookingPage:
         )
         self.page.overlay.append(self.loading_overlay)
         self.page.overlay.append(self.snack_bar)
-        self.nearest_time_selected = False
 
         self.create_elements()
 
         self.page.adaptive = True
-        self.page.scroll = 'adaptive'
 
         self.page.appbar = ft.AppBar(
             leading=ft.IconButton(
@@ -517,22 +515,27 @@ class BookingPage:
             spacing=10,
         )
 
-        self.main_container = ft.Container(
-            alignment=ft.alignment.center,
-            content=ft.Column(
-                [
-                    self.car_wash_card,
-                    self.expansion_panel_list,
-                    ft.Container(
-                        content=self.book_button,
-                        alignment=ft.alignment.center,
-                    ),
-                ],
-                spacing=20,
-            ),
-            margin=ft.margin.all(0),
-            width=730,
+        main_list_view = ft.ListView(
+            controls=[
+                ft.Container(height=10),
+                self.car_wash_card,
+                self.expansion_panel_list,
+                ft.Container(
+                    content=self.book_button,
+                    alignment=ft.alignment.center,
+                ),
+            ],
+            spacing=20,
             expand=True,
+            padding=ft.padding.all(0),
+        )
+
+        self.main_container = ft.Container(
+            content=main_list_view,
+            margin=ft.margin.only(top=-10),
+            expand=True,
+            width=730,
+            alignment=ft.alignment.center,
         )
 
         self.page.clean()
@@ -893,23 +896,39 @@ class BookingPage:
         return brand, model, generation, body_type
 
     def show_confirmation_page(self):
+        box_name = 'Не выбран'
         if self.box_dropdown.value:
             selected_box_option = next(
                 (
-                    option
-                    for option in self.box_dropdown.options
-                    if option.key == str(self.box_dropdown.value)
+                    opt
+                    for opt in self.box_dropdown.options
+                    if opt.key == self.box_dropdown.value
                 ),
                 None,
             )
-            box_name = (
-                selected_box_option.text
-                if selected_box_option
-                else 'Не выбран'
-            )
-        else:
-            box_name = 'Не выбран'
+            if selected_box_option:
+                box_name = selected_box_option.text
 
+        date_str = (
+            f"{self.selected_date.strftime('%d.%m.%Y')} "
+            f"({date_class[self.selected_date.weekday()]})"
+            if self.selected_date
+            else 'Не выбрана'
+        )
+
+        time_str = (
+            self.selected_time.strftime('%H:%M')
+            if isinstance(self.selected_time, datetime)
+            else 'Не выбрано'
+        )
+
+        additions_list = [
+            addition['name']
+            for addition in self.available_additions
+            if addition['id'] in self.selected_addition_ids
+        ]
+
+        brand, model, generation, body_type = ('Не указано',) * 4
         selected_car = next(
             (
                 car
@@ -918,214 +937,35 @@ class BookingPage:
             ),
             None,
         )
-
         if selected_car:
-            car_name = (
-                selected_car.get('name')
-                or f"{selected_car.get('brand', 'Неизвестный бренд')} "
-                f"{selected_car.get('model', 'Неизвестная модель')}"
-            )
+            car_name = selected_car.get('name', 'Не выбрано')
             brand, model, generation, body_type = self.parse_car_name(car_name)
-        else:
-            car_name = 'Не выбран'
-            brand, model, generation, body_type = (
-                'Не указано',
-                'Не указано',
-                'Не указано',
-                'Не указано',
-            )
 
-        if self.selected_date:
-            day_of_week = date_class[self.selected_date.weekday()]
-            formatted_date = (
-                f"{self.selected_date.strftime('%d.%m.%Y')} ({day_of_week})"
-            )
-        else:
-            formatted_date = 'Не выбрана'
+        car_data = {
+            'brand': brand,
+            'model': model,
+            'generation': generation,
+            'body_type': body_type,
+        }
 
-        formatted_time = (
-            self.selected_time.strftime('%H:%M')
-            if isinstance(self.selected_time, datetime)
-            else self.selected_time or 'Не выбрано'
+        booking_data = {
+            'box_name': box_name,
+            'date_str': date_str,
+            'time_str': time_str,
+        }
+
+        from washer.ui_components.confirmation_page import ConfirmationPage
+
+        confirm_page = ConfirmationPage(
+            page=self.page,
+            booking_data=booking_data,
+            car_data=car_data,
+            price=int(self.car_price),
+            additions_list=additions_list,
+            on_confirm=self.on_confirm_booking,
+            on_cancel=self.on_back_to_booking_page,
         )
-        price = f'₸{int(self.car_price)}'
-
-        additional_services = [
-            addition['name']
-            for addition in self.available_additions
-            if addition['id'] in self.selected_addition_ids
-        ]
-
-        booking_details = [
-            ('Бокс', box_name),
-            ('Дата', formatted_date),
-            ('Время', formatted_time),
-            ('Цена', price),
-            ('Услуга', 'Комплексная мойка'),
-        ]
-
-        if additional_services:
-            booking_details.append(
-                ('Дополнительно', ', '.join(additional_services))
-            )
-
-        booking_info_column = ft.Column(
-            [
-                ft.Row(
-                    [
-                        ft.Text(label, weight=ft.FontWeight.BOLD, size=16),
-                        ft.Text(value, color=ft.colors.GREY_600, size=16),
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                )
-                for label, value in booking_details
-            ],
-            spacing=10,
-        )
-
-        booking_info_card = ft.Card(
-            content=ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Text(
-                            'Информация о записи',
-                            size=18,
-                            weight=ft.FontWeight.BOLD,
-                        ),
-                        ft.Divider(),
-                        booking_info_column,
-                    ],
-                    spacing=10,
-                ),
-                padding=ft.padding.all(20),
-            ),
-            elevation=3,
-            margin=ft.margin.only(bottom=20),
-        )
-
-        car_info_details = [
-            ('Бренд', brand),
-            ('Модель', model),
-            ('Поколение', generation),
-            ('Тип кузова', body_type),
-        ]
-
-        car_info_column = ft.Column(
-            [
-                ft.Row(
-                    [
-                        ft.Text(label, weight=ft.FontWeight.BOLD, size=16),
-                        ft.Text(value, color=ft.colors.GREY_600, size=16),
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                )
-                for label, value in car_info_details
-            ],
-            spacing=10,
-        )
-
-        car_info_card = ft.Card(
-            content=ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Text(
-                            'Информация об автомобиле',
-                            size=18,
-                            weight=ft.FontWeight.BOLD,
-                        ),
-                        ft.Divider(),
-                        car_info_column,
-                    ],
-                    spacing=10,
-                ),
-                padding=ft.padding.all(20),
-            ),
-            elevation=3,
-            margin=ft.margin.only(bottom=20),
-        )
-
-        wishes_header = ft.Text(
-            'Есть пожелания или комментарии? Добавьте ниже',
-            size=18,
-            weight=ft.FontWeight.BOLD,
-            text_align=ft.TextAlign.CENTER,
-        )
-
-        self.wishes_field = ft.TextField(
-            label=(
-                'Например: оставил вещи в салоне. '
-                'Переложите, пожалуйста, в багажник и тд..'
-            ),
-            hint_text='',
-            multiline=True,
-            width=500,
-            height=100,
-            border_radius=ft.border_radius.all(10),
-        )
-
-        confirm_button = ft.ElevatedButton(
-            text='Подтвердить букинг',
-            on_click=self.on_confirm_booking,
-            width=300,
-            bgcolor=ft.colors.GREEN,
-            color=ft.colors.WHITE,
-        )
-
-        back_button = ft.ElevatedButton(
-            text='Изменить',
-            on_click=self.on_back_to_booking_page,
-            width=300,
-            bgcolor=ft.colors.GREY_700,
-            color=ft.colors.WHITE,
-        )
-
-        self.page.appbar = ft.AppBar(
-            leading=ft.IconButton(
-                icon=ft.icons.ARROW_BACK,
-                on_click=self.on_back_to_booking_page,
-                icon_color=ft.colors.WHITE,
-                padding=ft.padding.only(left=10),
-            ),
-            title=None,
-            center_title=True,
-            bgcolor=ft.colors.SURFACE_VARIANT,
-            leading_width=40,
-        )
-
-        main_content = ft.Column(
-            [
-                ft.Text(
-                    'Пожалуйста, подтвердите свои данные',
-                    size=24,
-                    weight=ft.FontWeight.BOLD,
-                    text_align=ft.TextAlign.CENTER,
-                ),
-                booking_info_card,
-                car_info_card,
-                wishes_header,
-                ft.Container(
-                    content=self.wishes_field,
-                    alignment=ft.alignment.center,
-                    padding=ft.padding.symmetric(vertical=10),
-                ),
-                confirm_button,
-                back_button,
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=10,
-        )
-
-        confirmation_container = ft.Container(
-            content=main_content,
-            alignment=ft.alignment.center,
-            expand=True,
-            width=730,
-        )
-
-        self.page.clean()
-        self.page.add(confirmation_container)
-        self.page.update()
+        confirm_page.open()
 
     def on_panel_change(self, e: ft.ControlEvent):
         if self.updating_panels:
@@ -2079,7 +1919,6 @@ class BookingPage:
         self.page.appbar = None
 
         self.page.clean()
-        self.page.scroll = 'adaptive'
 
         success_icon = ft.Icon(
             ft.icons.CHECK_CIRCLE,
@@ -2102,27 +1941,39 @@ class BookingPage:
             width=200,
         )
 
-        self.page.add(
-            ft.Container(
-                content=ft.Column(
-                    [
-                        success_icon,
-                        ft.Container(height=20),
-                        success_message,
-                        ft.Container(height=40),
-                        confirm_button,
-                    ],
-                    alignment=ft.MainAxisAlignment.START,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=10,
-                ),
-                alignment=ft.alignment.top_center,
-                expand=True,
-                padding=ft.padding.all(20),
-                margin=ft.margin.only(top=200),
-            )
+        content_column = ft.Column(
+            controls=[
+                ft.Container(height=200),
+                success_icon,
+                ft.Container(height=20),
+                success_message,
+                ft.Container(height=40),
+                confirm_button,
+            ],
+            spacing=10,
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
+        main_list_view = ft.ListView(
+            spacing=10,
+            expand=True,
+            padding=ft.padding.all(20),
+            controls=[content_column],
+        )
+
+        # Теперь оборачиваем ListView в Container c margin.top=-10
+        # для стилистической консистенции (прижатие кверху),
+        # хотя AppBar сейчас = None, но пусть будет единообразно.
+        main_container = ft.Container(
+            content=main_list_view,
+            margin=ft.margin.only(top=-10),
+            expand=True,
+            width=730,
+            alignment=ft.alignment.center,
+        )
+
+        self.page.add(main_container)
         self.page.update()
 
     def redirect_to_my_bookings_page(self, e):
