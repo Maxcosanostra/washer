@@ -263,7 +263,7 @@ class WashSelectionPage:
 
     def on_support_click(self, e):
         import urllib.parse
-        import webbrowser
+        # Удалили импорт webbrowser, так как он больше не нужен
 
         support_email = 'support@wexy.com'
         subject = 'Запрос по поиску автомойки'
@@ -283,8 +283,13 @@ class WashSelectionPage:
         )
 
         try:
-            webbrowser.open(mailto_link)
+            self.page.launch_url(mailto_link)
         except Exception as error:
+            self.page.snackbar = ft.SnackBar(
+                content=ft.Text('Не удалось открыть почтовый клиент.'),
+                open=True,
+            )
+            self.page.update()
             print(f'Не удалось открыть почтовый клиент: {error}')
 
     def create_car_wash_card(self, car_wash):
