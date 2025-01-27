@@ -360,6 +360,7 @@ class BookingPage:
         self.api = BackendApi()
         self.location_data = location_data or {}
         self.api.set_access_token(self.page.client_storage.get('access_token'))
+        self.phone_number = self.car_wash.get('phone_number', '')
 
         self.selected_car_id = None
         self.selected_box_id = None
@@ -422,6 +423,17 @@ class BookingPage:
             center_title=True,
             bgcolor=ft.colors.SURFACE_VARIANT,
             leading_width=40,
+            actions=[
+                ft.IconButton(
+                    icon=ft.icons.PHONE,
+                    tooltip='Позвонить в автомойку',
+                    on_click=lambda e: self.call_phone_number(
+                        self.phone_number
+                    ),
+                    icon_color=ft.colors.WHITE,
+                    padding=ft.padding.only(right=10),
+                )
+            ],
         )
 
         if self.page.navigation_bar:
@@ -546,6 +558,24 @@ class BookingPage:
         self.load_boxes()
         self.load_additions()
         self.page.drawer = None
+
+    def call_phone_number(self, phone_number):
+        if phone_number:
+            tel_url = f'tel:{phone_number}'
+            try:
+                self.page.launch_url(tel_url)
+            except Exception as e:
+                self.snack_bar.content.value = 'Не удалось открыть звонилку.'
+                self.snack_bar.bgcolor = ft.colors.RED
+                self.snack_bar.open = True
+                self.page.update()
+                print(f'Не удалось открыть звонилку: {e}')
+        else:
+            self.snack_bar.content.value = 'Номер телефона не указан.'
+            self.snack_bar.bgcolor = ft.colors.RED
+            self.snack_bar.open = True
+            self.page.update()
+            print('Номер телефона не указан.')
 
     def create_car_wash_card(self):
         image_link = self.car_wash.get('image_link', 'assets/spa_logo.png')
