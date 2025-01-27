@@ -1,5 +1,3 @@
-import re
-
 import flet as ft
 
 from washer.api_requests import BackendApi
@@ -14,6 +12,8 @@ class MyCarsPage:
         self.api_url = api_url
         self.cars = cars
         self.on_car_saved_callback = on_car_saved_callback
+
+        self.page.adaptive = True
 
         self.page.floating_action_button = None
         # self.page.update()
@@ -56,6 +56,7 @@ class MyCarsPage:
                     height=300,
                     fit=ft.ImageFit.COVER,
                 ),
+                alignment=ft.alignment.center,
                 padding=ft.padding.only(top=100),
             )
             empty_text = ft.Container(
@@ -65,32 +66,40 @@ class MyCarsPage:
                     color=ft.colors.GREY_500,
                     text_align=ft.TextAlign.CENTER,
                 ),
+                alignment=ft.alignment.center,
                 padding=ft.padding.only(top=20),
             )
             car_blocks = [empty_image, empty_text]
 
-        add_car_button = ft.ElevatedButton(
-            text='Добавить автомобиль',
-            on_click=self.on_add_car_click,
-            bgcolor=ft.colors.BLUE,
-            color=ft.colors.WHITE,
-            width=400,
+        add_car_button = ft.Container(
+            content=ft.ElevatedButton(
+                text='Добавить автомобиль',
+                on_click=self.on_add_car_click,
+                bgcolor=ft.colors.BLUE,
+                color=ft.colors.WHITE,
+                width=400,
+            ),
+            alignment=ft.alignment.center,
+            padding=ft.padding.only(bottom=20),
+        )
+
+        main_content = ft.ListView(
+            controls=[
+                ft.Container(height=10),
+                *car_blocks,
+                add_car_button,
+            ],
+            spacing=15,
+            expand=True,
+            padding=ft.padding.all(0),
         )
 
         return ft.Container(
+            content=main_content,
+            margin=ft.margin.only(top=-10),
+            expand=True,
             width=730,
             alignment=ft.alignment.center,
-            content=ft.Column(
-                controls=[
-                    *car_blocks,
-                    add_car_button,
-                ],
-                spacing=15,
-                alignment=ft.MainAxisAlignment.CENTER,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                scroll='adaptive',
-            ),
-            padding=ft.padding.all(10),
         )
 
     def create_car_info_card(self, car):
@@ -159,6 +168,7 @@ class MyCarsPage:
         )
 
     def parse_car_name(self, name: str) -> tuple[str, str, str, str]:
+        import re
         from typing import List, Tuple
 
         print(f'Parsing car name: {name}')
