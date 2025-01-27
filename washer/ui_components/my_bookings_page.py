@@ -185,9 +185,11 @@ class MyBookingsPage:
                     car_wash_id = car_wash.get('id')
                     name = car_wash.get('name', 'Без названия')
                     image_link = car_wash.get('image_link', '')
+                    phone_number = car_wash.get('phone_number', '')
                     self.car_washes_dict[car_wash_id] = {
                         'name': name,
                         'image_link': image_link,
+                        'phone_number': phone_number,
                     }
                 if response.json().get('next') is None:
                     break
@@ -361,10 +363,16 @@ class MyBookingsPage:
             car_wash_id = loc.get('id')
 
         car_wash_info = self.car_washes_dict.get(
-            car_wash_id, {'name': 'Автомойка не указана', 'image_link': ''}
+            car_wash_id,
+            {
+                'name': 'Автомойка не указана',
+                'image_link': '',
+                'phone_number': '',
+            },
         )
         car_wash_name = car_wash_info.get('name', 'Автомойка не указана')
         image_link = car_wash_info.get('image_link', '')
+        phone_number = car_wash_info.get('phone_number', '')
 
         print(f"Booking ID: {booking.get('id')}, Image Link: {image_link}")
 
@@ -506,12 +514,10 @@ class MyBookingsPage:
 
         if active:
             booking_info_controls.append(
-                ft.Divider(height=20, color=ft.colors.GREY_300)
-            )
-            booking_info_controls.append(
                 ft.TextButton(
                     'Остались вопросы? Позвонить',
-                    on_click=lambda e: None,  # Логика будет добавлена позже
+                    on_click=lambda e,
+                    phone=phone_number: self.call_phone_number(phone),
                     style=ft.ButtonStyle(
                         color=ft.colors.BLUE,
                         padding=ft.padding.symmetric(vertical=5),
@@ -528,8 +534,7 @@ class MyBookingsPage:
                     text_align=ft.TextAlign.CENTER,
                 )
             )
-
-        if state == 'COMPLETED':
+        elif state == 'COMPLETED':
             booking_id = booking.get('id', 'Неизвестен')
             booking_info_controls.append(
                 ft.Text(
@@ -629,3 +634,19 @@ class MyBookingsPage:
         WashSelectionPage(
             self.page, username=self.page.client_storage.get('username')
         )
+
+    def call_phone_number(self, phone_number):
+        if phone_number:
+            tel_url = f'tel:{phone_number}'
+            try:
+                self.page.launch_url(tel_url)
+            except Exception:
+                self.page.snackbar = ft.SnackBar(
+                    content=ft.Text('Не удалось открыть звонилку.'), open=True
+                )
+                self.page.update()
+        else:
+            self.page.snackbar = ft.SnackBar(
+                content=ft.Text('Номер телефона не указан.'), open=True
+            )
+            self.page.update()
