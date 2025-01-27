@@ -84,13 +84,42 @@ class MyBookingsPage:
         }
 
         self.car_washes_dict = {}
-
         self.boxes_dict = {}
 
         if self.page.navigation_bar:
             self.page.navigation_bar.selected_index = 0
 
         self.page.floating_action_button = None
+
+    def _create_large_image_container(self, image_src, width=300, height=300):
+        """
+        Создаёт контейнер с большим изображением для пустого состояния.
+        """
+        return ft.Container(
+            content=ft.Image(
+                src=image_src,
+                fit=ft.ImageFit.COVER,
+                width=width,
+                height=height,
+            ),
+            width=width,
+            height=height,
+            alignment=ft.alignment.center,
+        )
+
+    def _create_avatar_image_container(self, image_src, size=60):
+        return ft.Container(
+            content=ft.Image(
+                src=image_src,
+                fit=ft.ImageFit.COVER,
+                width=size,
+                height=size,
+            ),
+            width=size,
+            height=size,
+            border_radius=ft.border_radius.all(size / 2),
+            alignment=ft.alignment.center,
+        )
 
     def format_price(self, price_str):
         try:
@@ -228,13 +257,13 @@ class MyBookingsPage:
 
             if not booking_content:
                 empty_image = ft.Container(
-                    content=ft.Image(
-                        src='https://drive.google.com/uc?id=11B4mRtzpx2TjtO6X4t-nc5gdf_fHHEoK',
+                    content=self._create_large_image_container(
+                        'https://drive.google.com/uc?id=11B4mRtzpx2TjtO6X4t-nc5gdf_fHHEoK',
                         width=300,
                         height=300,
-                        fit=ft.ImageFit.COVER,
                     ),
-                    padding=ft.padding.only(top=130),
+                    padding=ft.padding.only(top=100),  # Верхний отступ
+                    alignment=ft.alignment.center,
                 )
                 empty_text = ft.Container(
                     content=ft.Text(
@@ -243,6 +272,7 @@ class MyBookingsPage:
                         color=ft.colors.GREY_500,
                         text_align=ft.TextAlign.CENTER,
                     ),
+                    alignment=ft.alignment.center,
                     padding=ft.padding.only(top=20),
                 )
                 booking_content = [empty_image, empty_text]
@@ -259,13 +289,13 @@ class MyBookingsPage:
 
             if not booking_content:
                 empty_image = ft.Container(
-                    content=ft.Image(
-                        src='https://drive.google.com/uc?id=11B4mRtzpx2TjtO6X4t-nc5gdf_fHHEoK',
+                    content=self._create_large_image_container(
+                        'https://drive.google.com/uc?id=11B4mRtzpx2TjtO6X4t-nc5gdf_fHHEoK',
                         width=300,
                         height=300,
-                        fit=ft.ImageFit.COVER,
                     ),
-                    padding=ft.padding.only(top=130),
+                    padding=ft.padding.only(top=100),
+                    alignment=ft.alignment.center,
                 )
                 empty_text = ft.Container(
                     content=ft.Text(
@@ -274,31 +304,37 @@ class MyBookingsPage:
                         color=ft.colors.GREY_500,
                         text_align=ft.TextAlign.CENTER,
                     ),
+                    alignment=ft.alignment.center,
                     padding=ft.padding.only(top=20),
                 )
                 booking_content = [empty_image, empty_text]
 
-                booking_content.append(
-                    ft.ElevatedButton(
+                add_booking_button = ft.Container(
+                    content=ft.ElevatedButton(
                         text='Давайте запишемся!',
                         on_click=self.redirect_to_booking_page,
                         bgcolor=ft.colors.PURPLE,
                         color=ft.colors.WHITE,
                         width=400,
-                    )
+                    ),
+                    alignment=ft.alignment.center,
+                    padding=ft.padding.only(top=20, bottom=20),
                 )
+                booking_content.append(add_booking_button)
+
+        main_list_view = ft.ListView(
+            controls=[ft.Container(height=10), *booking_content],
+            spacing=15,
+            expand=True,
+            padding=ft.padding.all(0),
+        )
 
         return ft.Container(
+            content=main_list_view,
+            margin=ft.margin.only(top=-10),
+            expand=True,
             width=730,
             alignment=ft.alignment.center,
-            content=ft.Column(
-                controls=booking_content,
-                spacing=15,
-                alignment=ft.MainAxisAlignment.CENTER,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                scroll='adaptive',
-            ),
-            padding=ft.padding.all(10),
         )
 
     def create_booking_display(self, booking, active=True):
@@ -360,6 +396,10 @@ class MyBookingsPage:
 
         message_color = self.state_colors.get(state, ft.colors.GREY_500)
 
+        avatar_container = self._create_avatar_image_container(
+            image_src, size=60
+        )
+
         booking_info_controls = [
             ft.Row(
                 [
@@ -370,19 +410,7 @@ class MyBookingsPage:
                         text_align=ft.TextAlign.LEFT,
                         expand=True,
                     ),
-                    ft.Container(
-                        content=ft.Image(
-                            src=image_src,
-                            width=60,
-                            height=60,
-                            fit=ft.ImageFit.COVER,
-                        ),
-                        width=60,
-                        height=60,
-                        border_radius=ft.border_radius.all(30),
-                        alignment=ft.alignment.center,
-                        margin=ft.margin.only(bottom=-15),
-                    ),
+                    avatar_container,
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
@@ -526,7 +554,6 @@ class MyBookingsPage:
                 elevation=3,
             ),
             width=700,
-            padding=ft.padding.all(5),
             margin=ft.margin.only(bottom=20),
         )
 
