@@ -436,14 +436,14 @@ class CarWashEditPage:
             size=14,
             weight=ft.FontWeight.NORMAL,
             text_align=ft.TextAlign.CENTER,
-            color=ft.colors.WHITE,
+            color=None,
         )
         self.monthly_revenue_text = ft.Text(
             f'{self.format_currency(self.total_monthly_revenue)} ₸',
             size=24,
             weight=ft.FontWeight.BOLD,
             text_align=ft.TextAlign.CENTER,
-            color=ft.colors.WHITE,
+            color=None,
         )
         self.monthly_revenue_card = ft.Container(
             content=ft.Card(
@@ -471,14 +471,14 @@ class CarWashEditPage:
             size=14,
             weight=ft.FontWeight.NORMAL,
             text_align=ft.TextAlign.CENTER,
-            color=ft.colors.WHITE,
+            color=None,
         )
         self.total_revenue_text = ft.Text(
             f'{self.format_currency(self.total_revenue)} ₸',
             size=24,
             weight=ft.FontWeight.BOLD,
             text_align=ft.TextAlign.CENTER,
-            color=ft.colors.WHITE,
+            color=None,
         )
         self.total_revenue_card = ft.Container(
             content=ft.Card(
@@ -657,6 +657,10 @@ class CarWashEditPage:
                 ]
 
                 if user_id != 1:
+                    call_on_click = self.create_phone_click_handler(
+                        phone_number
+                    )
+
                     booking_controls.extend(
                         [
                             ft.Row(
@@ -666,10 +670,27 @@ class CarWashEditPage:
                                         size=20,
                                         color=ft.colors.GREEN_600,
                                     ),
-                                    ft.Text(
-                                        phone_number,
-                                        width=200,
-                                        text_align=ft.TextAlign.LEFT,
+                                    ft.Container(
+                                        content=ft.Row(
+                                            controls=[
+                                                ft.Text(
+                                                    phone_number,
+                                                    size=14,
+                                                    color=ft.colors.BLUE_600,
+                                                    weight=ft.FontWeight.NORMAL,
+                                                ),
+                                            ],
+                                            alignment=ft.MainAxisAlignment.START,
+                                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                            spacing=4,
+                                        ),
+                                        on_click=call_on_click,
+                                        padding=ft.padding.symmetric(
+                                            vertical=2
+                                        ),
+                                        bgcolor=ft.colors.TRANSPARENT,
+                                        border_radius=ft.border_radius.all(4),
+                                        ink=True,  # Добавляет эффект нажатия
                                     ),
                                 ]
                             ),
@@ -749,13 +770,15 @@ class CarWashEditPage:
                                         text_align=ft.TextAlign.LEFT,
                                     ),
                                 ],
+                                alignment=ft.MainAxisAlignment.START,
+                                spacing=10,
                                 visible=True,
                             ),
                         ]
                     )
 
-                booking_controls.extend(
-                    [
+                if has_notes := bool(notes):
+                    booking_controls.append(
                         ft.Row(
                             [
                                 ft.Icon(
@@ -764,13 +787,22 @@ class CarWashEditPage:
                                     color=ft.colors.RED_600,
                                 ),
                                 ft.Text(
-                                    notes if notes else 'Нет',
+                                    notes,
                                     width=200,
                                     text_align=ft.TextAlign.LEFT,
+                                    overflow=ft.TextOverflow.CLIP,
+                                    expand=True,
+                                    max_lines=None,
                                 ),
                             ],
-                            visible=bool(notes),
-                        ),
+                            alignment=ft.MainAxisAlignment.START,
+                            spacing=10,
+                            visible=has_notes,
+                        )
+                    )
+
+                booking_controls.extend(
+                    [
                         ft.Divider(thickness=1, color=ft.colors.GREY_300),
                         ft.Text(
                             'Автомобиль',
@@ -825,6 +857,12 @@ class CarWashEditPage:
             controls=[section_header, bookings_container],
             spacing=10,
         )
+
+    def create_phone_click_handler(self, phone_number):
+        def handler(e):
+            self.call_phone_number(phone_number)
+
+        return handler
 
     def on_confirm_booking(self, booking_id):
         print(f'Подтверждение букинга ID: {booking_id}')
@@ -1681,8 +1719,56 @@ class CarWashEditPage:
             self.create_detail_row(ft.icons.DIRECTIONS_CAR, car_name),
             self.create_detail_row(ft.icons.NUMBERS, license_plate),
             self.create_detail_row(ft.icons.MONEY, f'₸{price}'),
-            self.create_detail_row(ft.icons.PHONE, phone_number),
         ]
+
+        if phone_number and phone_number != '---':
+            clickable_phone = ft.Row(
+                controls=[
+                    ft.Icon(
+                        ft.icons.PHONE,
+                        size=20,
+                        color=ft.colors.GREEN_600,
+                    ),
+                    ft.Container(
+                        content=ft.Text(
+                            phone_number,
+                            size=14,
+                            color=ft.colors.BLUE_600,
+                            weight=ft.FontWeight.NORMAL,
+                        ),
+                        on_click=lambda e,
+                        pn=phone_number: self.call_phone_number(pn),
+                        padding=ft.padding.symmetric(vertical=2),
+                        bgcolor=ft.colors.TRANSPARENT,
+                        border_radius=ft.border_radius.all(4),
+                        ink=True,  # Добавляет эффект нажатия
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.START,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=4,
+            )
+            details_controls.append(clickable_phone)
+        else:
+            no_phone = ft.Row(
+                controls=[
+                    ft.Icon(
+                        ft.icons.PHONE,
+                        size=20,
+                        color=ft.colors.GREEN_600,
+                    ),
+                    ft.Text(
+                        'Номер телефона не указан',
+                        size=14,
+                        color=ft.colors.GREY,
+                        weight=ft.FontWeight.NORMAL,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.START,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=4,
+            )
+            details_controls.append(no_phone)
 
         if additional_services:
             details_controls.append(
@@ -1779,3 +1865,17 @@ class CarWashEditPage:
             print(f'Ошибка при удалении букинга: {e}')
             self.show_error_message('Произошла ошибка при удалении букинга.')
         self.page.update()
+
+    def call_phone_number(self, phone_number):
+        if phone_number and phone_number != 'Неизвестный номер':
+            tel_url = f'tel:{phone_number}'
+            try:
+                self.page.launch_url(tel_url)
+            except Exception as e:
+                self.show_error_message('Не удалось открыть звонилку.')
+                print(f'Не удалось открыть звонилку: {e}')
+        else:
+            self.show_error_message(
+                'Номер телефона не указан или некорректен.'
+            )
+            print('Номер телефона не указан или некорректен.')
