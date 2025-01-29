@@ -28,6 +28,7 @@ class AdminCarSelectionPage:
         self.body_types_dict = {}
         self.selected_body_type = None
         self.selected_body_type_id = None
+        self.configuration_id = None
 
         self.car_number = ''
         self.car_number_valid = False
@@ -251,6 +252,7 @@ class AdminCarSelectionPage:
             and self.selected_model_id
             and self.selected_generation_id
             and self.selected_body_type_id
+            and self.configuration_id
             and self.car_number_valid
         ):
             self.save_button.disabled = False
@@ -471,6 +473,7 @@ class AdminCarSelectionPage:
             self.body_type_dropdown.visible = False
             self.selected_body_type = None
             self.selected_body_type_id = None
+            self.configuration_id = None
             self.save_button.disabled = True
 
             self.car_number_label.visible = False
@@ -506,6 +509,7 @@ class AdminCarSelectionPage:
             self.body_type_dropdown.visible = False
             self.selected_body_type = None
             self.selected_body_type_id = None
+            self.configuration_id = None
             self.save_button.disabled = True
 
             self.car_number_label.visible = False
@@ -542,7 +546,7 @@ class AdminCarSelectionPage:
                 ]
                 self.generation_dropdown.visible = True
 
-                def on_generation_select(e):
+                def on_generation_select_inner(e):
                     if self.generation_dropdown.value:
                         self.selected_generation_id = (
                             self.generations_dict.get(
@@ -552,6 +556,9 @@ class AdminCarSelectionPage:
                         self.body_type_dropdown.options = []
                         self.body_type_dropdown.value = None
                         self.body_type_dropdown.visible = False
+                        self.selected_body_type = None
+                        self.selected_body_type_id = None
+                        self.configuration_id = None
                         self.save_button.disabled = True
 
                         self.car_number_label.visible = False
@@ -572,7 +579,7 @@ class AdminCarSelectionPage:
 
                         self.get_body_type(self.selected_generation_id)
 
-                self.generation_dropdown.on_change = on_generation_select
+                self.generation_dropdown.on_change = on_generation_select_inner
                 self.page.update()
 
         else:
@@ -610,6 +617,7 @@ class AdminCarSelectionPage:
         self.body_type_dropdown.visible = False
         self.selected_body_type = None
         self.selected_body_type_id = None
+        self.configuration_id = None
         self.save_button.disabled = True
 
         self.car_number_label.visible = False
@@ -638,6 +646,18 @@ class AdminCarSelectionPage:
                     f'Тип кузова "{body_type_name}" выбран автоматически',
                     bgcolor=ft.colors.BLUE,
                 )
+                self.configuration_id = self.get_configuration_id(
+                    generation_id, body_type_id
+                )
+                if self.configuration_id is None:
+                    self.show_error_message(
+                        'Не удалось найти соответствующую конфигурацию '
+                        'для выбранного поколения и типа кузова.'
+                    )
+                    self.save_button.disabled = True
+                    self.page.update()
+                    return
+
                 self.load_car_price(body_type_id)
                 self.body_type_dropdown.visible = False
 
@@ -665,7 +685,7 @@ class AdminCarSelectionPage:
                 self.car_number = ''
                 self.car_number_valid = False
 
-                def on_body_type_select(e):
+                def on_body_type_select_inner(e):
                     if self.body_type_dropdown.value:
                         selected_body_type_id = next(
                             (
@@ -680,6 +700,20 @@ class AdminCarSelectionPage:
                                 self.body_type_dropdown.value
                             )
                             self.selected_body_type_id = selected_body_type_id
+                            self.configuration_id = self.get_configuration_id(
+                                self.selected_generation_id,
+                                self.selected_body_type_id,
+                            )
+
+                            if self.configuration_id is None:
+                                self.show_error_message(
+                                    'Не удалось найти соответствующую '
+                                    'конфигурацию для выбранного поколения и '
+                                    'типа кузова.'
+                                )
+                                self.save_button.disabled = True
+                                return
+
                             self.load_car_price(selected_body_type_id)
                         self.save_button.disabled = False
                         self.page.update()
@@ -688,10 +722,19 @@ class AdminCarSelectionPage:
                         self.car_number_plate.visible = True
                         self.check_if_save_button_should_be_enabled()
 
-                self.body_type_dropdown.on_change = on_body_type_select
+                self.body_type_dropdown.on_change = on_body_type_select_inner
                 self.page.update()
         else:
             print(f'Ошибка при загрузке конфигураций: {response.text}')
+
+    def get_configuration_id(self, generation_id, body_type_id):
+        response = self.api.get_configurations(generation_id)
+        if response.status_code == 200:
+            configurations = response.json().get('data', [])
+            for config in configurations:
+                if config['body_type_id'] == body_type_id:
+                    return config['id']
+        return None
 
     def load_car_price(self, body_type_id):
         print(
@@ -849,6 +892,13 @@ class AdminCarSelectionPage:
             self.show_error_message('Некорректный формат номера!')
             return
 
+        if self.configuration_id is None:
+            self.show_error_message(
+                'Необходимо выбрать поколение и тип кузова '
+                'для получения конфигурации.'
+            )
+            return
+
         generation_display = self.selected_generation
         if not generation_display and self.generation_year_range:
             generation_display = self.generation_year_range
@@ -861,7 +911,7 @@ class AdminCarSelectionPage:
 
         selected_car_for_request = {
             'name': full_name,
-            'configuration_id': self.selected_generation_id,
+            'configuration_id': self.configuration_id,
             'license_plate': self.car_number,
         }
 
@@ -883,7 +933,7 @@ class AdminCarSelectionPage:
                         'model': self.selected_model,
                         'generation': generation_display or 'Не указано',
                         'body_type': self.selected_body_type or 'Не указано',
-                        'configuration_id': self.selected_generation_id,
+                        'configuration_id': self.configuration_id,
                         'body_type_id': self.selected_body_type_id,
                         'car_number': self.car_number,
                     }
