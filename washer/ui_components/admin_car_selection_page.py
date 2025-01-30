@@ -1006,7 +1006,7 @@ class AdminCarSelectionPage:
                         'body_type': self.selected_body_type or 'Не указано',
                         'configuration_id': self.configuration_id,
                         'body_type_id': self.selected_body_type_id,
-                        'car_number': self.car_number,
+                        'license_plate': self.car_number,
                     }
                 )
 
