@@ -659,6 +659,7 @@ class AdminBookingTable:
         last_name = booking.get('last_name', '')
         phone_number = booking.get('phone_number', '---')
         car_name = booking.get('car_name', 'Неизвестно')
+        license_plate = booking.get('license_plate', '---')
         price = booking.get('total_price', 'Не указана')
         additions = booking.get('additions', [])
         notes = booking.get('notes', '').strip()
@@ -700,9 +701,59 @@ class AdminBookingTable:
         details_controls = [
             self.create_detail_row(ft.icons.PERSON, full_name),
             self.create_detail_row(ft.icons.DIRECTIONS_CAR, car_name),
+            self.create_detail_row(ft.icons.NUMBERS, license_plate),
             self.create_detail_row(ft.icons.MONEY, f'₸{price}'),
-            self.create_detail_row(ft.icons.PHONE, phone_number),
         ]
+
+        if phone_number and phone_number != '---':
+            clickable_phone = ft.Row(
+                controls=[
+                    ft.Icon(
+                        ft.icons.PHONE,
+                        size=20,
+                        color=ft.colors.GREEN_600,
+                    ),
+                    ft.Container(
+                        content=ft.Text(
+                            phone_number,
+                            size=14,
+                            color=ft.colors.BLUE_600,
+                            weight=ft.FontWeight.NORMAL,
+                        ),
+                        on_click=lambda e,
+                        pn=phone_number: self.call_phone_number(pn),
+                        padding=ft.padding.symmetric(vertical=2),
+                        bgcolor=ft.colors.TRANSPARENT,
+                        border_radius=ft.border_radius.all(4),
+                        ink=True,
+                        # tooltip="Позвонить",  # Всплывающая подсказка
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.START,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=4,
+            )
+            details_controls.append(clickable_phone)
+        else:
+            no_phone = ft.Row(
+                controls=[
+                    ft.Icon(
+                        ft.icons.PHONE,
+                        size=20,
+                        color=ft.colors.GREEN_600,
+                    ),
+                    ft.Text(
+                        'Номер телефона не указан',
+                        size=14,
+                        color=ft.colors.GREY,
+                        weight=ft.FontWeight.NORMAL,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.START,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=4,
+            )
+            details_controls.append(no_phone)
 
         if additional_services:
             details_controls.append(
@@ -862,6 +913,7 @@ class AdminBookingTable:
             self.page,
             on_car_selected,
             self.car_wash,
+            self.locations,
             box_id,
             date,
             time,
@@ -894,3 +946,17 @@ class AdminBookingTable:
         return status_mapping.get(
             state, {'text': 'Неизвестно', 'color': '#808080'}
         )
+
+    def call_phone_number(self, phone_number):
+        if phone_number and phone_number != '---':
+            tel_url = f'tel:{phone_number}'
+            try:
+                self.page.launch_url(tel_url)
+            except Exception as e:
+                self.show_error_message('Не удалось открыть звонилку.')
+                print(f'Не удалось открыть звонилку: {e}')
+        else:
+            self.show_error_message(
+                'Номер телефона не указан или некорректен.'
+            )
+            print('Номер телефона не указан или некорректен.')
