@@ -53,7 +53,14 @@ class CarWashEditPage:
                     on_click=self.on_view_archived_schedule_click,
                     icon_color='#ef7b00',
                     padding=ft.padding.only(right=10),
-                )
+                ),
+                ft.IconButton(
+                    icon=ft.icons.PEOPLE,
+                    tooltip='Наши клиенты',
+                    on_click=self.on_clients_button_click_from_app_bar,
+                    icon_color='#ef7b00',
+                    padding=ft.padding.only(right=10),
+                ),
             ],
         )
 
@@ -144,6 +151,12 @@ class CarWashEditPage:
             self.on_boxes_button_click(None)
         elif selected_index == 4:
             self.on_booking_button_click(None)
+
+    def on_clients_button_click_from_app_bar(self, e):
+        from washer.ui_components.clients_page import ClientsPage
+
+        ClientsPage(self.page, self.car_wash, self.locations)
+        self.page.update()
 
     def reset_data(self):
         self.boxes_list = []
