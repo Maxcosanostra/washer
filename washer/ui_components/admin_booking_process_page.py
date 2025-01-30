@@ -111,7 +111,10 @@ class AdminBookingProcessPage:
     def on_confirm_booking(self, e):
         if not (
             self.selected_car
-            and self.selected_car.get('user_car_id')
+            and (
+                self.selected_car.get('id')
+                or self.selected_car.get('user_car_id')
+            )
             and self.car_price
             and self.box_id
             and self.date
@@ -128,7 +131,9 @@ class AdminBookingProcessPage:
             + datetime.timedelta(hours=2)
         ).isoformat()
 
-        user_car_id = self.selected_car.get('user_car_id')
+        user_car_id = self.selected_car.get(
+            'user_car_id'
+        ) or self.selected_car.get('id')
         if user_car_id is None:
             self.show_error_message('ID выбранного автомобиля недоступен.')
             return
@@ -214,6 +219,10 @@ class AdminBookingProcessPage:
             ('Модель', self.selected_car.get('model')),
             ('Поколение', self.selected_car.get('generation') or 'Не указано'),
             ('Тип кузова', self.selected_car.get('body_type')),
+            (
+                'Номер автомобиля',
+                self.selected_car.get('license_plate', '---'),
+            ),
         ]
 
         car_info_column = ft.Column(
