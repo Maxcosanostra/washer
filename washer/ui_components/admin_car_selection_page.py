@@ -3,15 +3,24 @@ import re
 import flet as ft
 
 from washer.api_requests import BackendApi
+from washer.ui_components.clients_page import ClientsPage
 
 
 class AdminCarSelectionPage:
     def __init__(
-        self, page: ft.Page, on_car_selected, car_wash, box_id, date, time
+        self,
+        page: ft.Page,
+        on_car_selected,
+        car_wash,
+        locations,
+        box_id,
+        date,
+        time,
     ):
         self.page = page
         self.on_car_selected = on_car_selected
         self.car_wash = car_wash
+        self.locations = locations
         self.box_id = box_id
         self.date = date
         self.time = time
@@ -324,6 +333,18 @@ class AdminCarSelectionPage:
                         width=300,
                         margin=ft.margin.only(bottom=20),
                     ),
+                    ft.Container(
+                        content=ft.ElevatedButton(
+                            text='Выбрать клиентский автомобиль',
+                            on_click=self.on_choose_client_car_click,
+                            width=300,
+                            bgcolor=ft.colors.BLUE_GREY,
+                            color=ft.colors.WHITE,
+                        ),
+                        alignment=ft.alignment.center,
+                        width=300,
+                        margin=ft.margin.only(bottom=20),
+                    ),
                 ],
                 expand=True,
                 padding=ft.padding.symmetric(horizontal=20, vertical=20),
@@ -331,6 +352,57 @@ class AdminCarSelectionPage:
             expand=True,
             border_radius=ft.border_radius.all(12),
         )
+
+    def on_choose_client_car_click(self, e):
+        # Навигация на страницу ClientsPage с передачей обратного вызова
+        ClientsPage(
+            self.page,
+            self.car_wash,
+            self.locations,
+            is_selection_mode=True,
+            on_car_selected=self.on_client_car_selected,
+        )
+
+    def on_client_car_selected(self, selected_car):
+        print(f'Выбранный клиентский автомобиль: {selected_car}')
+        self.selected_car = selected_car
+
+        configuration_id = selected_car.get('configuration_id')
+        if configuration_id:
+            response = self.api.get_configuration_by_id(configuration_id)
+            print(
+                f'API Response for configuration_id '
+                f'{configuration_id}: {response.json()}'
+            )
+
+            if response.status_code == 200:
+                configuration = response.json()
+                data = configuration.get('data', [])
+
+                body_type_id = None
+                for config in data:
+                    if config.get('id') == configuration_id:
+                        body_type_id = config.get('body_type_id')
+                        print(f'Найдена конфигурация: {config}')
+                        break
+
+                print(f'Извлечённый body_type_id: {body_type_id}')
+
+                if body_type_id:
+                    self.selected_body_type_id = body_type_id
+                    self.configuration_id = configuration_id
+                    self.load_car_price(body_type_id)
+                else:
+                    self.show_error_message(
+                        'Не удалось получить body_type_id.'
+                    )
+            else:
+                self.show_error_message('Не удалось загрузить конфигурацию.')
+        else:
+            self.configuration_id = None
+            self.car_price = 0
+
+        self.on_car_selected(self.selected_car, self.car_price)
 
     def load_brands(self):
         response = self.api.get_brands()
@@ -474,7 +546,6 @@ class AdminCarSelectionPage:
             self.selected_body_type = None
             self.selected_body_type_id = None
             self.configuration_id = None
-            self.save_button.disabled = True
 
             self.car_number_label.visible = False
             self.car_number_plate.visible = False
