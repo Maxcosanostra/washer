@@ -1,5 +1,7 @@
 import datetime
 import locale
+import re
+from typing import List, Tuple
 
 import flet as ft
 
@@ -55,7 +57,147 @@ class AdminBookingProcessPage:
         )
 
         self.setup_snack_bar()
+
+        # Если selected_car пришёл с уже готовыми полями brand, model и т.д.,
+        # они уже будут в self.selected_car.
+        # Но если этого нет, ниже можно сделать проверку, чтобы подставить их.
+        self.parse_car_if_needed()  # <-- вот эта часть
+
         self.show_confirmation_page()
+
+    def parse_car_if_needed(self):
+        """
+        Если у self.selected_car не заданы поля brand, model, generation,
+        body_type, то распарсить их из 'name' и заполнить вручную.
+        """
+        if not self.selected_car:
+            return
+
+        # Проверяем, есть ли уже brand. Если нет — парсим name
+        if not self.selected_car.get('brand'):
+            name_str = self.selected_car.get('name', '')
+            if name_str:
+                brand, model, generation, body_type = self.parse_car_name(
+                    name_str
+                )
+                self.selected_car['brand'] = brand
+                self.selected_car['model'] = model
+                self.selected_car['generation'] = generation
+                self.selected_car['body_type'] = body_type
+
+    def parse_car_name(self, name: str) -> tuple[str, str, str, str]:
+        print(f'Parsing car name: {name}')
+
+        body_types = [
+            'внедорожник 5 дв',
+            'внедорожник 3 дв',
+            'седан 4 дв',
+            'хэтчбек 5 дв',
+            'хэтчбек 3 дв',
+            'универсал 5 дв',
+            'лифтбек 5 дв',
+            'фастбек 3 дв',
+            'купе 2 дв',
+            'кабриолет 2 дв',
+            'седан',
+            'хэтчбек',
+            'универсал',
+            'внедорожник',
+            'купе',
+            'кабриолет',
+            'минивэн',
+            'пикап',
+            'фургон',
+            'лимузин',
+            'тарга',
+            'родстер',
+            'комби',
+            'фастбек',
+            'лифтбек',
+            'спортивный',
+            'кроссовер',
+            'вэн',
+            'микроавтобус',
+            'минивен',
+            '4 дв',
+            '5 дв',
+            '3 дв',
+        ]
+        body_types.sort(key=lambda x: -len(x))
+
+        numeric_generation_pattern = re.compile(
+            r'\b(\d{4}-(?:\d{4}|present))\b', re.IGNORECASE
+        )
+
+        roman_generation_pattern = re.compile(
+            r'\b([IVXLCDM]+(?:\s*\([^)]*\))*(?:\s*Рестайлинг(?:\s*\d+)?)?(?:\s*\(\d{4}-present\))?)\b',
+            re.IGNORECASE,
+        )
+
+        words = name.split()
+        print(f'Words: {words}')
+
+        brand = words[0] if words else 'Бренд не указан'
+        remaining_words = words[1:] if len(words) > 1 else []
+
+        print(f'Brand: {brand}')
+        print(f'Remaining words: {remaining_words}')
+
+        generation = 'Поколение не указано'
+        body_type = 'Тип кузова не указан'
+        model = 'Модель не указана'
+
+        # Явная аннотация типа для списка matches
+        matches: List[Tuple[int, int, str, str]] = []
+        for i in range(len(remaining_words)):
+            for j in range(i + 1, min(i + 6, len(remaining_words) + 1)):
+                potential_generation = ' '.join(remaining_words[i:j])
+                if numeric_generation_pattern.fullmatch(potential_generation):
+                    matches.append((j - i, i, potential_generation, 'numeric'))
+                elif roman_generation_pattern.fullmatch(potential_generation):
+                    matches.append((j - i, i, potential_generation, 'roman'))
+
+        if matches:
+            # Сортируем, чтобы взять самое длинное совпадение
+            matches.sort(key=lambda x: (-x[0], x[3]))
+            _, generation_index, generation, generation_type = matches[0]
+            print(f'Found generation: {generation} ({generation_type})')
+            # Убираем найденный кусок из remaining_words
+            remaining_words = (
+                remaining_words[:generation_index]
+                + remaining_words[generation_index + matches[0][0] :]
+            )
+        else:
+            print('Generation not found')
+
+        matched_body_types = []
+        # Ищем тип кузова
+        # (забираем самые последние слова, сравниваем с body_types)
+        for i in range(len(remaining_words), 0, -1):
+            potential_body_type = (
+                ' '.join(remaining_words[i - 1 :]).lower().rstrip('.')
+            )
+            for bt in body_types:
+                if potential_body_type == bt.lower():
+                    matched_body_types.append((i - 1, bt))
+        if matched_body_types:
+            matched_body_types.sort(key=lambda x: x[0])
+            body_type_index, body_type = matched_body_types[0]
+            remaining_words = remaining_words[:body_type_index]
+            print(f'Found body type: {body_type}')
+        else:
+            print('Body type not found')
+
+        if remaining_words:
+            model = ' '.join(remaining_words)
+        else:
+            model = 'Модель не указана'
+
+        print(f'Model: {model}')
+        print(f'Generation: {generation}')
+        print(f'Body type: {body_type}')
+
+        return brand, model, generation, body_type
 
     def setup_snack_bar(self):
         self.snack_bar = ft.SnackBar(
@@ -89,9 +231,17 @@ class AdminBookingProcessPage:
         self.show_snack_bar(message, bgcolor=ft.colors.RED)
 
     def on_car_selected(self, car, price):
+        """
+        Метод вызывается, когда пользователь выбрал автомобиль
+        (либо создал, либо выбрал из ClientsPage).
+        """
         self.selected_car = car
         self.car_price = price
         print(f'Сохраненные данные автомобиля: {car}')
+
+        # Если у автомобиля нет brand/model/generation/body_type,
+        # попробуем их получить из parse_car_name
+        self.parse_car_if_needed()  # <-- вот эта часть
 
         if (
             self.selected_car
@@ -214,11 +364,23 @@ class AdminBookingProcessPage:
         }.get(day_of_week, day_of_week)
         date_with_day = f'{formatted_date} ({day_of_week_translated})'
 
+        # Если у self.selected_car нет brand/model/generation/body_type,
+        # ещё раз убеждаемся, что мы их пропарсили:
+        if not self.selected_car.get('brand'):
+            self.parse_car_if_needed()
+
+        # Формируем структуру данных для отображения
         car_details = [
-            ('Бренд', self.selected_car.get('brand')),
-            ('Модель', self.selected_car.get('model')),
-            ('Поколение', self.selected_car.get('generation') or 'Не указано'),
-            ('Тип кузова', self.selected_car.get('body_type')),
+            ('Бренд', self.selected_car.get('brand', '---')),
+            ('Модель', self.selected_car.get('model', '---')),
+            (
+                'Поколение',
+                self.selected_car.get('generation', 'Не указано'),
+            ),
+            (
+                'Тип кузова',
+                self.selected_car.get('body_type', 'Не указано'),
+            ),
             (
                 'Номер автомобиля',
                 self.selected_car.get('license_plate', '---'),
