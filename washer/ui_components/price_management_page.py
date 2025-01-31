@@ -26,6 +26,7 @@ class PriceManagementPage:
         self.load_prices_from_server()
 
         self.page.clean()
+        self.page.floating_action_button = None
         self.page.add(self.create_price_management_page())
 
     def load_prices_from_server(self):
@@ -64,7 +65,14 @@ class PriceManagementPage:
                         icon_color='#ef7b00',
                         padding=ft.padding.only(left=10),
                     ),
-                    ft.Text('Назад', size=16, color='#ef7b00'),
+                    ft.TextButton(
+                        text='Назад',
+                        on_click=self.on_back_to_edit_page,
+                        style=ft.ButtonStyle(
+                            padding=0,
+                            color='#ef7b00',
+                        ),
+                    ),
                 ],
                 alignment=ft.MainAxisAlignment.START,
             ),
