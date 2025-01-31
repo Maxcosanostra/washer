@@ -25,7 +25,14 @@ class ArchivedSchedulePage:
                         icon_color='#ef7b00',
                         padding=ft.padding.only(left=10),
                     ),
-                    ft.Text('Назад', size=16, color='#ef7b00'),
+                    ft.TextButton(
+                        text='Назад',
+                        on_click=self.on_back_click,
+                        style=ft.ButtonStyle(
+                            padding=0,
+                            color='#ef7b00',
+                        ),
+                    ),
                 ],
                 alignment=ft.MainAxisAlignment.START,
             ),
