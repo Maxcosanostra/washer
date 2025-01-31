@@ -31,6 +31,8 @@ class AdminBookingTable:
 
         self.booking_colors = {}
 
+        self.page.floating_action_button = None
+
         app_bar = ft.AppBar(
             leading=ft.Row(
                 controls=[
@@ -40,7 +42,14 @@ class AdminBookingTable:
                         icon_color='#ef7b00',
                         padding=ft.padding.only(left=10),
                     ),
-                    ft.Text('Назад', size=16, color='#ef7b00'),
+                    ft.TextButton(
+                        text='Назад',
+                        on_click=self.on_back_click,
+                        style=ft.ButtonStyle(
+                            padding=0,
+                            color='#ef7b00',
+                        ),
+                    ),
                 ],
                 alignment=ft.MainAxisAlignment.START,
             ),
