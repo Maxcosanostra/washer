@@ -75,16 +75,21 @@ class SignInPage:
                                 icon=ft.icons.ARROW_BACK,
                                 on_click=self.on_back_to_sign_up_click,
                             ),
-                            ft.Text('Назад на регистрацию', size=16),
+                            ft.TextButton(
+                                text='Назад на регистрацию',
+                                on_click=self.on_back_to_sign_up_click,
+                                style=ft.ButtonStyle(
+                                    color=ft.colors.BLACK,
+                                    padding=0,
+                                ),
+                            ),
                         ],
                         alignment=ft.MainAxisAlignment.START,
                     ),
                     ft.Container(height=0),
                     ft.Container(
                         content=ft.Image(
-                            src='https://drive.google.com/uc?export=view&id=1NTTrkC4QdWS_BhsuHpxYs2ZErCMp2c2f',
-                            # src='images/sign_in_pana.png',
-                            # # Обновленный путь к изображению перед сборкой
+                            src='http://77.73.66.191:9001/api/v1/buckets/general-bucket/objects/download?preview=true&prefix=Sign%20in-pana.png&version_id=null',
                             width=300,
                             height=300,
                         ),
