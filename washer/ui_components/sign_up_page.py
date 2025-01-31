@@ -178,7 +178,8 @@ class SignUpPage:
                         ),
                         ft.Container(
                             content=ft.Image(
-                                src='https://drive.google.com/uc?export=view&id=1haBXQrQ_akd40ZAuIi7dr-apE8hWhi5h',
+                                src='http://77.73.66.191:9001/api/v1/buckets/general-bucket/objects/download?preview=true&prefix=Car%20wash-amico.png&version_id=null',
+                                # src='https://drive.google.com/uc?export=view&id=1haBXQrQ_akd40ZAuIi7dr-apE8hWhi5h',
                                 width=image_size,
                                 height=image_size,
                             ),
@@ -232,7 +233,14 @@ class SignUpPage:
                                     icon=ft.icons.ARROW_BACK,
                                     on_click=self.show_welcome_page,
                                 ),
-                                ft.Text('Назад', size=16),
+                                ft.TextButton(
+                                    text='Назад',
+                                    on_click=self.show_welcome_page,
+                                    style=ft.ButtonStyle(
+                                        padding=0,
+                                        color=ft.colors.BLACK,
+                                    ),
+                                ),
                             ],
                             alignment=ft.MainAxisAlignment.START,
                         ),
@@ -314,7 +322,14 @@ class SignUpPage:
                                     icon=ft.icons.ARROW_BACK,
                                     on_click=self.show_step_1,
                                 ),
-                                ft.Text('Назад', size=16),
+                                ft.TextButton(
+                                    text='Назад',
+                                    on_click=self.show_step_1,
+                                    style=ft.ButtonStyle(
+                                        padding=0,
+                                        color=ft.colors.BLACK,
+                                    ),
+                                ),
                             ],
                             alignment=ft.MainAxisAlignment.START,
                         ),
@@ -397,7 +412,14 @@ class SignUpPage:
                                     icon=ft.icons.ARROW_BACK,
                                     on_click=self.show_step_2,
                                 ),
-                                ft.Text('Назад', size=16),
+                                ft.TextButton(
+                                    text='Назад',
+                                    on_click=self.show_step_2,
+                                    style=ft.ButtonStyle(
+                                        padding=0,
+                                        color=ft.colors.BLACK,
+                                    ),
+                                ),
                             ],
                             alignment=ft.MainAxisAlignment.START,
                         ),
@@ -463,7 +485,14 @@ class SignUpPage:
                                     icon=ft.icons.ARROW_BACK,
                                     on_click=self.show_step_3_phone,
                                 ),
-                                ft.Text('Назад', size=16),
+                                ft.TextButton(
+                                    text='Назад',
+                                    on_click=self.show_step_3_phone,
+                                    style=ft.ButtonStyle(
+                                        padding=0,
+                                        color=ft.colors.BLACK,
+                                    ),
+                                ),
                             ],
                             alignment=ft.MainAxisAlignment.START,
                         ),
