@@ -1,4 +1,5 @@
 import datetime
+import urllib.parse
 
 import flet as ft
 
@@ -260,7 +261,7 @@ class MyBookingsPage:
             if not booking_content:
                 empty_image = ft.Container(
                     content=self._create_large_image_container(
-                        'https://drive.google.com/uc?id=11B4mRtzpx2TjtO6X4t-nc5gdf_fHHEoK',
+                        'http://77.73.66.191:9001/api/v1/buckets/general-bucket/objects/download?preview=true&prefix=Online%20calendar-amico.png&version_id=null',
                         width=300,
                         height=300,
                     ),
@@ -292,7 +293,7 @@ class MyBookingsPage:
             if not booking_content:
                 empty_image = ft.Container(
                     content=self._create_large_image_container(
-                        'https://drive.google.com/uc?id=11B4mRtzpx2TjtO6X4t-nc5gdf_fHHEoK',
+                        'http://77.73.66.191:9001/api/v1/buckets/general-bucket/objects/download?preview=true&prefix=Online%20calendar-amico.png&version_id=null',
                         width=300,
                         height=300,
                     ),
@@ -508,22 +509,86 @@ class MyBookingsPage:
             loading_container = ft.Container(
                 content=loading_indicator,
                 alignment=ft.alignment.center,
-                padding=ft.padding.only(top=10),
+                padding=ft.padding.only(top=10, bottom=10),
             )
             booking_info_controls.append(loading_container)
 
         if active:
-            booking_info_controls.append(
-                ft.TextButton(
-                    'Остались вопросы? Позвонить',
-                    on_click=lambda e,
-                    phone=phone_number: self.call_phone_number(phone),
-                    style=ft.ButtonStyle(
-                        color=ft.colors.BLUE,
-                        padding=ft.padding.symmetric(vertical=5),
-                    ),
-                )
+            call_button = ft.ElevatedButton(
+                content=ft.Row(
+                    [
+                        ft.Icon(
+                            ft.icons.PHONE, size=20, color=ft.colors.WHITE
+                        ),
+                        ft.Text(
+                            'Позвонить',
+                            size=16,
+                            color=ft.colors.WHITE,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    spacing=5,
+                ),
+                on_click=lambda e, phone=phone_number: self.call_phone_number(
+                    phone
+                ),
+                bgcolor=ft.colors.BLUE_600,
+                style=ft.ButtonStyle(
+                    shape=ft.RoundedRectangleBorder(radius=10),
+                    padding=ft.padding.symmetric(horizontal=10, vertical=10),
+                    elevation=5,
+                    shadow_color=ft.colors.BLACK,
+                    overlay_color=ft.colors.BLUE_400,
+                ),
+                tooltip='Позвонить на номер автомойки',
             )
+
+            # Получаем координаты до создания лямбды
+            lat = loc.get('latitude')
+            lon = loc.get('longitude')
+
+            show_map_button = ft.ElevatedButton(
+                content=ft.Row(
+                    [
+                        ft.Icon(ft.icons.MAP, size=20, color=ft.colors.WHITE),
+                        ft.Text(
+                            'Показать на карте',
+                            size=16,
+                            color=ft.colors.WHITE,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    spacing=5,
+                ),
+                on_click=lambda e: self.open_maps(
+                    address=f'{city}, {addr}', latitude=lat, longitude=lon
+                ),
+                bgcolor=ft.colors.BLUE_600,
+                style=ft.ButtonStyle(
+                    shape=ft.RoundedRectangleBorder(radius=10),
+                    padding=ft.padding.symmetric(horizontal=10, vertical=10),
+                    elevation=5,
+                    shadow_color=ft.colors.BLACK,
+                    overlay_color=ft.colors.BLUE_400,
+                ),
+                tooltip='Показать расположение автомойки на карте',
+            )
+
+            buttons_row = ft.Row(
+                [
+                    ft.Container(
+                        content=call_button,
+                        width=130,
+                    ),
+                    ft.Container(
+                        content=show_map_button,
+                        width=185,
+                    ),
+                ],
+                spacing=10,
+                alignment=ft.MainAxisAlignment.CENTER,
+            )
+            booking_info_controls.append(buttons_row)
 
             booking_id = booking.get('id', 'Неизвестен')
             booking_info_controls.append(
@@ -650,3 +715,29 @@ class MyBookingsPage:
                 content=ft.Text('Номер телефона не указан.'), open=True
             )
             self.page.update()
+
+    def open_maps(self, address=None, latitude=None, longitude=None):
+        if latitude is not None and longitude is not None:
+            dgis_url_scheme = f'dgis://2gis.ru/geo/{latitude},{longitude}'
+            web_url = f'https://2gis.ru/search/{latitude},{longitude}'
+        elif address:
+            encoded_address = urllib.parse.quote(address)
+            dgis_url_scheme = f'dgis://2gis.ru/search/{encoded_address}'
+            web_url = f'https://2gis.ru/search/{encoded_address}'
+        else:
+            self.page.snackbar = ft.SnackBar(
+                content=ft.Text('Адрес или координаты не указаны.'), open=True
+            )
+            self.page.update()
+            return
+
+        try:
+            self.page.launch_url(dgis_url_scheme)
+        except Exception:
+            try:
+                self.page.launch_url(web_url)
+            except Exception:
+                self.page.snackbar = ft.SnackBar(
+                    content=ft.Text('Не удалось открыть 2ГИС.'), open=True
+                )
+                self.page.update()
