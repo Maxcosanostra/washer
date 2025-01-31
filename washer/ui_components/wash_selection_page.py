@@ -1,4 +1,5 @@
 import datetime
+import urllib.parse
 
 import flet as ft
 
@@ -315,6 +316,15 @@ class WashSelectionPage:
             else 'Свободных боксов на сегодня нет'
         )
 
+        show_map_button = ft.IconButton(
+            icon=ft.icons.MAP_OUTLINED,
+            tooltip='Показать расположение автомойки на карте',
+            on_click=lambda e, loc=location_data: self.open_maps_with_2gis(
+                loc
+            ),
+            icon_color=ft.colors.BLUE,
+        )
+
         return ft.Container(
             on_click=lambda e, w=car_wash: self.on_booking_click(w),
             content=ft.Card(
@@ -386,6 +396,11 @@ class WashSelectionPage:
                                 alignment=ft.alignment.center_left,
                                 padding=ft.padding.only(top=205, left=5),
                             ),
+                            ft.Container(
+                                content=show_map_button,
+                                alignment=ft.alignment.center_right,
+                                padding=ft.padding.only(top=170, right=5),
+                            ),
                         ]
                     ),
                     # height=240,
@@ -396,6 +411,49 @@ class WashSelectionPage:
             ),
             alignment=ft.alignment.center,
         )
+
+    def open_maps_with_2gis(self, location_data):
+        if not location_data:
+            self.page.snackbar = ft.SnackBar(
+                content=ft.Text('Данные о местоположении отсутствуют.'),
+                open=True,
+            )
+            self.page.update()
+            return
+
+        address = (
+            f"{location_data.get('city', '')}, "
+            f"{location_data.get('address', '')}"
+        )
+        latitude = location_data.get('latitude')
+        longitude = location_data.get('longitude')
+
+        if latitude and longitude:
+            dgis_url_scheme = f'dgis://2gis.ru/geo/{latitude},{longitude}'
+            web_url = f'https://2gis.ru/search/{latitude},{longitude}'
+        elif address:
+            encoded_address = urllib.parse.quote(address)
+            dgis_url_scheme = f'dgis://2gis.ru/search/{encoded_address}'
+            web_url = f'https://2gis.ru/search/{encoded_address}'
+        else:
+            self.page.snackbar = ft.SnackBar(
+                content=ft.Text('Адрес или координаты не указаны.'),
+                open=True,
+            )
+            self.page.update()
+            return
+
+        try:
+            self.page.launch_url(dgis_url_scheme)
+        except Exception:
+            try:
+                self.page.launch_url(web_url)
+            except Exception:
+                self.page.snackbar = ft.SnackBar(
+                    content=ft.Text('Не удалось открыть 2ГИС.'),
+                    open=True,
+                )
+                self.page.update()
 
     def on_booking_click(self, car_wash):
         from washer.ui_components.booking_page import BookingPage
