@@ -1,5 +1,6 @@
 import calendar
 import re
+import urllib.parse
 from datetime import date, datetime, timedelta
 
 import flet as ft
@@ -588,6 +589,15 @@ class BookingPage:
 
         car_wash_name = self.car_wash.get('name', 'Автомойка')
 
+        current_location = self.location_data
+
+        show_map_button = ft.IconButton(
+            icon=ft.icons.MAP_OUTLINED,
+            tooltip='Показать расположение автомойки на карте',
+            on_click=lambda e: self.open_maps_with_2gis(current_location),
+            icon_color=ft.colors.BLUE,
+        )
+
         return ft.Container(
             content=ft.Card(
                 content=ft.Container(
@@ -629,6 +639,11 @@ class BookingPage:
                                 alignment=ft.alignment.center_left,
                                 padding=ft.padding.only(top=205, left=5),
                             ),
+                            ft.Container(
+                                content=show_map_button,
+                                padding=ft.padding.only(top=170, right=5),
+                                alignment=ft.alignment.center_right,
+                            ),
                         ]
                     ),
                     padding=ft.padding.all(0),
@@ -638,6 +653,49 @@ class BookingPage:
             ),
             alignment=ft.alignment.center,
         )
+
+    def open_maps_with_2gis(self, location_data):
+        if not location_data:
+            self.page.snackbar = ft.SnackBar(
+                content=ft.Text('Данные о местоположении отсутствуют.'),
+                open=True,
+            )
+            self.page.update()
+            return
+
+        address = (
+            f"{location_data.get('city', '')}, "
+            f"{location_data.get('address', '')}"
+        )
+        latitude = location_data.get('latitude')
+        longitude = location_data.get('longitude')
+
+        if latitude and longitude:
+            dgis_url_scheme = f'dgis://2gis.ru/geo/{latitude},{longitude}'
+            web_url = f'https://2gis.ru/search/{latitude},{longitude}'
+        elif address:
+            encoded_address = urllib.parse.quote(address)
+            dgis_url_scheme = f'dgis://2gis.ru/search/{encoded_address}'
+            web_url = f'https://2gis.ru/search/{encoded_address}'
+        else:
+            self.page.snackbar = ft.SnackBar(
+                content=ft.Text('Адрес или координаты не указаны.'),
+                open=True,
+            )
+            self.page.update()
+            return
+
+        try:
+            self.page.launch_url(dgis_url_scheme)
+        except Exception:
+            try:
+                self.page.launch_url(web_url)
+            except Exception:
+                self.page.snackbar = ft.SnackBar(
+                    content=ft.Text('Не удалось открыть 2ГИС.'),
+                    open=True,
+                )
+                self.page.update()
 
     def create_elements(self):
         self.add_car_button = ft.ElevatedButton(
