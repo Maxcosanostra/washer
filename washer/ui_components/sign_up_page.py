@@ -238,7 +238,7 @@ class SignUpPage:
                                     on_click=self.show_welcome_page,
                                     style=ft.ButtonStyle(
                                         padding=0,
-                                        color=ft.colors.BLACK,
+                                        # color=ft.colors.BLACK,
                                     ),
                                 ),
                             ],
@@ -327,7 +327,7 @@ class SignUpPage:
                                     on_click=self.show_step_1,
                                     style=ft.ButtonStyle(
                                         padding=0,
-                                        color=ft.colors.BLACK,
+                                        # color=ft.colors.BLACK,
                                     ),
                                 ),
                             ],
@@ -417,7 +417,7 @@ class SignUpPage:
                                     on_click=self.show_step_2,
                                     style=ft.ButtonStyle(
                                         padding=0,
-                                        color=ft.colors.BLACK,
+                                        # color=ft.colors.BLACK,
                                     ),
                                 ),
                             ],
@@ -490,7 +490,7 @@ class SignUpPage:
                                     on_click=self.show_step_3_phone,
                                     style=ft.ButtonStyle(
                                         padding=0,
-                                        color=ft.colors.BLACK,
+                                        # color=ft.colors.BLACK,
                                     ),
                                 ),
                             ],
