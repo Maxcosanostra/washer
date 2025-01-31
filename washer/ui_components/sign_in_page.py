@@ -79,7 +79,7 @@ class SignInPage:
                                 text='Назад на регистрацию',
                                 on_click=self.on_back_to_sign_up_click,
                                 style=ft.ButtonStyle(
-                                    color=ft.colors.BLACK,
+                                    # color=ft.colors.BLACK,
                                     padding=0,
                                 ),
                             ),
