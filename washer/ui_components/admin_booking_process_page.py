@@ -34,6 +34,7 @@ class AdminBookingProcessPage:
             self.api.set_access_token(access_token)
 
         self.snack_bar = None
+        self.page.floating_action_button = None
 
         self.confirm_button = ft.ElevatedButton(
             text='Подтвердить букинг',
@@ -337,6 +338,7 @@ class AdminBookingProcessPage:
             page=self.page,
             on_car_selected=self.on_car_selected,
             car_wash=self.car_wash,
+            locations=None,
             box_id=self.box_id,
             date=self.date,
             time=self.time,
@@ -561,7 +563,6 @@ class AdminBookingProcessPage:
                     main_content,
                 ],
                 spacing=20,
-                padding=ft.padding.all(20),
             ),
             expand=True,
         )
