@@ -3,6 +3,7 @@ import re
 import flet as ft
 
 from washer.api_requests import BackendApi
+from washer.ui_components.admin_booking_table import AdminBookingTable
 from washer.ui_components.clients_page import ClientsPage
 
 
@@ -75,12 +76,47 @@ class AdminCarSelectionPage:
         self.generation_dropdown = self.create_generation_dropdown()
         self.body_type_dropdown = self.create_body_type_dropdown()
 
+        app_bar = ft.AppBar(
+            leading=ft.Row(
+                controls=[
+                    ft.IconButton(
+                        icon=ft.icons.ARROW_BACK,
+                        on_click=self.on_back_click,
+                        icon_color='#ef7b00',
+                        padding=ft.padding.only(left=10),
+                    ),
+                    ft.TextButton(
+                        text='Назад',
+                        on_click=self.on_back_click,
+                        style=ft.ButtonStyle(
+                            padding=0,
+                            color='#ef7b00',
+                        ),
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.START,
+            ),
+            center_title=True,
+            bgcolor=ft.colors.SURFACE_VARIANT,
+            leading_width=100,
+        )
+        self.page.appbar = app_bar
+
         page.clean()
         page.add(self.create_car_selection_page())
         page.add(self.price_text)
 
         self.load_brands()
         self.setup_snack_bar()
+
+    def on_back_click(self, e):
+        AdminBookingTable(
+            self.page,
+            self.car_wash,
+            self.date,
+            selected_date=None,
+            locations=self.locations,
+        )
 
     def _create_license_plate_field(self):
         self.kz_flag = ft.Image(
@@ -273,8 +309,7 @@ class AdminCarSelectionPage:
         return ft.Container(
             content=ft.ListView(
                 controls=[
-                    ft.Container(height=20),
-                    self.create_back_button(),
+                    ft.Container(height=60),
                     ft.Container(
                         content=ft.Text(
                             'Выберите автомобиль',
@@ -287,37 +322,37 @@ class AdminCarSelectionPage:
                     ft.Container(
                         content=self.brand_button,
                         alignment=ft.alignment.center,
-                        width=300,
+                        width=500,
                         margin=ft.margin.only(bottom=10),
                     ),
                     ft.Container(
                         content=self.model_dropdown,
                         alignment=ft.alignment.center,
-                        width=300,
+                        width=500,
                         margin=ft.margin.only(bottom=10),
                     ),
                     ft.Container(
                         content=self.generation_dropdown,
                         alignment=ft.alignment.center,
-                        width=300,
+                        width=500,
                         margin=ft.margin.only(bottom=10),
                     ),
                     ft.Container(
                         content=self.body_type_dropdown,
                         alignment=ft.alignment.center,
-                        width=300,
+                        width=500,
                         margin=ft.margin.only(bottom=10),
                     ),
                     ft.Container(
                         content=self.car_number_label,
                         alignment=ft.alignment.center,
-                        width=300,
+                        width=500,
                         margin=ft.margin.only(bottom=5),
                     ),
                     ft.Container(
                         content=self.car_number_plate,
                         alignment=ft.alignment.center,
-                        width=300,
+                        width=500,
                         margin=ft.margin.only(bottom=10),
                     ),
                     ft.Divider(),
@@ -330,24 +365,24 @@ class AdminCarSelectionPage:
                     ft.Container(
                         content=self.save_button,
                         alignment=ft.alignment.center,
-                        width=300,
+                        width=500,
                         margin=ft.margin.only(bottom=20),
                     ),
                     ft.Container(
                         content=ft.ElevatedButton(
                             text='Выбрать клиентский автомобиль',
                             on_click=self.on_choose_client_car_click,
-                            width=300,
+                            width=500,
                             bgcolor=ft.colors.BLUE_GREY,
                             color=ft.colors.WHITE,
                         ),
                         alignment=ft.alignment.center,
-                        width=300,
+                        width=500,
                         margin=ft.margin.only(bottom=20),
                     ),
                 ],
                 expand=True,
-                padding=ft.padding.symmetric(horizontal=20, vertical=20),
+                padding=ft.padding.symmetric(vertical=20),
             ),
             expand=True,
             border_radius=ft.border_radius.all(12),
@@ -472,7 +507,7 @@ class AdminCarSelectionPage:
             label='',
             hint_text='Поиск бренда',
             on_change=self.on_search_change,
-            width=300,
+            width=500,
             height=30,
         )
 
@@ -482,7 +517,7 @@ class AdminCarSelectionPage:
             title=ft.Text('Выберите марку автомобиля'),
             content=ft.Container(
                 content=ft.Column([self.search_bar, self.brands_list]),
-                width=300,
+                width=500,
             ),
             actions=[
                 ft.TextButton('Закрыть', on_click=self.close_search_dialog)
@@ -872,7 +907,7 @@ class AdminCarSelectionPage:
     def create_model_dropdown(self):
         return ft.Dropdown(
             label='Выберите модель',
-            width=300,
+            width=500,
             border_radius=ft.border_radius.all(25),
             options=[],
             on_change=self.on_model_select,
@@ -881,7 +916,7 @@ class AdminCarSelectionPage:
     def create_generation_dropdown(self):
         return ft.Dropdown(
             label='Выберите поколение',
-            width=300,
+            width=500,
             border_radius=ft.border_radius.all(25),
             options=[],
             visible=False,
@@ -890,7 +925,7 @@ class AdminCarSelectionPage:
     def create_body_type_dropdown(self):
         return ft.Dropdown(
             label='Выберите тип кузова',
-            width=300,
+            width=500,
             border_radius=ft.border_radius.all(25),
             options=[],
             visible=False,
@@ -909,14 +944,14 @@ class AdminCarSelectionPage:
             border=ft.border.all(1, ft.colors.GREY),
             border_radius=ft.border_radius.all(25),
             on_click=self.open_search_dialog,
-            width=300,
+            width=500,
             height=50,
         )
 
     def create_next_button(self):
         return ft.ElevatedButton(
             text='Далее',
-            width=300,
+            width=500,
             bgcolor=ft.colors.PURPLE,
             color=ft.colors.WHITE,
             on_click=self.on_save_click,
@@ -1020,22 +1055,6 @@ class AdminCarSelectionPage:
 
         except Exception as ex:
             self.show_error_message(f'Ошибка: {str(ex)}')
-
-    def create_back_button(self):
-        return ft.Container(
-            content=ft.Row(
-                [
-                    ft.IconButton(
-                        icon=ft.icons.ARROW_BACK,
-                        icon_size=30,
-                        on_click=lambda e: self.page.go_back(),
-                    ),
-                    ft.Text('Назад', size=16),
-                ],
-                alignment=ft.MainAxisAlignment.START,
-            ),
-            margin=ft.margin.only(bottom=15),
-        )
 
     def refresh_token(self):
         refresh_token = self.page.client_storage.get('refresh_token')
